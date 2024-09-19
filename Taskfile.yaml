@@ -1,0 +1,14 @@
+version: '3.2.1'
+
+tasks:
+  start_openbis:
+    cmds:
+      - docker compose up -d
+    desc: Start openBIS
+
+  dev:
+    cmds:
+      - npm run dev
+    desc: Start the development server
+    deps:
+      - start_openbis

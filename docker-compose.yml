@@ -1,0 +1,45 @@
+version: "3.7"
+
+services:
+  db:
+    container_name: openbis-db
+    image: postgres:15
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword
+      - PGDATA=/var/lib/postgresql/data
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - openbis-db-data:/var/lib/postgresql/data
+    networks:
+      - openbis-network
+
+  app:
+    container_name: openbis-app
+    image: openbis/openbis-app:20.10.8
+    depends_on:
+      - db
+    env_file:
+      - .env
+    volumes:
+      - openbis-app-data:/data
+      - openbis-app-etc:/etc/openbis
+      - openbis-app-logs:/var/log/openbis
+    ports:
+      - ${OPENBIS_DSS_PORT}:8081
+      - ${OPENBIS_AS_PORT}:8080
+    networks:
+      - openbis-network
+
+volumes:
+  openbis-db-data:
+    name: "openbis-db-data"
+  openbis-app-data:
+    name: "openbis-app-data"
+  openbis-app-etc:
+    name: "openbis-app-etc"
+  openbis-app-logs:
+    name: "openbis-app-logs"
+
+networks:
+  openbis-network:
+    name: "openbis-network"
