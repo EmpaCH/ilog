@@ -1,41 +1,33 @@
-import "./App.css";
-import { useOpenBIS } from "./auth/hooks/useAuth";
-import { LoginContext } from "./auth/LoginContext";
-
-import * as React from "react";
-
-import { RouterProvider } from "@tanstack/react-router";
-
-import { QueryClientProvider } from "@tanstack/react-query";
-import queryClient from "./queryClient";
-import { router } from "./router";
+import { useContext } from 'react';
+import { RouterProvider } from '@tanstack/react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useOpenBIS } from './hooks/auth/useAuth';
+import { AuthContext } from './context/auth/authContext';
+import { router } from './router';
+import './App.css';
 
 // Register the router instance for type safety
-declare module "@tanstack/react-router" {
+declare module '@tanstack/react-router' {
   interface Register {
+    // This infers the type of our router and registers it across your entire project
     router: typeof router;
   }
 }
 
-
-
 function InnerApp() {
-  const auth = React.useContext(LoginContext);
-  console.log(auth);
-  return <RouterProvider router={router} context={{ auth }} />;
+  const auth = useContext(AuthContext);
+  return <RouterProvider router={router} context={{ auth }} />
 }
 
 function App() {
   const facade = useOpenBIS();
 
   return (
-    <>
-      <QueryClientProvider client={queryClient}>
-        <LoginContext.Provider value={facade}>
-          <InnerApp />
-        </LoginContext.Provider>
-      </QueryClientProvider>
-    </>
+    <QueryClientProvider client={new QueryClient()}>
+      <AuthContext.Provider value={facade}>
+        <InnerApp />
+      </AuthContext.Provider>
+    </QueryClientProvider>
   );
 }
 
