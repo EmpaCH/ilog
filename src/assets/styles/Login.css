@@ -1,0 +1,17 @@
+.login-div {
+  width: 30%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
+.login-button {
+  margin-top: 10px;
+}
+
+.login-error-msg {
+  margin: 10px 0;
+  color: rgb(243, 18, 96);
+}
