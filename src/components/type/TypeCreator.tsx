@@ -33,14 +33,7 @@ export const TypeCreator = () => {
         setMessage('Type created successfully!');
         setMessageColor('rgb(23, 201, 100)');
         setShowMessage(true);
-        setLoading(false);
-        setCode('');
-        setPrefix('');
-        setDescription('');
-        setTimeout(() => {
-          setMessage('');
-          setShowMessage(false);
-          }, 2000);
+        onClear(2000);
       },
     });
   };
@@ -49,12 +42,15 @@ export const TypeCreator = () => {
     navigate({ to: '/types' })
   };
 
-  const onClear = () => {
+  const onClear = (ms: number) => {
     setCode('');
     setPrefix('');
     setDescription('');
-    setShowMessage(false);
-    setMessage('');
+    setLoading(false);
+    setTimeout(() => {
+      setMessage('');
+      setShowMessage(false);
+      }, ms);
   };
 
   return (
@@ -105,7 +101,7 @@ export const TypeCreator = () => {
             type="button"
             color="danger"
             className="mx-2"
-            onClick={onClear}
+            onClick={() => onClear(0)}
           >
             Clear
           </Button>

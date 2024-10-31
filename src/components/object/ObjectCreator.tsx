@@ -50,12 +50,7 @@ export const ObjectCreator = () => {
         setMessage('Object created successfully!');
         setMessageColor('rgb(23, 201, 100)');
         setShowMessage(true);
-        onClear();
-        setLoading(false);
-        setTimeout(() => {
-          setMessage('');
-          setShowMessage(false);
-          }, 2000);
+        onClear(2000);
       },
     });
   }
@@ -64,9 +59,14 @@ export const ObjectCreator = () => {
     navigate({ to: '/objects' })
   };
 
-  const onClear = () => {
+  const onClear = (ms: number) => {
     setName('');
     setSearchTerm('');
+    setLoading(false);
+    setTimeout(() => {
+      setMessage('');
+      setShowMessage(false);
+      }, ms);
   };
 
   return (
@@ -114,7 +114,7 @@ export const ObjectCreator = () => {
             type="button"
             color="danger"
             className="mx-2"
-            onClick={onClear}
+            onClick={() => onClear(0)}
           >
             Clear
           </Button>

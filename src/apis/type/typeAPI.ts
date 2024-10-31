@@ -1,28 +1,6 @@
 import openbis from '@openbis/openbis.esm';
 import { iLogID } from '../shared/common';
 
-export async function createIlogIdentifier(
-  api: openbis.OpenBISJavaScriptFacade,
-): Promise<void> {
-  // Initialize the iLog property type identifier
-  const sc = new openbis.PropertyTypeSearchCriteria();
-  sc.withCode().thatEquals(iLogID);
-  const fo = new openbis.PropertyTypeFetchOptions();
-  const result = await api.searchPropertyTypes(sc, fo);
-  if (result.getTotalCount() == 0) {
-    const newProp = new openbis.PropertyTypeCreation();
-    newProp.setCode(iLogID);
-    newProp.setLabel(iLogID);
-    newProp.setDataType('BOOLEAN');
-    newProp.setDescription('This is the iLog identifier.');
-    await api.createPropertyTypes([newProp]);
-    console.log('iLog property type initialized.');
-  }
-  else {
-    console.log('iLog property type already exists.', result);
-  }
-}
-
 export async function getTypes(
   api: openbis.OpenBISJavaScriptFacade,
   search: string = '',
@@ -64,7 +42,7 @@ export async function createType(
 
 export async function deleteType(
   api: openbis.OpenBISJavaScriptFacade,
-  sampleTypeId: openbis.IEntityTypeId,
+  sampleTypeId: openbis.EntityTypePermId,
 ): Promise<void> {
   const stdo = new openbis.SampleTypeDeletionOptions();
   stdo.setReason('Type no longer needed.');

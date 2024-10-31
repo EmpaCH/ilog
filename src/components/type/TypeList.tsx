@@ -1,13 +1,17 @@
-import React,  { useContext, useMemo } from 'react';
+import React,  { useContext, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AuthContext } from '../../context/auth/authContext';
 import { getTypes, deleteType } from '../../apis/type/typeAPI';
 import openbis from '@openbis/openbis.esm';
 import { List } from '../shared/list';
+import { MessageModal } from '../shared/messageModal';
 import { Column, TypeRow } from '../shared/list.types';
 
 export const TypeList = () => {
   const { apiFacade } = useContext(AuthContext);
+  const [deletionMessage, setDeletionMessage] = useState('');
+  const [showMessage, setShowMessage] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const res = useQuery({
     queryKey: ['getTypes'],
@@ -22,7 +26,8 @@ export const TypeList = () => {
 
   const onDelete = async (
     event: React.MouseEvent<HTMLButtonElement>,
-    permId: openbis.IEntityTypeId,
+    permId: openbis.EntityTypePermId,
+    code: string,
   ) => {
     event.preventDefault();
     await deleteType(
@@ -30,6 +35,17 @@ export const TypeList = () => {
       permId,
     ).then(() => {
       res.refetch();
+      setDeletionMessage(`'${code}' deleted successfully.`);
+      setIsSuccess(true);
+      setShowMessage(true);
+    }).catch((e) => {
+      setDeletionMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
+      setIsSuccess(false);
+      setShowMessage(true);
+    }).finally(() => {
+      setTimeout(() => {
+        setShowMessage(false);
+        }, 3000);
     });
   };
 
@@ -80,6 +96,11 @@ export const TypeList = () => {
         defaultSortColumn="code"
         navigatePath="/types/creator"
         onDelete={onDelete}    
+      />
+      <MessageModal
+        message={deletionMessage}
+        isOpen={showMessage}
+        isSuccess={isSuccess}
       />
     </>
   );

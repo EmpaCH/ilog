@@ -1,5 +1,5 @@
 import openbis from '@openbis/openbis.esm';
-import { iLogID } from '../shared/common';
+import { iLogID, env } from '../shared/common';
 
 // TODO
 // 1.Look for templates in the settings
@@ -34,16 +34,24 @@ export async function createObject(
   location: string,
   props:  {[key: string]: string},
 ): Promise<void> {
-  const newObj = new openbis.SampleCreation();
-  newObj.setTypeId(new openbis.EntityTypePermId(type));
-  newObj.setCode(name);
-  newObj.setProperty(iLogID, true);
-  await api.createSamples([newObj]);
+  if (env.isDefined()) {
+    const newObj = new openbis.SampleCreation();
+    newObj.setTypeId(new openbis.EntityTypePermId(type));
+    newObj.setCode(name);
+    newObj.setProperty(iLogID, true);
+    newObj.setExperimentId(env.collection.getPermId());
+    newObj.setProjectId(env.project.getPermId());
+    newObj.setSpaceId(env.space.getPermId());
+    await api.createSamples([newObj]);
+  }
+  else {
+    console.log('App environment is undefined.');
+  }
 }
 
 export async function deleteObject(
   api: openbis.OpenBISJavaScriptFacade,
-  sampleId: openbis.ISampleId,
+  sampleId: openbis.SamplePermId,
 ): Promise<void> {
   const sdo = new openbis.SampleDeletionOptions();
   sdo.setReason('Object no longer needed.');
