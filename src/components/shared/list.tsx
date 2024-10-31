@@ -54,8 +54,8 @@ export const List = (props: {
 
   const sortedItems = React.useMemo(() => {
     return [...itemsPerPage].sort((a: Row, b: Row) => {
-      const first = a[sortDescriptor.column as keyof Row] as number;
-      const second = b[sortDescriptor.column as keyof Row] as number;
+      const first = a[sortDescriptor.column as keyof Row] as string;
+      const second = b[sortDescriptor.column as keyof Row] as string;
       const cmp = first < second ? -1 : first > second ? 1 : 0;
       return sortDescriptor.direction === "descending" ? -cmp : cmp;
     });
@@ -185,9 +185,11 @@ export const List = (props: {
   const renderTableRow = (row: Row) => {
     const { permId, ...newRow } = row;
     return (
-      <TableRow key={permId as string}>
+      <TableRow key={permId.getPermId()}>
         {Object.entries(newRow).map(([key, value]) => (
-          <TableCell key={key}>{printText(value)}</TableCell>
+          <TableCell key={`${permId}-${key}`}>
+            {printText(value)}
+          </TableCell>
         ))}
         <TableCell style={{ width: "155px"}}>
           <Button
@@ -204,7 +206,7 @@ export const List = (props: {
             color="danger"
             variant="light"
             size="sm"
-            onClick={(e) => props.onDelete(e,  permId)}
+            onClick={(e) => props.onDelete(e,  permId, newRow[props.defaultSortColumn])}
           >
             <DeleteOutlineIcon/>
           </Button>

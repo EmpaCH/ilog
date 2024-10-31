@@ -7,7 +7,7 @@ import {
 import { useContext, useEffect } from 'react';
 import { AuthContext } from '../context/auth/authContext';
 import { Button } from '@nextui-org/react';
-import { createIlogIdentifier } from '../apis/type/typeAPI';
+import { initIlog } from '../apis/shared/init';
 
 export const Route = createFileRoute('/_auth')({
   component: AuthLayout,
@@ -19,8 +19,7 @@ function AuthLayout() {
   const { apiFacade, logout }  = useContext(AuthContext)
 
   useEffect(() => {
-    // init iLog
-    createIlogIdentifier(apiFacade);
+    initIlog(apiFacade);
   }, []);
 
   useEffect(() => { 

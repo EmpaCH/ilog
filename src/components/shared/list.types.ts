@@ -8,14 +8,14 @@ export interface Column {
 };
 
 export interface TypeRow {
-  permId: openbis.IEntityTypeId;
+  permId: openbis.EntityTypePermId;
   code: string;
   prefix: string;
   description: string;
 };
 
 export interface ObjectRow {
-  permId: openbis.ISampleId;
+  permId: openbis.SamplePermId;
   name: string;
   type: string;
 };
