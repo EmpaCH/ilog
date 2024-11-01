@@ -16,6 +16,7 @@ import { Route as rootRoute } from './routes/__root'
 import { Route as LoginImport } from './routes/login'
 import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthUserinfoImport } from './routes/_auth/user_info'
+import { Route as AuthTrashcanImport } from './routes/_auth/trashcan'
 import { Route as AuthHomeImport } from './routes/_auth/home'
 import { Route as AuthTypesIndexImport } from './routes/_auth/types/index'
 import { Route as AuthObjectsIndexImport } from './routes/_auth/objects/index'
@@ -45,6 +46,11 @@ const IndexLazyRoute = IndexLazyImport.update({
 
 const AuthUserinfoRoute = AuthUserinfoImport.update({
   path: '/user_info',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthTrashcanRoute = AuthTrashcanImport.update({
+  path: '/trashcan',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -105,6 +111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthHomeImport
       parentRoute: typeof AuthImport
     }
+    '/_auth/trashcan': {
+      id: '/_auth/trashcan'
+      path: '/trashcan'
+      fullPath: '/trashcan'
+      preLoaderRoute: typeof AuthTrashcanImport
+      parentRoute: typeof AuthImport
+    }
     '/_auth/user_info': {
       id: '/_auth/user_info'
       path: '/user_info'
@@ -147,6 +160,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthRouteChildren {
   AuthHomeRoute: typeof AuthHomeRoute
+  AuthTrashcanRoute: typeof AuthTrashcanRoute
   AuthUserinfoRoute: typeof AuthUserinfoRoute
   AuthObjectsCreatorRoute: typeof AuthObjectsCreatorRoute
   AuthTypesCreatorRoute: typeof AuthTypesCreatorRoute
@@ -156,6 +170,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthHomeRoute: AuthHomeRoute,
+  AuthTrashcanRoute: AuthTrashcanRoute,
   AuthUserinfoRoute: AuthUserinfoRoute,
   AuthObjectsCreatorRoute: AuthObjectsCreatorRoute,
   AuthTypesCreatorRoute: AuthTypesCreatorRoute,
@@ -170,6 +185,7 @@ export interface FileRoutesByFullPath {
   '': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/home': typeof AuthHomeRoute
+  '/trashcan': typeof AuthTrashcanRoute
   '/user_info': typeof AuthUserinfoRoute
   '/objects/creator': typeof AuthObjectsCreatorRoute
   '/types/creator': typeof AuthTypesCreatorRoute
@@ -182,6 +198,7 @@ export interface FileRoutesByTo {
   '': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/home': typeof AuthHomeRoute
+  '/trashcan': typeof AuthTrashcanRoute
   '/user_info': typeof AuthUserinfoRoute
   '/objects/creator': typeof AuthObjectsCreatorRoute
   '/types/creator': typeof AuthTypesCreatorRoute
@@ -195,6 +212,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/login': typeof LoginRoute
   '/_auth/home': typeof AuthHomeRoute
+  '/_auth/trashcan': typeof AuthTrashcanRoute
   '/_auth/user_info': typeof AuthUserinfoRoute
   '/_auth/objects/creator': typeof AuthObjectsCreatorRoute
   '/_auth/types/creator': typeof AuthTypesCreatorRoute
@@ -209,6 +227,7 @@ export interface FileRouteTypes {
     | ''
     | '/login'
     | '/home'
+    | '/trashcan'
     | '/user_info'
     | '/objects/creator'
     | '/types/creator'
@@ -220,6 +239,7 @@ export interface FileRouteTypes {
     | ''
     | '/login'
     | '/home'
+    | '/trashcan'
     | '/user_info'
     | '/objects/creator'
     | '/types/creator'
@@ -231,6 +251,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/login'
     | '/_auth/home'
+    | '/_auth/trashcan'
     | '/_auth/user_info'
     | '/_auth/objects/creator'
     | '/_auth/types/creator'
@@ -275,6 +296,7 @@ export const routeTree = rootRoute
       "filePath": "_auth.tsx",
       "children": [
         "/_auth/home",
+        "/_auth/trashcan",
         "/_auth/user_info",
         "/_auth/objects/creator",
         "/_auth/types/creator",
@@ -287,6 +309,10 @@ export const routeTree = rootRoute
     },
     "/_auth/home": {
       "filePath": "_auth/home.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/trashcan": {
+      "filePath": "_auth/trashcan.tsx",
       "parent": "/_auth"
     },
     "/_auth/user_info": {

@@ -60,6 +60,10 @@ function AuthLayout() {
             <Link to="/objects" className="[&.active]:font-bold">
               Objects
             </Link>
+            {' | '}
+            <Link to="/trashcan" className="[&.active]:font-bold">
+              Trashcan
+            </Link>
           </div>
         </div>
         <div className="main-menu-container">
