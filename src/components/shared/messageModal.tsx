@@ -1,4 +1,5 @@
-import {Modal, ModalContent, ModalBody} from '@nextui-org/react';
+import { useEffect } from 'react';
+import {Modal, ModalContent, ModalBody, useDisclosure} from '@nextui-org/react';
 
 export const MessageModal = (props: {
   message: string,
@@ -10,13 +11,25 @@ export const MessageModal = (props: {
     closeButton: "hover:bg-white/5 active:bg-white/10",
   };
 
+  const {isOpen, onOpen, onClose, onOpenChange} = useDisclosure();
+
+  useEffect(() => {
+    if (props.isOpen) {
+      onOpen();
+    } else {
+      onClose();
+    }
+  }, [props]);
+
   return (
     <Modal
-      isOpen={props.isOpen}
+      isOpen={isOpen}
       size="lg"
       placement="bottom"
       backdrop="transparent"
+      isDismissable={true}
       classNames={classNames}
+      onOpenChange={onOpenChange}
     >
       <ModalContent>
         {() => (
