@@ -1,5 +1,63 @@
 import openbis from '@openbis/openbis.esm';
-import { iLogID } from '../shared/common';
+import {
+  iLogID,
+  elnSettings,
+  generalElnSettings,
+  SampleTypeDefinitionExtension,
+  ElnSettings
+} from '../shared/common';
+
+export async function getElnSettings(
+  api: openbis.OpenBISJavaScriptFacade,
+): Promise<ElnSettings> {
+  const fo = new openbis.SampleFetchOptions();
+  fo.withProperties();
+  const id = new openbis.SampleIdentifier(generalElnSettings);
+  const res = await api.getSamples([id], fo);
+  const parsed = JSON.parse(res[generalElnSettings].getProperty(elnSettings)) as ElnSettings;
+  return parsed;
+}
+
+export async function updateElnSettings(
+  api: openbis.OpenBISJavaScriptFacade,
+  newSettings: ElnSettings,
+): Promise<void> {
+  const su = new openbis.SampleUpdate();
+  su.setProperty(elnSettings, JSON.stringify(newSettings));
+  su.setSampleId(new openbis.SampleIdentifier(generalElnSettings));
+  await api.updateSamples([su]);
+}
+
+export async function createTypeSettingsDefinition(
+  api: openbis.OpenBISJavaScriptFacade,
+  typeName: string,
+): Promise<void> {
+  const newTypeSettings: SampleTypeDefinitionExtension = {
+    ENABLE_STORAGE: false,
+    SAMPLE_CHILDREN_ANY_TYPE_DISABLED: false,
+    SAMPLE_CHILDREN_DISABLED: false,
+    SAMPLE_PARENTS_ANY_TYPE_DISABLED: false,
+    SAMPLE_PARENTS_DISABLED: false,
+    SHOW: true,
+    SHOW_ON_NAV: true,
+    USE_AS_PROTOCOL: false,
+  };
+  var settings = await getElnSettings(api);
+  settings.sampleTypeDefinitionsExtension = { 
+    ...settings.sampleTypeDefinitionsExtension,
+    [typeName]: newTypeSettings,
+  };
+  await updateElnSettings(api, settings);
+}
+
+export async function deleteTypeSettingsDefinition(
+  api: openbis.OpenBISJavaScriptFacade,
+  typeName: string,
+): Promise<void> {
+  var settings = await getElnSettings(api);
+  delete settings.sampleTypeDefinitionsExtension[typeName];
+  await updateElnSettings(api, settings);
+}
 
 export async function getTypes(
   api: openbis.OpenBISJavaScriptFacade,
@@ -38,6 +96,8 @@ export async function createType(
   newType.setDescription(description);
   newType.setPropertyAssignments([newPropAsgn]);
   await api.createSampleTypes([newType]);
+  // automatically enable type
+  await createTypeSettingsDefinition(api, code);
 }
 
 export async function deleteType(
@@ -47,4 +107,6 @@ export async function deleteType(
   const stdo = new openbis.SampleTypeDeletionOptions();
   stdo.setReason('Type no longer needed.');
   await api.deleteSampleTypes([sampleTypeId], stdo);
+  // automatically disable type
+  await deleteTypeSettingsDefinition(api, sampleTypeId.getPermId());
 }
