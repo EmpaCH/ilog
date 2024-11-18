@@ -1,6 +1,7 @@
 import openbis from '@openbis/openbis.esm';
 
 export const iLogID = 'ILOG';
+export const instrumentTypeID = "Instrument"
 export const labID = '205';
 export const collectionID = 'EQUIPMENT';
 export const elnSettings = '$ELN_SETTINGS';

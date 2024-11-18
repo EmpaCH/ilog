@@ -7,6 +7,8 @@ import {
   ElnSettings
 } from '../shared/common';
 
+import { convertObjectTypeDefinitionToOperations, INSTRUMENT_TYPE_DEFINITION, ObjectSchema, ObjectTypeDefinition } from './commonType';
+
 export async function getElnSettings(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<ElnSettings> {
@@ -110,3 +112,19 @@ export async function deleteType(
   // automatically disable type
   await deleteTypeSettingsDefinition(api, sampleTypeId.getPermId());
 }
+
+
+export async function createObjectType(
+  api: openbis.OpenBISJavaScriptFacade,
+  objectTypeDefinition: ObjectTypeDefinition,
+): Promise<void> {
+  const ops = convertObjectTypeDefinitionToOperations(objectTypeDefinition);
+  const options = new openbis.SynchronousOperationExecutionOptions();
+  options.setExecuteInOrder(true)
+  await api.executeOperations(ops, options);
+}
+
+export async function createInstrumentObjectType(api: openbis.OpenBISJavaScriptFacade){
+  await createObjectType(api, INSTRUMENT_TYPE_DEFINITION)
+}
+
