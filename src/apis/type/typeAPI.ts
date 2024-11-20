@@ -1,28 +1,38 @@
-import openbis from '@openbis/openbis.esm';
+import openbis from "@openbis/openbis.esm";
 import {
   iLogID,
   elnSettings,
   generalElnSettings,
   SampleTypeDefinitionExtension,
-  ElnSettings
-} from '../shared/common';
+  ElnSettings,
+} from "../shared/common";
 
-import { convertObjectTypeDefinitionToOperations, INSTRUMENT_TYPE_DEFINITION, ObjectSchema, ObjectTypeDefinition } from './commonType';
+import {
+  convertObjectTypeDefinitionToOperations,
+  convertOpenBISPropertyType,
+  INSTRUMENT_TYPE_DEFINITION,
+  LocalPropertyType,
+  ObjectSchema,
+  ObjectTypeDefinition,
+  ReferencePropertyType,
+} from "./commonType";
 
 export async function getElnSettings(
-  api: openbis.OpenBISJavaScriptFacade,
+  api: openbis.OpenBISJavaScriptFacade
 ): Promise<ElnSettings> {
   const fo = new openbis.SampleFetchOptions();
   fo.withProperties();
   const id = new openbis.SampleIdentifier(generalElnSettings);
   const res = await api.getSamples([id], fo);
-  const parsed = JSON.parse(res[generalElnSettings].getProperty(elnSettings)) as ElnSettings;
+  const parsed = JSON.parse(
+    res[generalElnSettings].getProperty(elnSettings)
+  ) as ElnSettings;
   return parsed;
 }
 
 export async function updateElnSettings(
   api: openbis.OpenBISJavaScriptFacade,
-  newSettings: ElnSettings,
+  newSettings: ElnSettings
 ): Promise<void> {
   const su = new openbis.SampleUpdate();
   su.setProperty(elnSettings, JSON.stringify(newSettings));
@@ -32,7 +42,7 @@ export async function updateElnSettings(
 
 export async function createTypeSettingsDefinition(
   api: openbis.OpenBISJavaScriptFacade,
-  typeName: string,
+  typeName: string
 ): Promise<void> {
   const newTypeSettings: SampleTypeDefinitionExtension = {
     ENABLE_STORAGE: false,
@@ -45,7 +55,7 @@ export async function createTypeSettingsDefinition(
     USE_AS_PROTOCOL: false,
   };
   var settings = await getElnSettings(api);
-  settings.sampleTypeDefinitionsExtension = { 
+  settings.sampleTypeDefinitionsExtension = {
     ...settings.sampleTypeDefinitionsExtension,
     [typeName]: newTypeSettings,
   };
@@ -54,7 +64,7 @@ export async function createTypeSettingsDefinition(
 
 export async function deleteTypeSettingsDefinition(
   api: openbis.OpenBISJavaScriptFacade,
-  typeName: string,
+  typeName: string
 ): Promise<void> {
   var settings = await getElnSettings(api);
   delete settings.sampleTypeDefinitionsExtension[typeName];
@@ -63,33 +73,42 @@ export async function deleteTypeSettingsDefinition(
 
 export async function getTypes(
   api: openbis.OpenBISJavaScriptFacade,
-  search: string = '',
+  search: string = ""
 ): Promise<openbis.SampleType[]> {
   const sc = new openbis.SampleTypeSearchCriteria();
   sc.withCode().thatStartsWith(search.toUpperCase());
   const fo = new openbis.SampleTypeFetchOptions();
   fo.withPropertyAssignments();
   const result = await api.searchSampleTypes(sc, fo);
-  const iLogTypes = result.getObjects().filter(
-    type => type.getPropertyAssignments().some(
-      propAsgn => propAsgn.getPermId().getPropertyTypeId() == iLogID
-    )
-  );
+  const iLogTypes = result
+    .getObjects()
+    .filter((type) =>
+      type
+        .getPropertyAssignments()
+        .some((propAsgn) => propAsgn.getPermId().getPropertyTypeId() == iLogID)
+    );
   return iLogTypes;
+}
+
+export async function getType(
+  api: openbis.OpenBISJavaScriptFacade,
+  code: string
+): Promise<openbis.SampleType> {
+  const searchCriteria = new openbis.SampleTypeSearchCriteria();
 }
 
 export async function createType(
   api: openbis.OpenBISJavaScriptFacade,
   code: string,
   prefix: string,
-  description: string,
-): Promise<void> {
+  description: string
+): Promise<ObjectTypeDefinition> {
   // assign iLog identifier property
   const newPropAsgn = new openbis.PropertyAssignmentCreation();
   newPropAsgn.setPropertyTypeId(new openbis.PropertyTypePermId(iLogID));
   newPropAsgn.setMandatory(true);
   newPropAsgn.setManagedInternally(true);
-  newPropAsgn.setSection('General');
+  newPropAsgn.setSection("General");
   // create type
   const newType = new openbis.SampleTypeCreation();
   newType.setCode(code);
@@ -97,34 +116,63 @@ export async function createType(
   newType.setGeneratedCodePrefix(prefix);
   newType.setDescription(description);
   newType.setPropertyAssignments([newPropAsgn]);
-  await api.createSampleTypes([newType]);
+  const typeId = await api.createSampleTypes([newType]);
   // automatically enable type
   await createTypeSettingsDefinition(api, code);
+  //Get the type
 }
 
 export async function deleteType(
   api: openbis.OpenBISJavaScriptFacade,
-  sampleTypeId: openbis.EntityTypePermId,
+  sampleTypeId: openbis.EntityTypePermId
 ): Promise<void> {
   const stdo = new openbis.SampleTypeDeletionOptions();
-  stdo.setReason('Type no longer needed.');
+  stdo.setReason("Type no longer needed.");
   await api.deleteSampleTypes([sampleTypeId], stdo);
   // automatically disable type
   await deleteTypeSettingsDefinition(api, sampleTypeId.getPermId());
 }
 
-
 export async function createObjectType(
   api: openbis.OpenBISJavaScriptFacade,
-  objectTypeDefinition: ObjectTypeDefinition,
+  objectTypeDefinition: ObjectTypeDefinition
 ): Promise<void> {
   const ops = convertObjectTypeDefinitionToOperations(objectTypeDefinition);
   const options = new openbis.SynchronousOperationExecutionOptions();
-  options.setExecuteInOrder(true)
+  options.setExecuteInOrder(true);
   await api.executeOperations(ops, options);
 }
 
-export async function createInstrumentObjectType(api: openbis.OpenBISJavaScriptFacade){
-  await createObjectType(api, INSTRUMENT_TYPE_DEFINITION)
+export async function createInstrumentObjectType(
+  api: openbis.OpenBISJavaScriptFacade
+) {
+  await createObjectType(api, INSTRUMENT_TYPE_DEFINITION);
 }
 
+export async function resolveReferenceType(
+  api: openbis.OpenBISJavaScriptFacade,
+  type: string
+): Promise<LocalPropertyType> {
+  const sc = new openbis.PropertyTypeSearchCriteria();
+  sc.withCode().thatEquals(type);
+  const res = await api.searchPropertyTypes(
+    sc,
+    new openbis.PropertyTypeFetchOptions()
+  );
+  const remoteType = res.getObjects()[0];
+  return convertOpenBISPropertyType(remoteType);
+}
+
+export async function getAllPropertyTypes(
+  api: openbis.OpenBISJavaScriptFacade
+): Promise<LocalPropertyType[]> {
+  const searchCriteria = new openbis.PropertyTypeSearchCriteria();
+  const result = await api.searchPropertyTypes(
+    searchCriteria,
+    new openbis.PropertyTypeFetchOptions()
+  );
+  return result
+    .getObjects()
+    .filter((property) => !property.isManagedInternally())
+    .map(convertOpenBISPropertyType);
+}

@@ -1,61 +1,106 @@
-import React, { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { Button, Input, Textarea, Divider } from '@nextui-org/react';
-import { useCreateType } from '../../apis/type/useCreate';
+import React, { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  Button,
+  Input,
+  Textarea,
+  Divider,
+  Card,
+  CardHeader,
+  Accordion,
+  AccordionItem,
+} from "@nextui-org/react";
+import { useCreateType } from "../../apis/type/useCreate";
+import { AccordionSummary, FormGroup, Grid } from "@mui/material";
+import { PropertyEditor } from "./PropertyEditor";
+
+import {
+  INSTRUMENT_TYPE_DEFINITION,
+  ObjectSchema,
+} from "../../apis/type/commonType";
+import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
+import { green } from "@mui/material/colors";
 
 export const TypeCreator = () => {
   const typeCreation = useCreateType();
+  const allTypesResult = useGetAllTypes();
   const navigate = useNavigate();
-  const [code, setCode] = useState('');
-  const [prefix, setPrefix] = useState('');
-  const [description, setDescription] = useState('');
+  const [code, setCode] = useState("");
+  const [prefix, setPrefix] = useState("");
+  const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
-  const [messageColor, setMessageColor] = useState('rgb(23, 201, 100)');
+  const [messageColor, setMessageColor] = useState("rgb(23, 201, 100)");
+
+  const [propertyAssignments, setPropertyAssignments] = useState(
+    INSTRUMENT_TYPE_DEFINITION.propertyAssignments
+  );
+
+  const lockedPropertyCodes = Object.entries(
+    INSTRUMENT_TYPE_DEFINITION.propertyAssignments
+  ).flatMap(([group, assignment]) => assignment.map((el) => el.code));
+
+  if (allTypesResult.status == "success") {
+    const resolvedTypes = Object.entries(propertyAssignments).map(
+      ([group, assignments]) => {
+        return [
+          group,
+          assignments.flatMap((assigmnent) => {
+            return allTypesResult.data.filter(
+              (it) => it.code === assigmnent.code
+            );
+          }),
+        ];
+      }
+    );
+    setPropertyAssignments(Object.fromEntries(resolvedTypes) as ObjectSchema);
+  }
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
-    typeCreation.mutate({
-      code: code,
-      prefix: prefix.length > 0 ? prefix : code,
-      description: description,
-    }, {
-      onError: (err) => {
-        setMessage(err.message.split(" (Context:")[0]);
-        setMessageColor('rgb(243, 18, 96)');
-        setShowMessage(true);
-        setLoading(false);
+    typeCreation.mutate(
+      {
+        code: code,
+        prefix: prefix.length > 0 ? prefix : code,
+        description: description,
       },
-      onSuccess: () => {
-        setMessage('Type created successfully!');
-        setMessageColor('rgb(23, 201, 100)');
-        setShowMessage(true);
-        onClear(2000);
-      },
-    });
+      {
+        onError: (err) => {
+          setMessage(err.message.split(" (Context:")[0]);
+          setMessageColor("rgb(243, 18, 96)");
+          setShowMessage(true);
+          setLoading(false);
+        },
+        onSuccess: () => {
+          setMessage("Type created successfully!");
+          setMessageColor("rgb(23, 201, 100)");
+          setShowMessage(true);
+          onClear(2000);
+        },
+      }
+    );
   };
 
   const onBack = () => {
-    navigate({ to: '/types' })
+    navigate({ to: "/types" });
   };
 
   const onClear = (ms: number) => {
-    setCode('');
-    setPrefix('');
-    setDescription('');
+    setCode("");
+    setPrefix("");
+    setDescription("");
     setLoading(false);
     setTimeout(() => {
-      setMessage('');
+      setMessage("");
       setShowMessage(false);
-      }, ms);
+    }, ms);
   };
 
   return (
     <div className="md-size-div">
-      <h2>Create Type</h2>
       <form onSubmit={handleSubmit}>
         <Input
           isRequired
@@ -64,7 +109,7 @@ export const TypeCreator = () => {
           type="text"
           className="form-field"
           value={code}
-          onValueChange={value => setCode(value)}
+          onValueChange={(value) => setCode(value)}
         />
         <Input
           id="prefix"
@@ -73,15 +118,30 @@ export const TypeCreator = () => {
           type="text"
           className="form-field"
           value={prefix}
-          onValueChange={value => setPrefix(value)}
+          onValueChange={(value) => setPrefix(value)}
         />
         <Textarea
           id="description"
           label="Description"
           className="form-field"
           value={description}
-          onValueChange={value => setDescription(value)}
+          onValueChange={(value) => setDescription(value)}
         />
+        <Divider className="my-4" />
+        <Accordion>
+          {Object.entries(propertyAssignments).flatMap(
+            ([group, assignments]) => {
+              return assignments.map((assignment) => (
+                <AccordionItem key={assignment.code} title={assignment.code}>
+                  <PropertyEditor
+                    propertyTypeDefinitions={assignment}
+                    locked={lockedPropertyCodes.includes(assignment.code)}
+                  />
+                </AccordionItem>
+              ));
+            }
+          )}
+        </Accordion>
         <Divider className="my-4" />
         {showMessage && (
           <div style={{ marginBottom: "15px", color: messageColor }}>
@@ -117,4 +177,4 @@ export const TypeCreator = () => {
       </form>
     </div>
   );
-}
+};

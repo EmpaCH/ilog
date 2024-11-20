@@ -1,67 +1,79 @@
 import openbis from "@openbis/openbis.esm";
 import { getRouteApi } from "@tanstack/react-router";
 import { iLogID, instrumentTypeID } from "../shared/common";
+import { detailedDiff } from "deep-object-diff";
 
-type PrimitiveDataType =
-  | "VARCHAR"
-  | "MULTILINE_VARCHAR"
-  | "DATE"
-  | "REAL"
-  | "BOOLEAN"
-  | "XML"
-  | "INTEGER"
-  | "TIMESTAMP"
-  | "HYPERLINK"
-  | "JSON";
+const PRIMITIVE_DATA_TYPES = [
+  "VARCHAR",
+  "MULTILINE_VARCHAR",
+  "DATE",
+  "REAL",
+  "BOOLEAN",
+  "XML",
+  "INTEGER",
+  "TIMESTAMP",
+  "HYPERLINK",
+  "JSON",
+] as const;
 
-type ReferenceDataType = "OBJECT" | "CONTROLLEDVOCABULARY";
+const REFERENCE_DATA_TYPES = ["OBJECT" , "CONTROLLEDVOCABULARY"] as const
 
-type ArrayDataType = "REAL[]" | "TIMESTAMP[]" | "INTEGER[]" | "STRING[]";
+const ARRAY_DATA_TYPES = [ "REAL[]" , "TIMESTAMP[]" , "INTEGER[]" , "STRING[]"] as const; 
 
-type DataType = ReferenceDataType | PrimitiveDataType | ArrayDataType;
+export const ALL_DATA_TYPES = [...PRIMITIVE_DATA_TYPES, ...REFERENCE_DATA_TYPES, ...ARRAY_DATA_TYPES] as const
+
+type ReferenceDataType =  typeof REFERENCE_DATA_TYPES[number];
+
+type ArrayDataType =  typeof ARRAY_DATA_TYPES[number];
+
+type PrimitiveDataType = typeof PRIMITIVE_DATA_TYPES[number];
+
+export type DataType = ReferenceDataType | PrimitiveDataType | ArrayDataType;
+
+
 
 interface PropertyTypeCommon {
+  code: string;
   description: string;
   label: string;
   type: string;
+}
+
+export interface LocalPropertyType extends PropertyTypeCommon {
+  dataType: DataType;
+  type: "local";
   multivalued: boolean;
 }
 
-interface LocalPropertyType extends PropertyTypeCommon {
-  code: string;
-  dataType: DataType;
-  type: "local";
-}
-
-interface LocalPrimitivePropertyType extends LocalPropertyType {
+export interface LocalPrimitivePropertyType extends LocalPropertyType {
   code: string;
   dataType: PrimitiveDataType;
 }
 
-interface LocalObjectPropertyType extends LocalPropertyType {
+export interface LocalObjectPropertyType extends LocalPropertyType {
   code: string;
   dataType: "OBJECT";
   objectType: string;
 }
 
-interface LocalControlledVocabularyPropertyType extends LocalPropertyType {
+export interface LocalControlledVocabularyPropertyType
+  extends LocalPropertyType {
   code: string;
   vocabulary: string;
   dataType: "CONTROLLEDVOCABULARY";
 }
 
-interface ReferencePropertyType {
-  propertyTypeCode: string;
+export interface ReferencePropertyType {
+  code: string;
   type: "reference";
 }
 
-type PropertyType =
-  | ReferencePropertyType
-  | (
-      | LocalPrimitivePropertyType
-      | LocalObjectPropertyType
-      | LocalControlledVocabularyPropertyType
-    );
+export type LocalPropertyTypeVariants =
+  | LocalPrimitivePropertyType
+  | LocalObjectPropertyType
+  | LocalControlledVocabularyPropertyType;
+
+export type PropertyType = ReferencePropertyType | LocalPropertyTypeVariants;
 
 export interface ObjectSchema {
   [group: string]: PropertyType[];
@@ -89,8 +101,8 @@ const testSchema: ObjectSchema = {
 
 export const INSTRUMENT_SCHEMA: ObjectSchema = {
   "General Info": [
-    { propertyTypeCode: "$NAME", type: "reference" },
-    { propertyTypeCode: iLogID, type: "reference" },
+    { code: "$NAME", type: "reference" },
+    { code: iLogID, type: "reference" },
     {
       code: "Serialnumber",
       label: "Serial number",
@@ -108,7 +120,7 @@ export const INSTRUMENT_SCHEMA: ObjectSchema = {
       multivalued: false,
     },
   ],
-  Location: [{ propertyTypeCode: "$LOCATION", type: "reference" }],
+  Location: [{ code: "$LOCATION", type: "reference" }],
 };
 
 export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
@@ -190,6 +202,79 @@ function convertDataTypeToOpenBISDataType(
   return returnDataType;
 }
 
+function convertOpenBISDataTypeToDataType(
+  dataType: openbis.DataType
+): DataType {
+  let returnDataType;
+  switch (dataType) {
+    case openbis.DataType.SAMPLE: {
+      returnDataType = "OBJECT";
+      break;
+    }
+
+    case openbis.DataType.BOOLEAN: {
+      returnDataType = "BOOLEAN";
+      break;
+    }
+    case openbis.DataType.MULTILINE_VARCHAR: {
+      returnDataType = "MULTILINE_VARCHAR";
+      break;
+    }
+    case openbis.DataType.CONTROLLEDVOCABULARY: {
+      returnDataType = "CONTROLLEDVOCABULARY";
+      break;
+    }
+    case openbis.DataType.REAL: {
+      returnDataType = "REAL";
+      break;
+    }
+    case openbis.DataType.INTEGER: {
+      returnDataType = "INTEGER";
+      break;
+    }
+    case openbis.DataType.TIMESTAMP: {
+      returnDataType = "TIMESTAMP";
+      break;
+    }
+    case openbis.DataType.JSON: {
+      returnDataType = "JSON";
+      break;
+    }
+    case openbis.DataType.HYPERLINK: {
+      returnDataType = "HYPERLINK";
+      break;
+    }
+    case openbis.DataType.XML: {
+      returnDataType = "XML";
+      break;
+    }
+    case openbis.DataType.ARRAY_REAL: {
+      returnDataType = "REAL[]";
+      break;
+    }
+    case openbis.DataType.ARRAY_INTEGER: {
+      returnDataType = "INTEGER[]";
+      break;
+    }
+    case openbis.DataType.ARRAY_TIMESTAMP: {
+      returnDataType = "TIMESTAMP[]";
+      break;
+    }
+    case openbis.DataType.ARRAY_STRING: {
+      returnDataType = "STRING[]";
+      break;
+    }
+    case openbis.DataType.DATE: {
+      returnDataType = "DATE";
+      break;
+    }
+    default: {
+      throw Error("Missing");
+    }
+  }
+  return returnDataType as DataType;
+}
+
 function initializeCreation(
   propertyType: LocalPropertyType
 ): openbis.PropertyTypeCreation {
@@ -268,8 +353,49 @@ function convertObjectSchemaToAssignmentCreations(
   return creations;
 }
 
-export function convertOpenBISObjectTypeToDefinition(type: openbis.SampleType){
-  
+export function convertOpenBISPropertyType(
+  propertyType: openbis.PropertyType
+): LocalPropertyTypeVariants {
+  const dataType = propertyType.getDataType();
+  const common = {
+    code: propertyType.getCode(),
+    label: propertyType.getLabel(),
+    description: propertyType.getDescription(),
+    dataType: convertOpenBISDataTypeToDataType(propertyType.getDataType()),
+    multivalued: propertyType.isMultiValue(),
+  };
+  if (dataType == "CONTROLLEDVOCABULARY") {
+    return {
+      ...common,
+      type: "local",
+      vocabulary: propertyType.getVocabulary().getCode(),
+    } as LocalControlledVocabularyPropertyType;
+  } else if (dataType == "SAMPLE") {
+    return {
+      ...common,
+      type: "local",
+      objectType: propertyType.getSampleType().getCode(),
+    } as LocalObjectPropertyType;
+  } else {
+    return {
+      ...common,
+      type: "local",
+    } as LocalPrimitivePropertyType;
+  }
+}
+
+function convertOpenBISPropertyAssignment(
+  propertyAssignment: openbis.PropertyAssignment
+): LocalPropertyTypeVariants {
+  return convertOpenBISPropertyType(propertyAssignment.getPropertyType());
+}
+
+export function convertChanges(
+  newDefinition: ObjectTypeDefinition,
+  oldDefinition: ObjectTypeDefinition
+): openbis.IOperation[] {
+  const differences = detailedDiff(newDefinition, oldDefinition);
+  differences;
 }
 
 export function convertObjectTypeDefinitionToOperations(
