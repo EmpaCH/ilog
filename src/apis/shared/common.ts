@@ -1,8 +1,13 @@
 import openbis from '@openbis/openbis.esm';
 
+// env creation settings
 export const iLogID = 'ILOG';
 export const labID = '205';
 export const collectionID = 'EQUIPMENT';
+// inventory space creation settings
+export const customServiceCode = 'as-eln-lims-api';
+export const createSpaceMethod = 'createSpace';
+// sample type settings
 export const elnSettings = '$ELN_SETTINGS';
 export const generalElnSettings = '/ELN_SETTINGS/GENERAL_ELN_SETTINGS';
 

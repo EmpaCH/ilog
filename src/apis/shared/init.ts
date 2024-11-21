@@ -1,5 +1,12 @@
 import openbis from '@openbis/openbis.esm';
-import { iLogID, labID, collectionID, env } from '../shared/common';
+import {
+  iLogID,
+  labID,
+  collectionID,
+  customServiceCode,
+  createSpaceMethod,
+  env
+} from '../shared/common';
 
 // Initialize the iLog property type
 export async function createIlogIdentifier(
@@ -23,6 +30,19 @@ export async function createIlogIdentifier(
   }
 }
 
+async function createInventorySpace(
+  api: openbis.OpenBISJavaScriptFacade,
+): Promise<openbis.ISpaceId> {
+  const servCode = new openbis.CustomASServiceCode(customServiceCode);
+  const servOpt = new openbis.CustomASServiceExecutionOptions();
+  servOpt.withParameter('method', createSpaceMethod);
+  servOpt.withParameter('isInventory', true);
+  servOpt.withParameter('postfix', labID);
+  servOpt.withParameter('group', '');
+  const inv = await api.executeCustomASService(servCode, servOpt);
+  return inv[0];
+}
+
 export async function createSpace(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<openbis.ISpaceId> {
@@ -31,10 +51,7 @@ export async function createSpace(
   const fo = new openbis.SpaceFetchOptions();
   const result = await api.searchSpaces(sc, fo);
   if (result.getTotalCount() == 0) {
-    const newSpace = new openbis.SpaceCreation();
-    newSpace.setCode(labID);
-    const result = await api.createSpaces([newSpace]);
-    return result[0];
+    return await createInventorySpace(api);
   }
   console.log(`Space ${labID} already exists.`);
   return result.getObjects()[0].getPermId();
@@ -46,6 +63,7 @@ export async function createProject(
 ): Promise<openbis.IProjectId> {
   const sc = new openbis.ProjectSearchCriteria();
   sc.withCode().thatEquals(iLogID);
+  sc.withSpace().withCode().thatEquals(labID);
   const fo = new openbis.ProjectFetchOptions();
   const result = await api.searchProjects(sc, fo);
   if (result.getTotalCount() == 0) {
@@ -65,6 +83,8 @@ export async function createCollection(
 ): Promise<openbis.Experiment> {
   const sc = new openbis.ExperimentSearchCriteria();
   sc.withCode().thatEquals(collectionID);
+  sc.withProject().withCode().thatEquals(iLogID);
+  sc.withProject().withSpace().withCode().thatEquals(labID);
   const fo = new openbis.ExperimentFetchOptions();
   fo.withProject().withSpace();
   const result = await api.searchExperiments(sc, fo);
@@ -90,17 +110,4 @@ export async function initIlog(
   const collection = await createCollection(api, projectId);
   env.setEnv(collection, collection.getProject(), collection.getProject().getSpace());
   console.log('App environment initialized.');
-}
-
-export async function deleteSpace(
-  api: openbis.OpenBISJavaScriptFacade,
-): Promise<void> {
-  const sc = new openbis.SpaceSearchCriteria();
-  sc.withCode().thatStartsWith(labID);
-  const fo = new openbis.SpaceFetchOptions();
-  const result = await api.searchSpaces(sc, fo);
-  const id = result.getObjects()[0].getId();
-  const sdo = new openbis.SpaceDeletionOptions();
-  sdo.setReason('Space no longer needed.');
-  await api.deleteSpaces([id], sdo);
 }
