@@ -1,5 +1,5 @@
 import openbis from '@openbis/openbis.esm';
-import { iLogID, env } from '../shared/common';
+import { iLogID, labID, collectionID, env } from '../shared/common';
 
 // TODO
 // 1.Look for templates in the settings
@@ -9,22 +9,17 @@ import { iLogID, env } from '../shared/common';
 //   Probably we can use some internal field to keep track of the inheritance relationships on the openbis 
 //   Maybe we create a very base type in openbis which has some hidden fields that we use to track the inheritance
 
-function hasProperty<T>(dict: { [key: string]: T }, key: string, value: T): boolean {
-  return dict[key] === value;
-}
-
 export async function getObjects(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<openbis.Sample[]> {
   const sc = new openbis.SampleSearchCriteria();
+  sc.withSpace().withCode().thatEquals(labID);
+  sc.withProject().withCode().thatEquals(iLogID);
+  sc.withExperiment().withCode().thatEquals(collectionID);
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
-  fo.withProperties();
   const result = await api.searchSamples(sc, fo);
-  const iLogObjs = result.getObjects().filter(
-    obj => hasProperty(obj.getProperties(), iLogID, 'true')
-  );
-  return iLogObjs;
+  return result.getObjects();
 }
 
 export async function createObject(
