@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import {
-  LocalPropertyTypeVariants,
-  PropertyType,
   DataType,
   ALL_DATA_TYPES,
 } from "../../apis/type/commonType";
+import {
+  LocalPropertyTypeVariants,
+  PropertyType
+} from "../../apis/propertyType/commonPropertyType";
 import {
   Button,
   Card,

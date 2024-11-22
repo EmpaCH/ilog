@@ -1,10 +1,58 @@
 import openbis from '@openbis/openbis.esm';
-import { iLogID, labID, collectionID, env } from '../shared/common';
+import { iLogID, labID, collectionID, env, ILOG_BASE_TYPES_VOCABULARY, iLogBaseTypesPropertyCode } from '../shared/common';
+
+import { createVocabulary, getVocabulary } from '../vocabulary/vocabularyAPI';
+import { createPropertyType } from '../propertyType/propertyTypeAPI';
+
 
 // Initialize the iLog property type
 export async function createIlogIdentifier(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<void> {
+  const sc = new openbis.PropertyTypeSearchCriteria();
+  sc.withCode().thatEquals(iLogID);
+  const fo = new openbis.PropertyTypeFetchOptions();
+  const result = await api.searchPropertyTypes(sc, fo);
+  if (result.getTotalCount() == 0) {
+    const newProp = new openbis.PropertyTypeCreation();
+    newProp.setCode(iLogID);
+    newProp.setLabel(iLogID);
+    newProp.setDataType('BOOLEAN');
+    newProp.setDescription('This is the iLog identifier.');
+    await api.createPropertyTypes([newProp]);
+    console.log('iLog property type initialized.');
+  }
+  else {
+    console.log('iLog property type already exists.');
+  }
+}
+
+export async function createIlogTypeVariants(api: openbis.OpenBISJavaScriptFacade){
+  const voc = await getVocabulary(api, ILOG_BASE_TYPES_VOCABULARY.code);
+  if (voc == null){
+    console.log("ILog type variants vocabulary does not exist. Creating it now.");
+    await createVocabulary(api, ILOG_BASE_TYPES_VOCABULARY);
+  }
+  console.log("ILog type variants vocabulary already exists.");
+}
+
+export async function createIlogBaseTypeProperty(api: openbis.OpenBISJavaScriptFacade){
+  const sc = new openbis.PropertyTypeSearchCriteria();
+  sc.withCode().thatEquals(iLogBaseTypesPropertyCode);
+  const fo = new openbis.PropertyTypeFetchOptions();
+  const result = await api.searchPropertyTypes(sc, fo);
+  if (result.getTotalCount() == 0) {
+    await createPropertyType(api, ILOG_BASE_TYPES_VOCABULARY);
+    console.log('iLog base type property initialized.');
+  }
+  else {
+    console.log('iLog base type property already exists.');
+  }
+}
+
+export async function createIlogTypeProperty(
+  api: openbis.OpenBISJavaScriptFacade)
+{
   const sc = new openbis.PropertyTypeSearchCriteria();
   sc.withCode().thatEquals(iLogID);
   const fo = new openbis.PropertyTypeFetchOptions();
@@ -85,6 +133,7 @@ export async function initIlog(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<void> {
   await createIlogIdentifier(api);
+  await createIlogTypeVariants(api);
   const spaceId = await createSpace(api);
   const projectId = await createProject(api, spaceId);
   const collection = await createCollection(api, projectId);

@@ -9,17 +9,51 @@ import {
   CardHeader,
   Accordion,
   AccordionItem,
+  Dropdown,
+  DropdownItem,
 } from "@nextui-org/react";
 import { useCreateType } from "../../apis/type/useCreate";
 import { AccordionSummary, FormGroup, Grid } from "@mui/material";
 import { PropertyEditor } from "./PropertyEditor";
 
+import { INSTRUMENT_TYPE_DEFINITION, iLogBaseTypes } from "../../apis/shared/common";
 import {
-  INSTRUMENT_TYPE_DEFINITION,
   ObjectSchema,
 } from "../../apis/type/commonType";
+import { LocalPropertyTypeVariants, PropertyType } from "../../apis/propertyType/commonPropertyType";
 import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
 import { green } from "@mui/material/colors";
+
+interface GroupAccordionItemProps {
+  schema: ObjectSchema;
+  lockedPropertyCodes: string[];
+}
+
+const GroupAccordionItem: React.FC<GroupAccordionItemProps> = ({
+  schema,
+  lockedPropertyCodes,
+}) => {
+  return (
+    <Accordion>
+      {Object.entries(schema).flatMap(([propertyGroup, properties]) => {
+        return (
+          <AccordionItem key={propertyGroup} title={propertyGroup}>
+            <Accordion>
+              {properties.map((property) => (
+                <AccordionItem key={property.code} title={property.code}>
+                  <PropertyEditor
+                    propertyTypeDefinitions={property}
+                    locked={lockedPropertyCodes.includes(property.code)}
+                  />
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </AccordionItem>
+        );
+      })}
+    </Accordion>
+  );
+};
 
 export const TypeCreator = () => {
   const typeCreation = useCreateType();
@@ -102,6 +136,11 @@ export const TypeCreator = () => {
   return (
     <div className="md-size-div">
       <form onSubmit={handleSubmit}>
+        <Dropdown>
+          <DropdownItem>Sample</DropdownItem>
+          <DropdownItem>Experiment</DropdownItem>
+          <DropdownItem>Material</DropdownItem>
+        </Dropdown>
         <Input
           isRequired
           id="code"
@@ -128,20 +167,11 @@ export const TypeCreator = () => {
           onValueChange={(value) => setDescription(value)}
         />
         <Divider className="my-4" />
-        <Accordion>
-          {Object.entries(propertyAssignments).flatMap(
-            ([group, assignments]) => {
-              return assignments.map((assignment) => (
-                <AccordionItem key={assignment.code} title={assignment.code}>
-                  <PropertyEditor
-                    propertyTypeDefinitions={assignment}
-                    locked={lockedPropertyCodes.includes(assignment.code)}
-                  />
-                </AccordionItem>
-              ));
-            }
-          )}
-        </Accordion>
+        <GroupAccordionItem
+          schema={propertyAssignments}
+          lockedPropertyCodes={lockedPropertyCodes}
+        />
+        <Button>Add Property Group</Button>
         <Divider className="my-4" />
         {showMessage && (
           <div style={{ marginBottom: "15px", color: messageColor }}>

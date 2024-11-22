@@ -5,17 +5,16 @@ import {
   generalElnSettings,
   SampleTypeDefinitionExtension,
   ElnSettings,
+  INSTRUMENT_TYPE_DEFINITION,
 } from "../shared/common";
 
 import {
   convertObjectTypeDefinitionToOperations,
   convertOpenBISPropertyType,
-  INSTRUMENT_TYPE_DEFINITION,
-  LocalPropertyType,
   ObjectSchema,
   ObjectTypeDefinition,
-  ReferencePropertyType,
 } from "./commonType";
+import { LocalPropertyType, ReferencePropertyType } from "../propertyType/commonPropertyType";
 
 export async function getElnSettings(
   api: openbis.OpenBISJavaScriptFacade

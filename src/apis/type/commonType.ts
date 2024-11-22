@@ -2,6 +2,16 @@ import openbis from "@openbis/openbis.esm";
 import { getRouteApi } from "@tanstack/react-router";
 import { iLogID, instrumentTypeID } from "../shared/common";
 import { detailedDiff } from "deep-object-diff";
+import { code } from "@nextui-org/react";
+import {
+  PropertyType,
+  LocalPropertyTypeVariants,
+  LocalControlledVocabularyPropertyType,
+  LocalObjectPropertyType,
+  LocalPrimitivePropertyType,
+} from "../propertyType/commonPropertyType";
+import { convertPropertyType } from "../propertyType/commonPropertyType";
+import { getPropertyTypeId } from "../propertyType/commonPropertyType";
 
 const PRIMITIVE_DATA_TYPES = [
   "VARCHAR",
@@ -16,64 +26,28 @@ const PRIMITIVE_DATA_TYPES = [
   "JSON",
 ] as const;
 
-const REFERENCE_DATA_TYPES = ["OBJECT" , "CONTROLLEDVOCABULARY"] as const
+const REFERENCE_DATA_TYPES = ["OBJECT", "CONTROLLEDVOCABULARY"] as const;
 
-const ARRAY_DATA_TYPES = [ "REAL[]" , "TIMESTAMP[]" , "INTEGER[]" , "STRING[]"] as const; 
+const ARRAY_DATA_TYPES = [
+  "REAL[]",
+  "TIMESTAMP[]",
+  "INTEGER[]",
+  "STRING[]",
+] as const;
 
-export const ALL_DATA_TYPES = [...PRIMITIVE_DATA_TYPES, ...REFERENCE_DATA_TYPES, ...ARRAY_DATA_TYPES] as const
+export const ALL_DATA_TYPES = [
+  ...PRIMITIVE_DATA_TYPES,
+  ...REFERENCE_DATA_TYPES,
+  ...ARRAY_DATA_TYPES,
+] as const;
 
-type ReferenceDataType =  typeof REFERENCE_DATA_TYPES[number];
+type ReferenceDataType = (typeof REFERENCE_DATA_TYPES)[number];
 
-type ArrayDataType =  typeof ARRAY_DATA_TYPES[number];
+type ArrayDataType = (typeof ARRAY_DATA_TYPES)[number];
 
-type PrimitiveDataType = typeof PRIMITIVE_DATA_TYPES[number];
+export type PrimitiveDataType = (typeof PRIMITIVE_DATA_TYPES)[number];
 
 export type DataType = ReferenceDataType | PrimitiveDataType | ArrayDataType;
-
-
-
-interface PropertyTypeCommon {
-  code: string;
-  description: string;
-  label: string;
-  type: string;
-}
-
-export interface LocalPropertyType extends PropertyTypeCommon {
-  dataType: DataType;
-  type: "local";
-  multivalued: boolean;
-}
-
-export interface LocalPrimitivePropertyType extends LocalPropertyType {
-  code: string;
-  dataType: PrimitiveDataType;
-}
-
-export interface LocalObjectPropertyType extends LocalPropertyType {
-  code: string;
-  dataType: "OBJECT";
-  objectType: string;
-}
-
-export interface LocalControlledVocabularyPropertyType
-  extends LocalPropertyType {
-  code: string;
-  vocabulary: string;
-  dataType: "CONTROLLEDVOCABULARY";
-}
-
-export interface ReferencePropertyType {
-  code: string;
-  type: "reference";
-}
-
-export type LocalPropertyTypeVariants =
-  | LocalPrimitivePropertyType
-  | LocalObjectPropertyType
-  | LocalControlledVocabularyPropertyType;
-
-export type PropertyType = ReferencePropertyType | LocalPropertyTypeVariants;
 
 export interface ObjectSchema {
   [group: string]: PropertyType[];
@@ -85,51 +59,7 @@ export interface ObjectTypeDefinition {
   propertyAssignments: ObjectSchema;
 }
 
-const testSchema: ObjectSchema = {
-  general: [
-    {
-      code: "type",
-      description: "type",
-      label: "@",
-      dataType: "CONTROLLEDVOCABULARY",
-      vocabulary: "sampleType",
-      type: "local",
-      multivalued: false,
-    },
-  ],
-};
-
-export const INSTRUMENT_SCHEMA: ObjectSchema = {
-  "General Info": [
-    { code: "$NAME", type: "reference" },
-    { code: iLogID, type: "reference" },
-    {
-      code: "Serialnumber",
-      label: "Serial number",
-      description: "Serial number",
-      dataType: "VARCHAR",
-      type: "local",
-      multivalued: false,
-    },
-    {
-      code: "EmpaID",
-      dataType: "VARCHAR",
-      label: "Empa ID",
-      description: "Empa ID",
-      type: "local",
-      multivalued: false,
-    },
-  ],
-  Location: [{ code: "$LOCATION", type: "reference" }],
-};
-
-export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
-  code: instrumentTypeID,
-  propertyAssignments: INSTRUMENT_SCHEMA,
-  prefix: "INSTRUMENT",
-};
-
-function convertDataTypeToOpenBISDataType(
+export function convertDataTypeToOpenBISDataType(
   dataType: DataType
 ): openbis.DataType {
   let returnDataType;
@@ -273,57 +203,6 @@ function convertOpenBISDataTypeToDataType(
     }
   }
   return returnDataType as DataType;
-}
-
-function initializeCreation(
-  propertyType: LocalPropertyType
-): openbis.PropertyTypeCreation {
-  const creation = new openbis.PropertyTypeCreation();
-  creation.setCode(propertyType.code);
-  creation.setDataType(convertDataTypeToOpenBISDataType(propertyType.dataType));
-  creation.setMultiValue(propertyType.multivalued);
-  return creation;
-}
-
-function getPropertyTypeId(
-  propertyType: PropertyType
-): openbis.IPropertyTypeId {
-  if (propertyType.type == "reference") {
-    return new openbis.PropertyTypePermId(propertyType.propertyTypeCode);
-  } else {
-    return new openbis.PropertyTypePermId(propertyType.code);
-  }
-}
-
-function convertPropertyType(
-  propertyType: PropertyType
-): openbis.PropertyTypeCreation | null {
-  switch (propertyType.type) {
-    case "reference": {
-      return null;
-    }
-
-    case "local": {
-      const creation = initializeCreation(propertyType);
-      switch (propertyType.dataType) {
-        case "OBJECT": {
-          creation.setSampleTypeId(
-            new openbis.EntityTypePermId(propertyType.objectType)
-          );
-          return creation;
-        }
-        case "CONTROLLEDVOCABULARY": {
-          creation.setVocabularyId(
-            new openbis.VocabularyPermId(propertyType.vocabulary)
-          );
-          return creation;
-        }
-        default: {
-          return creation;
-        }
-      }
-    }
-  }
 }
 
 function convertObjectSchemaToPropertyCreations(
