@@ -1,62 +1,30 @@
 import openbis from '@openbis/openbis.esm';
 import {
   iLogID,
-  elnSettings,
-  generalElnSettings,
-  SampleTypeDefinitionExtension,
-  ElnSettings
+  parseElnSettingsProperties,
+  updateElnSettings,
+  newTypeSettings,
 } from '../shared/common';
-
-export async function getElnSettings(
-  api: openbis.OpenBISJavaScriptFacade,
-): Promise<ElnSettings> {
-  const fo = new openbis.SampleFetchOptions();
-  fo.withProperties();
-  const id = new openbis.SampleIdentifier(generalElnSettings);
-  const res = await api.getSamples([id], fo);
-  const parsed = JSON.parse(res[generalElnSettings].getProperty(elnSettings)) as ElnSettings;
-  return parsed;
-}
-
-export async function updateElnSettings(
-  api: openbis.OpenBISJavaScriptFacade,
-  newSettings: ElnSettings,
-): Promise<void> {
-  const su = new openbis.SampleUpdate();
-  su.setProperty(elnSettings, JSON.stringify(newSettings));
-  su.setSampleId(new openbis.SampleIdentifier(generalElnSettings));
-  await api.updateSamples([su]);
-}
 
 export async function createTypeSettingsDefinition(
   api: openbis.OpenBISJavaScriptFacade,
   typeName: string,
 ): Promise<void> {
-  const newTypeSettings: SampleTypeDefinitionExtension = {
-    ENABLE_STORAGE: false,
-    SAMPLE_CHILDREN_ANY_TYPE_DISABLED: false,
-    SAMPLE_CHILDREN_DISABLED: false,
-    SAMPLE_PARENTS_ANY_TYPE_DISABLED: false,
-    SAMPLE_PARENTS_DISABLED: false,
-    SHOW: true,
-    SHOW_ON_NAV: true,
-    USE_AS_PROTOCOL: false,
-  };
-  var settings = await getElnSettings(api);
-  settings.sampleTypeDefinitionsExtension = { 
-    ...settings.sampleTypeDefinitionsExtension,
+  var properties = await parseElnSettingsProperties(api);
+  properties.sampleTypeDefinitionsExtension = { 
+    ...properties.sampleTypeDefinitionsExtension,
     [typeName]: newTypeSettings,
   };
-  await updateElnSettings(api, settings);
+  await updateElnSettings(api, properties);
 }
 
 export async function deleteTypeSettingsDefinition(
   api: openbis.OpenBISJavaScriptFacade,
   typeName: string,
 ): Promise<void> {
-  var settings = await getElnSettings(api);
-  delete settings.sampleTypeDefinitionsExtension[typeName];
-  await updateElnSettings(api, settings);
+  var properties = await parseElnSettingsProperties(api);
+  delete properties.sampleTypeDefinitionsExtension[typeName];
+  await updateElnSettings(api, properties);
 }
 
 export async function getTypes(
