@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { ChangeEvent, useReducer, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
@@ -11,27 +11,42 @@ import {
   AccordionItem,
   Dropdown,
   DropdownItem,
+  DropdownMenu,
+  Select,
+  SelectItem,
 } from "@nextui-org/react";
 import { useCreateType } from "../../apis/type/useCreate";
-import { AccordionSummary, FormGroup, Grid } from "@mui/material";
+
 import { PropertyEditor } from "./PropertyEditor";
 
-import { INSTRUMENT_TYPE_DEFINITION, iLogBaseTypes } from "../../apis/shared/common";
 import {
-  ObjectSchema,
-} from "../../apis/type/commonType";
-import { LocalPropertyTypeVariants, PropertyType } from "../../apis/propertyType/commonPropertyType";
+  INSTRUMENT_TYPE_DEFINITION,
+  iLogBaseTypes,
+} from "../../apis/shared/common";
+import { ObjectSchema, ObjectTypeDefinition } from "../../apis/type/commonType";
+import {
+  LocalPrimitivePropertyType,
+  LocalPropertyTypeVariants,
+  PropertyType,
+} from "../../apis/propertyType/commonPropertyType";
 import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
 import { green } from "@mui/material/colors";
+import SelectInput from "@mui/material/Select/SelectInput";
+import { Icon } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { typeCreatorReducer } from "./TypeActions";
+import { getDefaultPropertyAssignments } from "../../apis/shared/common";
 
 interface GroupAccordionItemProps {
   schema: ObjectSchema;
   lockedPropertyCodes: string[];
+  onAddProperty: (group: string) => void;
 }
 
 const GroupAccordionItem: React.FC<GroupAccordionItemProps> = ({
   schema,
   lockedPropertyCodes,
+  onAddProperty,
 }) => {
   return (
     <Accordion>
@@ -42,12 +57,21 @@ const GroupAccordionItem: React.FC<GroupAccordionItemProps> = ({
               {properties.map((property) => (
                 <AccordionItem key={property.code} title={property.code}>
                   <PropertyEditor
+                    onEdit={(definition) => onAddProperty(propertyGroup)}
                     propertyTypeDefinitions={property}
                     locked={lockedPropertyCodes.includes(property.code)}
                   />
                 </AccordionItem>
               ))}
             </Accordion>
+            <Button
+              isIconOnly
+              onClick={(event) => onAddProperty(propertyGroup)}
+            >
+              <Icon>
+                <AddIcon />
+              </Icon>
+            </Button>
           </AccordionItem>
         );
       })}
@@ -55,28 +79,42 @@ const GroupAccordionItem: React.FC<GroupAccordionItemProps> = ({
   );
 };
 
-export const TypeCreator = () => {
+const creatorOptions = ["create", "edit"] as const;
+type CreatorOption = (typeof creatorOptions)[number];
+
+interface TypeCreatorProps {
+  type: CreatorOption;
+  objectTypeDefinition: ObjectTypeDefinition;
+}
+
+export const TypeCreator: React.FC<TypeCreatorProps> = ({
+  type,
+  objectTypeDefinition,
+}) => {
   const typeCreation = useCreateType();
   const allTypesResult = useGetAllTypes();
   const navigate = useNavigate();
-  const [code, setCode] = useState("");
-  const [prefix, setPrefix] = useState("");
-  const [description, setDescription] = useState("");
+  const [state, dispatch] = useReducer(typeCreatorReducer, {
+    schema: objectTypeDefinition,
+    propertyCount: 0,
+  });
+
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [messageColor, setMessageColor] = useState("rgb(23, 201, 100)");
-
-  const [propertyAssignments, setPropertyAssignments] = useState(
-    INSTRUMENT_TYPE_DEFINITION.propertyAssignments
+  const [objectBaseType, setObjectBaseType] = useState(
+    "INSTRUMENT" as (typeof iLogBaseTypes)[number]
   );
+
+  const [newPropertyCount, setNewPropertyCount] = useState(0);
 
   const lockedPropertyCodes = Object.entries(
     INSTRUMENT_TYPE_DEFINITION.propertyAssignments
   ).flatMap(([group, assignment]) => assignment.map((el) => el.code));
 
   if (allTypesResult.status == "success") {
-    const resolvedTypes = Object.entries(propertyAssignments).map(
+    const resolvedTypes = Object.entries(state.schema.propertyAssignments).map(
       ([group, assignments]) => {
         return [
           group,
@@ -88,7 +126,10 @@ export const TypeCreator = () => {
         ];
       }
     );
-    setPropertyAssignments(Object.fromEntries(resolvedTypes) as ObjectSchema);
+    dispatch({
+      type: "SET_ALL_PROPERTY_ASSIGNMENTS",
+      payload: { schema: Object.fromEntries(resolvedTypes) as ObjectSchema },
+    });
   }
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -97,9 +138,9 @@ export const TypeCreator = () => {
     setLoading(true);
     typeCreation.mutate(
       {
-        code: code,
-        prefix: prefix.length > 0 ? prefix : code,
-        description: description,
+        code: state.schema.code,
+        prefix: state.schema.prefix ?? state.schema.code,
+        description: state.schema.description ?? "",
       },
       {
         onError: (err) => {
@@ -122,10 +163,24 @@ export const TypeCreator = () => {
     navigate({ to: "/types" });
   };
 
+  const onAddProperty = (propertyGroup: string) => {
+    setNewPropertyCount((prev) => prev + 1);
+    const newProp = {
+      code: `NEW_PROPERTY${newPropertyCount}`,
+      label: "New Property",
+      description: "",
+      dataType: "VARCHAR",
+      type: "local",
+      multivalued: false,
+    } as LocalPrimitivePropertyType;
+    dispatch({
+      type: "SET_PROPERTY_ASSIGNMENT",
+      payload: { group: propertyGroup, property: newProp },
+    });
+  };
+
   const onClear = (ms: number) => {
-    setCode("");
-    setPrefix("");
-    setDescription("");
+    dispatch({ type: "CLEAR", payload: { baseType: objectBaseType } });
     setLoading(false);
     setTimeout(() => {
       setMessage("");
@@ -133,22 +188,39 @@ export const TypeCreator = () => {
     }, ms);
   };
 
+  const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
+    setObjectBaseType(value.target.value as (typeof iLogBaseTypes)[number]);
+    dispatch({
+      type: "CLEAR",
+      payload: {
+        baseType: value.target.value as (typeof iLogBaseTypes)[number],
+      },
+    });
+  };
+
   return (
     <div className="md-size-div">
       <form onSubmit={handleSubmit}>
-        <Dropdown>
-          <DropdownItem>Sample</DropdownItem>
-          <DropdownItem>Experiment</DropdownItem>
-          <DropdownItem>Material</DropdownItem>
-        </Dropdown>
+        <Select
+          label="Is this type an instrument or a component"
+          onChange={handleSelectBaseType}
+        >
+          {iLogBaseTypes.map((type) => (
+            <SelectItem key={type} value={type}>
+              {type}
+            </SelectItem>
+          ))}
+        </Select>
         <Input
           isRequired
           id="code"
           label="Code"
           type="text"
           className="form-field"
-          value={code}
-          onValueChange={(value) => setCode(value)}
+          value={state.schema.code}
+          onValueChange={(value) =>
+            dispatch({ type: "SET_CODE", payload: value })
+          }
         />
         <Input
           id="prefix"
@@ -156,20 +228,25 @@ export const TypeCreator = () => {
           placeholder="Enter type prefix: If left empty then the code itself will be used as a prefix"
           type="text"
           className="form-field"
-          value={prefix}
-          onValueChange={(value) => setPrefix(value)}
+          value={state.schema.prefix ?? ""}
+          onValueChange={(value) =>
+            dispatch({ type: "SET_PREFIX", payload: value })
+          }
         />
         <Textarea
           id="description"
           label="Description"
           className="form-field"
-          value={description}
-          onValueChange={(value) => setDescription(value)}
+          value={state.schema.description ?? ""}
+          onValueChange={(value) =>
+            dispatch({ type: "SET_DESCRIPTION", payload: value })
+          }
         />
         <Divider className="my-4" />
         <GroupAccordionItem
-          schema={propertyAssignments}
+          schema={state.schema.propertyAssignments}
           lockedPropertyCodes={lockedPropertyCodes}
+          onAddProperty={onAddProperty}
         />
         <Button>Add Property Group</Button>
         <Divider className="my-4" />

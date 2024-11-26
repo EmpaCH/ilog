@@ -2,12 +2,16 @@ import openbis from "@openbis/openbis.esm";
 import { DataType, PrimitiveDataType } from "../type/commonType";
 import { convertDataTypeToOpenBISDataType } from "../type/commonType";
 
+export const propertyTypeKinds = ["local", "reference"] as const;
+
 export interface PropertyTypeCommon {
   code: string;
   description: string;
   label: string;
-  type: string;
-}export interface LocalPropertyType extends PropertyTypeCommon {
+  type: (typeof propertyTypeKinds)[number];
+}
+
+export interface LocalPropertyType extends PropertyTypeCommon {
   dataType: DataType;
   type: "local";
   multivalued: boolean;
@@ -36,11 +40,13 @@ export interface ReferencePropertyType {
   type: "reference";
 }
 
-export type LocalPropertyTypeVariants = LocalPrimitivePropertyType |
-  LocalObjectPropertyType |
-  LocalControlledVocabularyPropertyType;
+export type LocalPropertyTypeVariants =
+  | LocalPrimitivePropertyType
+  | LocalObjectPropertyType
+  | LocalControlledVocabularyPropertyType;
 
 export type PropertyType = ReferencePropertyType | LocalPropertyTypeVariants;
+
 export function convertPropertyTypeToCreation(
   propertyType: PropertyType
 ): openbis.PropertyTypeCreation | null {
@@ -89,6 +95,3 @@ export function getPropertyTypeId(
     return new openbis.PropertyTypePermId(propertyType.code);
   }
 }
-
-
-

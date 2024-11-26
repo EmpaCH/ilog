@@ -10,7 +10,7 @@ import {
   LocalObjectPropertyType,
   LocalPrimitivePropertyType,
 } from "../propertyType/commonPropertyType";
-import { convertPropertyType } from "../propertyType/commonPropertyType";
+import { convertPropertyTypeToCreation } from "../propertyType/commonPropertyType";
 import { getPropertyTypeId } from "../propertyType/commonPropertyType";
 
 const PRIMITIVE_DATA_TYPES = [
@@ -57,6 +57,7 @@ export interface ObjectTypeDefinition {
   code: string;
   prefix: string | null;
   propertyAssignments: ObjectSchema;
+  description: string| null;
 }
 
 export function convertDataTypeToOpenBISDataType(
@@ -210,7 +211,7 @@ function convertObjectSchemaToPropertyCreations(
 ): openbis.PropertyTypeCreation[] {
   const creations = Object.entries(schema)
     .flatMap(([group, properties]) => {
-      return properties.map((prop) => convertPropertyType(prop));
+      return properties.map((prop) => convertPropertyTypeToCreation(prop));
     })
     .filter((el) => el !== null);
 
@@ -262,6 +263,8 @@ export function convertOpenBISPropertyType(
     } as LocalPrimitivePropertyType;
   }
 }
+
+
 
 function convertOpenBISPropertyAssignment(
   propertyAssignment: openbis.PropertyAssignment

@@ -25,7 +25,6 @@ export async function getVocabulary(
   const fo = new openbis.VocabularyFetchOptions();
   fo.withTerms();
   const result = await api.searchVocabularies(sc, fo);
-  debugger
   return result.getTotalCount() > 0
     ? convertOpenBISVocabularyToVocabulary(result.getObjects()[0])
     : null;

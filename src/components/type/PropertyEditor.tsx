@@ -1,11 +1,8 @@
-import React, { useState } from "react";
-import {
-  DataType,
-  ALL_DATA_TYPES,
-} from "../../apis/type/commonType";
+import React, { useReducer, useState } from "react";
+import { DataType, ALL_DATA_TYPES } from "../../apis/type/commonType";
 import {
   LocalPropertyTypeVariants,
-  PropertyType
+  PropertyType,
 } from "../../apis/propertyType/commonPropertyType";
 import {
   Button,
@@ -20,11 +17,21 @@ import {
   Select,
   SelectItem,
   Checkbox,
+  Autocomplete,
+  AutocompleteItem,
 } from "@nextui-org/react";
+
+import DeleteIcon from "@mui/icons-material/Delete";
+import {
+  PropertyTypeEditorActions,
+  propertyTypeEditorReducer,
+} from "./PropertyTypeActions";
 
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
   locked: boolean;
+  onDelete: (code: string) => void;
+  onEdit: (definition: PropertyType) => void;
 };
 
 type DataTypeSelectProps = {
@@ -52,19 +59,40 @@ const DataTypeSelect = ({
   );
 };
 
+type ObjectTypeAutoCompleteProps = {
+  objectTypes: string[];
+  onSelectionChange: (val: string) => void;
+};
+
+const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
+  objectTypes,
+  onSelectionChange,
+}) => {
+  return (
+    <Autocomplete label="Select object type">
+      {objectTypes.map((objectType) => {
+        return <AutocompleteItem key={objectType} value={objectType}>{objectType}</AutocompleteItem>;
+      })}
+    </Autocomplete>
+  );
+};
+
 export const PropertyEditor = ({
   propertyTypeDefinitions,
   locked,
+  onDelete,
+  onEdit,
 }: PropertyEditorProps) => {
-  const [label, setLabel] = useState(propertyTypeDefinitions.label);
-  const [code, setCode] = useState(propertyTypeDefinitions.code);
-  const [description, setDescription] = useState(
-    propertyTypeDefinitions.description
+  const [state, dispatch] = useReducer(
+    propertyTypeEditorReducer,
+    propertyTypeDefinitions
   );
-  const [dataType, setDataType] = useState(propertyTypeDefinitions.dataType);
-  const [multivalued, setMultiValues] = useState(
-    propertyTypeDefinitions.multivalued
-  );
+
+  const wrappedDispatch = (action: PropertyTypeEditorActions) => {
+    dispatch(action);
+    onEdit(state as PropertyType);
+  };
+
   return (
     <div
       className={`p-4 border rounded ${
@@ -72,23 +100,68 @@ export const PropertyEditor = ({
       }`}
     >
       <Card>
-        <CardHeader>{`Property: ${code}`}</CardHeader>
+        <CardHeader className="flex gap-3">
+          {`Property: ${state.code}`}
+          <Button isIconOnly onClick={() => onDelete(state.code)}>
+            <DeleteIcon />
+          </Button>
+        </CardHeader>
+
         <CardBody>
           <form>
-            <Input label="Code" defaultValue={code} />
-
-            <Input label="Description" defaultValue={description} />
-            <Input label="Label" defaultValue={label} />
-            <DataTypeSelect
-              defaultValue={propertyTypeDefinitions.dataType}
-              onSelectionChange={setDataType}
+            <Input
+              label="Code"
+              defaultValue={state.code}
+              onChange={(value) =>
+                wrappedDispatch({
+                  type: "SET_CODE",
+                  payload: value.target.value,
+                })
+              }
             />
 
-            {dataType === "CONTROLLEDVOCABULARY" ? (
+            <Input
+              label="Description"
+              defaultValue={state.description}
+              onChange={(value) =>
+                wrappedDispatch({
+                  type: "SET_DESCRIPTION",
+                  payload: value.target.value,
+                })
+              }
+            />
+            <Input
+              label="Label"
+              defaultValue={state.label}
+              onChange={(value) =>
+                wrappedDispatch({
+                  type: "SET_DESCRIPTION",
+                  payload: value.target.value,
+                })
+              }
+            />
+            <DataTypeSelect
+              defaultValue={propertyTypeDefinitions.dataType}
+              onSelectionChange={(value) =>
+                wrappedDispatch({ type: "SET_DATA_TYPE", payload: value })
+              }
+            />
+
+            {state.dataType === "CONTROLLEDVOCABULARY" ? (
               <Input label="Vocabulary ID" />
             ) : null}
-            {dataType === "OBJECT" ? <Input label="Object type" /> : null}
-            <Checkbox defaultChecked={multivalued}>Multivalued</Checkbox>
+            {state.dataType === "OBJECT" ? (
+              <ObjectTypeAutoComplete
+                objectTypes={["A", "B"]}
+                onSelectionChange={(str) => str}
+              />
+            ) : null}
+            <Checkbox
+              defaultChecked={state.multivalued}
+              onChange={(value) => wrappedDispatch({ type: "SET_MULTIVALUED" })}
+            >
+              Multivalued
+            </Checkbox>
           </form>
         </CardBody>
       </Card>
