@@ -7,8 +7,6 @@ import {
   Divider,
   Card,
   CardHeader,
-  Accordion,
-  AccordionItem,
   Dropdown,
   DropdownItem,
   DropdownMenu,
@@ -16,8 +14,6 @@ import {
   SelectItem,
 } from "@nextui-org/react";
 import { useCreateType } from "../../apis/type/useCreate";
-
-import { PropertyEditor } from "./PropertyEditor";
 
 import {
   INSTRUMENT_TYPE_DEFINITION,
@@ -27,57 +23,14 @@ import { ObjectSchema, ObjectTypeDefinition } from "../../apis/type/commonType";
 import {
   LocalPrimitivePropertyType,
   LocalPropertyTypeVariants,
-  PropertyType,
 } from "../../apis/propertyType/commonPropertyType";
 import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
 import { green } from "@mui/material/colors";
 import SelectInput from "@mui/material/Select/SelectInput";
-import { Icon } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
 import { typeCreatorReducer } from "./TypeActions";
 import { getDefaultPropertyAssignments } from "../../apis/shared/common";
-
-interface GroupAccordionItemProps {
-  schema: ObjectSchema;
-  lockedPropertyCodes: string[];
-  onAddProperty: (group: string) => void;
-}
-
-const GroupAccordionItem: React.FC<GroupAccordionItemProps> = ({
-  schema,
-  lockedPropertyCodes,
-  onAddProperty,
-}) => {
-  return (
-    <Accordion>
-      {Object.entries(schema).flatMap(([propertyGroup, properties]) => {
-        return (
-          <AccordionItem key={propertyGroup} title={propertyGroup}>
-            <Accordion>
-              {properties.map((property) => (
-                <AccordionItem key={property.code} title={property.code}>
-                  <PropertyEditor
-                    onEdit={(definition) => onAddProperty(propertyGroup)}
-                    propertyTypeDefinitions={property}
-                    locked={lockedPropertyCodes.includes(property.code)}
-                  />
-                </AccordionItem>
-              ))}
-            </Accordion>
-            <Button
-              isIconOnly
-              onClick={(event) => onAddProperty(propertyGroup)}
-            >
-              <Icon>
-                <AddIcon />
-              </Icon>
-            </Button>
-          </AccordionItem>
-        );
-      })}
-    </Accordion>
-  );
-};
+import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
+import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
 
 const creatorOptions = ["create", "edit"] as const;
 type CreatorOption = (typeof creatorOptions)[number];
@@ -100,6 +53,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
   });
 
   const [loading, setLoading] = useState(false);
+  const [initial, setInitial] = useState(true);
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [messageColor, setMessageColor] = useState("rgb(23, 201, 100)");
@@ -113,7 +67,11 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     INSTRUMENT_TYPE_DEFINITION.propertyAssignments
   ).flatMap(([group, assignment]) => assignment.map((el) => el.code));
 
-  if (allTypesResult.status == "success") {
+  const lockedGroups = Object.keys(
+    INSTRUMENT_TYPE_DEFINITION.propertyAssignments
+  );
+
+  if (allTypesResult.status == "success" && initial) {
     const resolvedTypes = Object.entries(state.schema.propertyAssignments).map(
       ([group, assignments]) => {
         return [
@@ -130,12 +88,14 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
       type: "SET_ALL_PROPERTY_ASSIGNMENTS",
       payload: { schema: Object.fromEntries(resolvedTypes) as ObjectSchema },
     });
+    setInitial(false);
   }
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
+    console.log(state.schema);
     typeCreation.mutate(
       {
         code: state.schema.code,
@@ -153,7 +113,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           setMessage("Type created successfully!");
           setMessageColor("rgb(23, 201, 100)");
           setShowMessage(true);
-          onClear(2000);
+          handleClear(2000);
         },
       }
     );
@@ -163,7 +123,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     navigate({ to: "/types" });
   };
 
-  const onAddProperty = (propertyGroup: string) => {
+  const handleAddProperty = (propertyGroup: string) => {
     setNewPropertyCount((prev) => prev + 1);
     const newProp = {
       code: `NEW_PROPERTY${newPropertyCount}`,
@@ -179,7 +139,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     });
   };
 
-  const onClear = (ms: number) => {
+  const handleClear = (ms: number) => {
     dispatch({ type: "CLEAR", payload: { baseType: objectBaseType } });
     setLoading(false);
     setTimeout(() => {
@@ -196,6 +156,56 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
         baseType: value.target.value as (typeof iLogBaseTypes)[number],
       },
     });
+  };
+
+  const handlePropertyEditorEvents = (event: GroupedPropertyEditorsEvents) => {
+    switch (event.type) {
+      case "ADD_PROPERTY":
+        handleAddProperty(event.payload.group);
+        break;
+      case "EDIT_PROPERTY":
+        console.log(event.payload.property);
+        dispatch({
+          type: "CHANGE_PROPERTY",
+          payload: {
+            group: event.payload.group,
+            property: event.payload.property,
+          },
+        });
+        break;
+      case "CHANGE_PROPERTY_CODE":
+        dispatch({
+          type: "CHANGE_PROPERTY_CODE",
+          payload: {
+            oldCode: event.payload.oldCode,
+            newCode: event.payload.newCode,
+            group: event.payload.group
+          },
+        });
+        break;
+      case "REMOVE_PROPERTY":
+        dispatch({
+          type: "REMOVE_PROPERTY_ASSIGNMENT",
+          payload: {
+            property: event.payload.property,
+            group: event.payload.group,
+          },
+        });
+        break;
+      case "RENAME_GROUP":
+        debugger;
+        dispatch({
+          type: "RENAME_GROUP",
+          payload: {
+            oldGroup: event.payload.oldGroup,
+            newGroup: event.payload.newGroup,
+          },
+        });
+        break;
+      case "ADD_GROUP":
+        dispatch({ type: "ADD_GROUP", payload: event.payload.group });
+        break;
+    }
   };
 
   return (
@@ -243,12 +253,13 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           }
         />
         <Divider className="my-4" />
-        <GroupAccordionItem
+        <GroupedPropertyEditors
           schema={state.schema.propertyAssignments}
           lockedPropertyCodes={lockedPropertyCodes}
-          onAddProperty={onAddProperty}
+          onEvent={handlePropertyEditorEvents}
+          lockedGroups={lockedGroups}
         />
-        <Button>Add Property Group</Button>
+
         <Divider className="my-4" />
         {showMessage && (
           <div style={{ marginBottom: "15px", color: messageColor }}>
@@ -268,7 +279,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
             type="button"
             color="danger"
             className="mx-2"
-            onClick={() => onClear(0)}
+            onClick={() => handleClear(0)}
           >
             Clear
           </Button>

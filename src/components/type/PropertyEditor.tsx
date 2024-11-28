@@ -1,4 +1,4 @@
-import React, { useReducer, useState } from "react";
+import React, { useEffect, useReducer, useState } from "react";
 import { DataType, ALL_DATA_TYPES } from "../../apis/type/commonType";
 import {
   LocalPropertyTypeVariants,
@@ -9,10 +9,6 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
   Input,
   Select,
   SelectItem,
@@ -21,7 +17,6 @@ import {
   AutocompleteItem,
 } from "@nextui-org/react";
 
-import DeleteIcon from "@mui/icons-material/Delete";
 import {
   PropertyTypeEditorActions,
   propertyTypeEditorReducer,
@@ -30,7 +25,6 @@ import {
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
   locked: boolean;
-  onDelete: (code: string) => void;
   onEdit: (definition: PropertyType) => void;
 };
 
@@ -71,7 +65,11 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
   return (
     <Autocomplete label="Select object type">
       {objectTypes.map((objectType) => {
-        return <AutocompleteItem key={objectType} value={objectType}>{objectType}</AutocompleteItem>;
+        return (
+          <AutocompleteItem key={objectType} value={objectType}>
+            {objectType}
+          </AutocompleteItem>
+        );
       })}
     </Autocomplete>
   );
@@ -79,8 +77,6 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
 
 export const PropertyEditor = ({
   propertyTypeDefinitions,
-  locked,
-  onDelete,
   onEdit,
 }: PropertyEditorProps) => {
   const [state, dispatch] = useReducer(
@@ -88,83 +84,90 @@ export const PropertyEditor = ({
     propertyTypeDefinitions
   );
 
-  const wrappedDispatch = (action: PropertyTypeEditorActions) => {
-    dispatch(action);
-    onEdit(state as PropertyType);
-  };
+  // This double effect
+  // and `stateToPass` are
+  // needed to only call onEdit after the local
+  // actions of this component are dispatched.
+  // TODO: find better solution
+
+  const [stateToPass, setStateToPass] = useState<PropertyType>(
+    state as PropertyType
+  );
+  useEffect(() => {
+    setStateToPass(state);
+  }, [state]);
+  useEffect(() => {
+    onEdit(stateToPass as PropertyType);
+  }, [stateToPass]);
+
+  // const wrappedDispatch = (action: PropertyTypeEditorActions) => {
+  //   dispatch(action);
+  //   //onEdit(state as PropertyType);
+  // };
 
   return (
-    <div
-      className={`p-4 border rounded ${
-        locked ? "opacity-50 pointer-events-none" : ""
-      }`}
-    >
-      <Card>
-        <CardHeader className="flex gap-3">
-          {`Property: ${state.code}`}
-          <Button isIconOnly onClick={() => onDelete(state.code)}>
-            <DeleteIcon />
-          </Button>
-        </CardHeader>
+    <Card>
+      <CardHeader className="flex gap-3">
+        {`Property: ${state.code}`}
+      </CardHeader>
 
-        <CardBody>
-          <form>
-            <Input
-              label="Code"
-              defaultValue={state.code}
-              onChange={(value) =>
-                wrappedDispatch({
-                  type: "SET_CODE",
-                  payload: value.target.value,
-                })
-              }
-            />
+      <CardBody>
+        <form>
+          <Input
+            label="Code"
+            defaultValue={state.code}
+            onChange={(value) =>
+              dispatch({
+                type: "SET_CODE",
+                payload: value.target.value,
+              })
+            }
+          />
 
-            <Input
-              label="Description"
-              defaultValue={state.description}
-              onChange={(value) =>
-                wrappedDispatch({
-                  type: "SET_DESCRIPTION",
-                  payload: value.target.value,
-                })
-              }
-            />
-            <Input
-              label="Label"
-              defaultValue={state.label}
-              onChange={(value) =>
-                wrappedDispatch({
-                  type: "SET_DESCRIPTION",
-                  payload: value.target.value,
-                })
-              }
-            />
-            <DataTypeSelect
-              defaultValue={propertyTypeDefinitions.dataType}
-              onSelectionChange={(value) =>
-                wrappedDispatch({ type: "SET_DATA_TYPE", payload: value })
-              }
-            />
+          <Input
+            label="Description"
+            defaultValue={state.description}
+            onChange={(value) =>
+              dispatch({
+                type: "SET_DESCRIPTION",
+                payload: value.target.value,
+              })
+            }
+          />
+          <Input
+            label="Label"
+            defaultValue={state.label}
+            onChange={(value) =>
+              dispatch({
+                type: "SET_DESCRIPTION",
+                payload: value.target.value,
+              })
+            }
+          />
+          <DataTypeSelect
+            defaultValue={propertyTypeDefinitions.dataType}
+            onSelectionChange={(value) =>
+              dispatch({ type: "SET_DATA_TYPE", payload: value })
+            }
+          />
 
-            {state.dataType === "CONTROLLEDVOCABULARY" ? (
-              <Input label="Vocabulary ID" />
-            ) : null}
-            {state.dataType === "OBJECT" ? (
-              <ObjectTypeAutoComplete
-                objectTypes={["A", "B"]}
-                onSelectionChange={(str) => str}
-              />
-            ) : null}
-            <Checkbox
-              defaultChecked={state.multivalued}
-              onChange={(value) => wrappedDispatch({ type: "SET_MULTIVALUED" })}
-            >
-              Multivalued
-            </Checkbox>
-          </form>
-        </CardBody>
-      </Card>
-    </div>
+          {state.dataType === "CONTROLLEDVOCABULARY" ? (
+            <Input label="Vocabulary ID" />
+          ) : null}
+          {state.dataType === "OBJECT" ? (
+            <ObjectTypeAutoComplete
+              objectTypes={["A", "B"]}
+              onSelectionChange={(str) => str}
+            />
+          ) : null}
+          <Checkbox
+            defaultChecked={state.multivalued}
+            onChange={(value) => dispatch({ type: "SET_MULTIVALUED" })}
+          >
+            Multivalued
+          </Checkbox>
+        </form>
+      </CardBody>
+    </Card>
   );
 };

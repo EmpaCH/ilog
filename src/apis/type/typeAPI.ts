@@ -14,7 +14,10 @@ import {
   ObjectSchema,
   ObjectTypeDefinition,
 } from "./commonType";
-import { LocalPropertyType, ReferencePropertyType } from "../propertyType/commonPropertyType";
+import {
+  LocalPropertyType,
+  ReferencePropertyType,
+} from "../propertyType/commonPropertyType";
 
 export async function getElnSettings(
   api: openbis.OpenBISJavaScriptFacade
