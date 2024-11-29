@@ -79,17 +79,12 @@ export async function getTypes(
 ): Promise<openbis.SampleType[]> {
   const sc = new openbis.SampleTypeSearchCriteria();
   sc.withCode().thatStartsWith(search.toUpperCase());
+  sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
   const fo = new openbis.SampleTypeFetchOptions();
   fo.withPropertyAssignments();
   const result = await api.searchSampleTypes(sc, fo);
-  const iLogTypes = result
-    .getObjects()
-    .filter((type) =>
-      type
-        .getPropertyAssignments()
-        .some((propAsgn) => propAsgn.getPermId().getPropertyTypeId() == iLogID)
-    );
-  return iLogTypes;
+
+  return result.getObjects();
 }
 
 export async function getType(
@@ -169,10 +164,9 @@ export async function getAllPropertyTypes(
   api: openbis.OpenBISJavaScriptFacade
 ): Promise<LocalPropertyType[]> {
   const searchCriteria = new openbis.PropertyTypeSearchCriteria();
-  const result = await api.searchPropertyTypes(
-    searchCriteria,
-    new openbis.PropertyTypeFetchOptions()
-  );
+  const fo = new openbis.PropertyTypeFetchOptions();
+  fo.withVocabulary();
+  const result = await api.searchPropertyTypes(searchCriteria, fo);
   return result
     .getObjects()
     .filter((property) => !property.isManagedInternally())

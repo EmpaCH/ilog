@@ -46,7 +46,16 @@ const iLogBaseSchema: ObjectSchema = {
       multivalued: false,
     },
   ],
-  [iLogLocationGroup]: [{ code: "$LOCATION", type: "reference" }],
+  [iLogLocationGroup]: [
+    {
+      code: "Location",
+      dataType: "VARCHAR",
+      label: "Location",
+      description: "Location",
+      type: "local",
+      multivalued: false,
+    },
+  ],
   [iLogManufacturerGroup]: [
     {
       code: "Manufacturer",
@@ -65,10 +74,9 @@ const iLogBaseSchema: ObjectSchema = {
       multivalued: false,
     },
   ],
-
 };
 
-export const COMPONENT_SCHEMA: ObjectSchema = iLogBaseSchema
+export const COMPONENT_SCHEMA: ObjectSchema = iLogBaseSchema;
 
 export const INSTRUMENT_SCHEMA: ObjectSchema = {
   ...iLogBaseSchema,
@@ -89,7 +97,7 @@ export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   description: "Component",
 };
 
-export type  iLogBaseTypesType = typeof iLogBaseTypes[number];
+export type iLogBaseTypesType = (typeof iLogBaseTypes)[number];
 
 export const ILOG_BASE_TYPES_VOCABULARY: Vocabulary = {
   code: iLogBaseTypesVocabularyID,
@@ -106,9 +114,8 @@ export const ILOG_BASE_TYPES_PROPERTY = {
   type: "local",
   dataType: "CONTROLLEDVOCABULARY",
   vocabulary: iLogBaseTypesVocabularyID,
+  multivalued: false,
 };
-
-
 
 // Environment definition
 // Space (lab) > Project (iLog) > Collection (i.e. Equipment)
@@ -171,12 +178,13 @@ export const getDefaultPropertyAssignments = (baseType: iLogBaseTypesType) => {
   }
 };
 
-export const getDefaultPropertyTypeDefintion = (baseType: iLogBaseTypesType) => {
+export const getDefaultPropertyTypeDefintion = (
+  baseType: iLogBaseTypesType
+) => {
   switch (baseType) {
     case "INSTRUMENT":
       return INSTRUMENT_TYPE_DEFINITION;
     case "COMPONENT":
       return COMPONENT_TYPE_DEFINITION;
   }
-}
-
+};

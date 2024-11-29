@@ -57,7 +57,7 @@ export interface ObjectTypeDefinition {
   code: string;
   prefix: string | null;
   propertyAssignments: ObjectSchema;
-  description: string| null;
+  description: string | null;
 }
 
 export function convertDataTypeToOpenBISDataType(
@@ -126,6 +126,10 @@ export function convertDataTypeToOpenBISDataType(
       returnDataType = openbis.DataType.DATE;
       break;
     }
+    case "VARCHAR": {
+      returnDataType = openbis.DataType.VARCHAR;
+      break;
+    }
     default: {
       throw Error("Missing");
     }
@@ -136,74 +140,57 @@ export function convertDataTypeToOpenBISDataType(
 function convertOpenBISDataTypeToDataType(
   dataType: openbis.DataType
 ): DataType {
-  let returnDataType;
   switch (dataType) {
     case openbis.DataType.SAMPLE: {
-      returnDataType = "OBJECT";
-      break;
+      return "OBJECT";
+    }
+    case openbis.DataType.VARCHAR: {
+      return "VARCHAR";
     }
 
     case openbis.DataType.BOOLEAN: {
-      returnDataType = "BOOLEAN";
-      break;
+      return "BOOLEAN";
     }
     case openbis.DataType.MULTILINE_VARCHAR: {
-      returnDataType = "MULTILINE_VARCHAR";
-      break;
+      return "MULTILINE_VARCHAR";
     }
     case openbis.DataType.CONTROLLEDVOCABULARY: {
-      returnDataType = "CONTROLLEDVOCABULARY";
-      break;
+      return "CONTROLLEDVOCABULARY";
     }
     case openbis.DataType.REAL: {
-      returnDataType = "REAL";
-      break;
+      return "REAL";
     }
     case openbis.DataType.INTEGER: {
-      returnDataType = "INTEGER";
-      break;
+      return "INTEGER";
     }
     case openbis.DataType.TIMESTAMP: {
-      returnDataType = "TIMESTAMP";
-      break;
+      return "TIMESTAMP";
     }
     case openbis.DataType.JSON: {
-      returnDataType = "JSON";
-      break;
+      return "JSON";
     }
     case openbis.DataType.HYPERLINK: {
-      returnDataType = "HYPERLINK";
-      break;
+      return "HYPERLINK";
     }
     case openbis.DataType.XML: {
-      returnDataType = "XML";
-      break;
+      return "XML";
     }
     case openbis.DataType.ARRAY_REAL: {
-      returnDataType = "REAL[]";
-      break;
+      return "REAL[]";
     }
     case openbis.DataType.ARRAY_INTEGER: {
-      returnDataType = "INTEGER[]";
-      break;
+      return "INTEGER[]";
     }
     case openbis.DataType.ARRAY_TIMESTAMP: {
-      returnDataType = "TIMESTAMP[]";
-      break;
+      return "TIMESTAMP[]";
     }
     case openbis.DataType.ARRAY_STRING: {
-      returnDataType = "STRING[]";
-      break;
+      return "STRING[]";
     }
     case openbis.DataType.DATE: {
-      returnDataType = "DATE";
-      break;
-    }
-    default: {
-      throw Error("Missing");
+      return "DATE";
     }
   }
-  return returnDataType as DataType;
 }
 
 function convertObjectSchemaToPropertyCreations(
@@ -211,25 +198,28 @@ function convertObjectSchemaToPropertyCreations(
 ): openbis.PropertyTypeCreation[] {
   const creations = Object.entries(schema)
     .flatMap(([group, properties]) => {
-      return properties.map((prop) => convertPropertyTypeToCreation(prop));
+      return properties.map((prop) =>
+        prop ? convertPropertyTypeToCreation(prop) : null
+      );
     })
     .filter((el) => el !== null);
 
-  return creations;
+  return creations ?? [];
 }
 function convertObjectSchemaToAssignmentCreations(
   schema: ObjectSchema
 ): openbis.PropertyAssignmentCreation[] {
   const creations = Object.entries(schema)
     .flatMap(([section, properties]) => {
-      return properties.map((prop) => {
+      return properties.map((prop, index) => {
         const creation = new openbis.PropertyAssignmentCreation();
         creation.setSection(section);
         creation.setPropertyTypeId(getPropertyTypeId(prop));
+        creation.setOrdinal(index + 1);
         return creation;
       });
     })
-    .filter((el) => el !== null);
+    .filter((el) => el.getPropertyTypeId() !== null);
   return creations;
 }
 
@@ -264,25 +254,20 @@ export function convertOpenBISPropertyType(
   }
 }
 
-
-
 function convertOpenBISPropertyAssignment(
   propertyAssignment: openbis.PropertyAssignment
 ): LocalPropertyTypeVariants {
   return convertOpenBISPropertyType(propertyAssignment.getPropertyType());
 }
 
-export function convertChanges(
-  newDefinition: ObjectTypeDefinition,
-  oldDefinition: ObjectTypeDefinition
-): openbis.IOperation[] {
-  const differences = detailedDiff(newDefinition, oldDefinition);
-  differences;
+interface StructuredCreations {
+  propertyTypeCreations: openbis.PropertyTypeCreation[];
+  objectTypeCreations: openbis.SampleTypeCreation[];
 }
 
 export function convertObjectTypeDefinitionToOperations(
   objectDefinition: ObjectTypeDefinition
-): openbis.IOperation[] {
+): StructuredCreations {
   // Create property creations
   const propertyTypeCreations = convertObjectSchemaToPropertyCreations(
     objectDefinition.propertyAssignments
@@ -291,12 +276,22 @@ export function convertObjectTypeDefinitionToOperations(
   const assignmentCreations = convertObjectSchemaToAssignmentCreations(
     objectDefinition.propertyAssignments
   );
+
   const sampleTypeCreation = new openbis.SampleTypeCreation();
   sampleTypeCreation.setCode(objectDefinition.code);
   sampleTypeCreation.setPropertyAssignments(assignmentCreations);
-  const all = [
-    new openbis.CreatePropertyTypesOperation(propertyTypeCreations),
-    new openbis.CreateSampleTypesOperation([sampleTypeCreation]),
-  ];
+  const all = {
+    propertyTypeCreations: propertyTypeCreations,
+    objectTypeCreations: [sampleTypeCreation],
+  };
   return all;
+}
+
+export function convertCreationsToOperations(
+  creations: StructuredCreations
+): openbis.IOperation[] {
+  return [
+    new openbis.CreatePropertyTypesOperation(creations.propertyTypeCreations),
+    new openbis.CreateSampleTypesOperation(creations.objectTypeCreations),
+  ];
 }

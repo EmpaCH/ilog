@@ -84,13 +84,15 @@ export function initializeCreation(
   creation.setCode(propertyType.code);
   creation.setDataType(convertDataTypeToOpenBISDataType(propertyType.dataType));
   creation.setMultiValue(propertyType.multivalued);
+  creation.setLabel(propertyType.label);
+  creation.setDescription(propertyType.description);
   return creation;
 }
 export function getPropertyTypeId(
   propertyType: PropertyType
 ): openbis.IPropertyTypeId {
   if (propertyType.type == "reference") {
-    return new openbis.PropertyTypePermId(propertyType.propertyTypeCode);
+    return new openbis.PropertyTypePermId(propertyType.code);
   } else {
     return new openbis.PropertyTypePermId(propertyType.code);
   }

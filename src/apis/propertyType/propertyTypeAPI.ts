@@ -32,6 +32,6 @@ export async function createPropertyType(
     if (!ops) {
       return;
     }else{
-        await api.executeOperations([ops], options);
+        await api.createPropertyTypes([ops]);
     }
   }

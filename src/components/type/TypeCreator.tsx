@@ -19,7 +19,11 @@ import {
   INSTRUMENT_TYPE_DEFINITION,
   iLogBaseTypes,
 } from "../../apis/shared/common";
-import { ObjectSchema, ObjectTypeDefinition } from "../../apis/type/commonType";
+import {
+  ObjectSchema,
+  ObjectTypeDefinition,
+  convertObjectTypeDefinitionToOperations,
+} from "../../apis/type/commonType";
 import {
   LocalPrimitivePropertyType,
   LocalPropertyTypeVariants,
@@ -31,6 +35,7 @@ import { typeCreatorReducer } from "./TypeActions";
 import { getDefaultPropertyAssignments } from "../../apis/shared/common";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
+import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
 
 const creatorOptions = ["create", "edit"] as const;
 type CreatorOption = (typeof creatorOptions)[number];
@@ -44,7 +49,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
   type,
   objectTypeDefinition,
 }) => {
-  const typeCreation = useCreateType();
+  const typeCreation = useCreateObjectType();
   const allTypesResult = useGetAllTypes();
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(typeCreatorReducer, {
@@ -95,16 +100,20 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
+    const creations = convertObjectTypeDefinitionToOperations(state.schema);
+    console.log(creations);
+    const creation = typeCreation.mutateAsync({
+      definition: state.schema,
+    });
+
     console.log(state.schema);
     typeCreation.mutate(
       {
-        code: state.schema.code,
-        prefix: state.schema.prefix ?? state.schema.code,
-        description: state.schema.description ?? "",
+        definition: state.schema,
       },
       {
         onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
+          setMessage(err.message);
           setMessageColor("rgb(243, 18, 96)");
           setShowMessage(true);
           setLoading(false);
@@ -179,7 +188,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           payload: {
             oldCode: event.payload.oldCode,
             newCode: event.payload.newCode,
-            group: event.payload.group
+            group: event.payload.group,
           },
         });
         break;
@@ -287,6 +296,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
             type="submit"
             color="primary"
             className="mx-2"
+            isDisabled={typeCreation.isLoading}
             isLoading={loading}
           >
             Create
