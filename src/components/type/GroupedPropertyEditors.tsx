@@ -1,12 +1,18 @@
-import React, { useState } from "react";
-import { Button, Accordion, AccordionItem, Input } from "@nextui-org/react";
+import React, { useEffect } from "react";
+import { Button, Accordion, AccordionItem } from "@nextui-org/react";
 import { PropertyEditor } from "./PropertyEditor";
 import { Icon } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { PropertyType } from "../../apis/propertyType/commonPropertyType";
 import { ObjectSchema } from "../../apis/type/commonType";
+import { produce, current, original, enableMapSet } from "immer";
+import { EditableAccordionTitle } from "./EditableAccordionTitle";
 
+enableMapSet();
+
+// These are the events that the GroupedPropertyEditor emits
+// They must be handled by the parent component
 export type GroupedPropertyEditorsEvents =
   | { type: "ADD_PROPERTY"; payload: { group: string } }
   | {
@@ -15,7 +21,7 @@ export type GroupedPropertyEditorsEvents =
     }
   | {
       type: "CHANGE_PROPERTY_CODE";
-      payload: { oldCode: string; newCode: string, group: string };
+      payload: { oldCode: string; newCode: string; group: string };
     }
   | {
       type: "REMOVE_PROPERTY";
@@ -25,6 +31,7 @@ export type GroupedPropertyEditorsEvents =
   | { type: "RENAME_GROUP"; payload: { oldGroup: string; newGroup: string } }
   | { type: "REMOVE_GROUP"; payload: { group: string } };
 
+// The props that are received by the component
 export interface GroupedPropertyEditorsProps {
   schema: ObjectSchema;
   lockedPropertyCodes: string[];
@@ -32,31 +39,49 @@ export interface GroupedPropertyEditorsProps {
   onEvent: (event: GroupedPropertyEditorsEvents) => void;
 }
 
-export interface EditableAccordionTitleProps {
-  initialTitle: string;
-  onChange: (newTitle: string) => void;
-  locked: Boolean;
+//The state of the component
+interface GroupedPropertyEditorsState {
+  groupCount: number;
+  accordionItemKeyMapping: { [key: string]: string };
 }
 
-const EditableAccordionTitle: React.FC<EditableAccordionTitleProps> = ({
-  initialTitle,
-  onChange,
-  locked,
-}) => {
-  const [title, setTitle] = useState(initialTitle);
-  return (
-    <form>
-      <Input
-        isDisabled={locked}
-        onChange={(event) => {
-          event.preventDefault();
-          setTitle(event.target.value);
-        }}
-        placeholder={title}
-      />
-      <Button isIconOnly> </Button>
-    </form>
-  );
+//The actions that the reducer must dispatch to change the component state
+type GroupedPropertyEditorsStateAction =
+  | { type: "ADD_GROUP" }
+  | { type: "REMOVE_GROUP"; payload: { group: string } }
+  | { type: "CHANGE_PROPERTY_CODE"; payload: { oldCode: string; newCode: string } }
+  | { type: "ADD_PROPERTY"; payload: { code: string } };
+
+// Reducer to handle component state changes
+// The most important is renaming the property, because
+// we want to have stable keys for the accordion items even
+// if we rename the property.
+const groupedPropertyEditorsReducer = produce(
+  (
+    draft: GroupedPropertyEditorsState,
+    action: GroupedPropertyEditorsStateAction
+  ) => {
+    switch (action.type) {
+      case "ADD_GROUP": {
+        draft.groupCount += 1;
+        break;
+      }
+      case "REMOVE_GROUP": {
+        draft.groupCount -= 1;
+        break;
+      }
+      case "CHANGE_PROPERTY_CODE": {
+        draft.accordionItemKeyMapping[action.payload.newCode] =
+          draft.accordionItemKeyMapping[action.payload.oldCode];
+        delete draft.accordionItemKeyMapping[action.payload.oldCode];
+        break;
+      }
+    }
+  }
+);
+
+export const createPropertyKey = (property: PropertyType) => {
+  return `${Math.random().toString(36).substring(7)}`;
 };
 
 export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
@@ -65,6 +90,23 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   lockedGroups,
   onEvent,
 }) => {
+  const keys = Object.fromEntries(
+    Object.entries(schema).flatMap(([propertyGroup, properties]) => {
+      return properties.map((property) => [
+        property.code,
+        createPropertyKey(property),
+      ]);
+    })
+  );
+  const [state, dispatch] = React.useReducer(groupedPropertyEditorsReducer, {
+    groupCount: 0,
+    accordionItemKeyMapping: keys,
+  });
+
+  // This function handles the events from
+  // the PropertyEditor component
+  // in some cases it dispatches a new action to the reducer
+  // to handle the changes that affect the state of the current component
   const handlePropertyChanges = (
     group: string,
     oldProperty: PropertyType,
@@ -76,14 +118,21 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         payload: { group: group, property: newProperty },
       });
     } else {
+      dispatch({
+        type: "CHANGE_PROPERTY_CODE",
+        payload: { oldCode: oldProperty.code, newCode: newProperty.code },
+      });
       onEvent({
         type: "CHANGE_PROPERTY_CODE",
-        payload: { newCode: newProperty.code, oldCode: oldProperty.code, group: group },
+        payload: {
+          newCode: newProperty.code,
+          oldCode: oldProperty.code,
+          group: group,
+        },
       });
     }
   };
 
-  const [groupCount, setGroupCount] = React.useState(0);
   return (
     <>
       <Accordion>
@@ -122,10 +171,11 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                 </Button>
               }
             >
-              <Accordion disabledKeys={lockedPropertyCodes}>
+              <Accordion>
                 {properties.map((property) => (
                   <AccordionItem
-                    key={property.code}
+                    isDisabled={lockedPropertyCodes.includes(property.code)}
+                    key={state.accordionItemKeyMapping[property.code]}
                     title={property.code}
                     startContent={
                       <Button
@@ -178,11 +228,11 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
       </Accordion>
       <Button
         onClick={() => {
-          setGroupCount(groupCount + 1);
           onEvent({
             type: "ADD_GROUP",
-            payload: { group: `group${groupCount}` },
+            payload: { group: `group${state.groupCount + 1}` },
           });
+          dispatch({ type: "ADD_GROUP" });
         }}
       >
         Add Property Group

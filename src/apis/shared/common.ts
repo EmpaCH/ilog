@@ -30,7 +30,7 @@ const iLogBaseSchema: ObjectSchema = {
       description: "Responsible",
     },
     {
-      code: "Serialnumber",
+      code: "SERIALNUMBER",
       label: "Serial number",
       description: "Serial number",
       dataType: "VARCHAR",
@@ -38,7 +38,7 @@ const iLogBaseSchema: ObjectSchema = {
       multivalued: false,
     },
     {
-      code: "EmpaID",
+      code: "EMPAID",
       dataType: "VARCHAR",
       label: "Empa ID",
       description: "Empa ID",
@@ -48,7 +48,7 @@ const iLogBaseSchema: ObjectSchema = {
   ],
   [iLogLocationGroup]: [
     {
-      code: "Location",
+      code: "LOCATION",
       dataType: "VARCHAR",
       label: "Location",
       description: "Location",
@@ -58,7 +58,7 @@ const iLogBaseSchema: ObjectSchema = {
   ],
   [iLogManufacturerGroup]: [
     {
-      code: "Manufacturer",
+      code: "MANUFACTURER",
       label: "Manufacturer",
       description: "Manufacturer",
       dataType: "VARCHAR",
@@ -66,7 +66,7 @@ const iLogBaseSchema: ObjectSchema = {
       multivalued: false,
     },
     {
-      code: "ManufacturerID",
+      code: "MANUFACTURERID",
       label: "Manufacturer ID",
       description: "Manufacturer ID",
       dataType: "VARCHAR",
@@ -80,7 +80,17 @@ export const COMPONENT_SCHEMA: ObjectSchema = iLogBaseSchema;
 
 export const INSTRUMENT_SCHEMA: ObjectSchema = {
   ...iLogBaseSchema,
-  Components: [{ code: "COMPONENT", type: "reference" }],
+  Components: [
+    {
+      code: "COMPONENT",
+      type: "local",
+      dataType: "OBJECT",
+      objectType: "COMPONENT",
+      multivalued: true,
+      description: "Components",
+      label: "Components",
+    },
+  ],
 };
 
 export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {

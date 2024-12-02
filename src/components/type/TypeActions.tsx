@@ -44,6 +44,8 @@ export type TypeCreatorState = {
   propertyCount: number;
 };
 
+
+
 export const typeCreatorReducer = produce(
   (draft: TypeCreatorState, action: TypeCreatorActions) => {
     switch (action.type) {

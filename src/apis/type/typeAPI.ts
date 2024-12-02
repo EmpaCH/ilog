@@ -9,6 +9,7 @@ import {
 } from "../shared/common";
 
 import {
+  convertCreationsToOperations,
   convertObjectTypeDefinitionToOperations,
   convertOpenBISPropertyType,
   ObjectSchema,
@@ -81,7 +82,11 @@ export async function getTypes(
   sc.withCode().thatStartsWith(search.toUpperCase());
   sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
   const fo = new openbis.SampleTypeFetchOptions();
-  fo.withPropertyAssignments();
+  const po = new openbis.PropertyTypeFetchOptions();
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  ao.withEntityType();
+  ao.withPropertyType().withSampleType();
+  fo.withPropertyAssignmentsUsing(ao);
   const result = await api.searchSampleTypes(sc, fo);
 
   return result.getObjects();
@@ -134,10 +139,33 @@ export async function createObjectType(
   api: openbis.OpenBISJavaScriptFacade,
   objectTypeDefinition: ObjectTypeDefinition
 ): Promise<void> {
-  const ops = convertObjectTypeDefinitionToOperations(objectTypeDefinition);
-  const options = new openbis.SynchronousOperationExecutionOptions();
-  options.setExecuteInOrder(true);
-  await api.executeOperations(ops, options);
+  const existingTypes = await getAllPropertyTypes(api);
+  const existingObjectType = await getTypes(api);
+  
+  const creations =
+    convertObjectTypeDefinitionToOperations(objectTypeDefinition);
+  const filteredCreation = creations.propertyTypeCreations.filter(
+    (creation) => {
+      return !existingTypes.some((type) => type.code === creation.getCode());
+    }
+  );
+
+  const filteredObjectTypeCreations = creations.objectTypeCreations.filter(
+    (creation) => {
+      return !existingObjectType.some((type) => type.getCode() === creation.getCode());
+    }
+  );
+
+
+
+  const ops = convertCreationsToOperations({
+    propertyTypeCreations: filteredCreation,
+    objectTypeCreations: filteredObjectTypeCreations,
+  });
+  console.log(ops);
+  const props = new openbis.SynchronousOperationExecutionOptions();
+  props.setExecuteInOrder(true);
+  await api.executeOperations(ops, props);
 }
 
 export async function createInstrumentObjectType(
@@ -166,6 +194,7 @@ export async function getAllPropertyTypes(
   const searchCriteria = new openbis.PropertyTypeSearchCriteria();
   const fo = new openbis.PropertyTypeFetchOptions();
   fo.withVocabulary();
+  fo.withSampleType();
   const result = await api.searchPropertyTypes(searchCriteria, fo);
   return result
     .getObjects()

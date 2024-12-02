@@ -60,7 +60,7 @@ export function convertPropertyTypeToCreation(
       switch (propertyType.dataType) {
         case "OBJECT": {
           creation.setSampleTypeId(
-            new openbis.EntityTypePermId(propertyType.objectType)
+            new openbis.EntityTypePermId(propertyType.objectType.toUpperCase(), "SAMPLE")
           );
           return creation;
         }
@@ -81,7 +81,7 @@ export function initializeCreation(
   propertyType: LocalPropertyType
 ): openbis.PropertyTypeCreation {
   const creation = new openbis.PropertyTypeCreation();
-  creation.setCode(propertyType.code);
+  creation.setCode(propertyType.code.toUpperCase());
   creation.setDataType(convertDataTypeToOpenBISDataType(propertyType.dataType));
   creation.setMultiValue(propertyType.multivalued);
   creation.setLabel(propertyType.label);
@@ -92,8 +92,8 @@ export function getPropertyTypeId(
   propertyType: PropertyType
 ): openbis.IPropertyTypeId {
   if (propertyType.type == "reference") {
-    return new openbis.PropertyTypePermId(propertyType.code);
+    return new openbis.PropertyTypePermId(propertyType.code.toUpperCase());
   } else {
-    return new openbis.PropertyTypePermId(propertyType.code);
+    return new openbis.PropertyTypePermId(propertyType.code.toUpperCase());
   }
 }

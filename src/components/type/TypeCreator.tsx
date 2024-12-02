@@ -202,7 +202,6 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
         });
         break;
       case "RENAME_GROUP":
-        debugger;
         dispatch({
           type: "RENAME_GROUP",
           payload: {
@@ -222,6 +221,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
       <form onSubmit={handleSubmit}>
         <Select
           label="Is this type an instrument or a component"
+          selectedKeys={[objectBaseType]}
           onChange={handleSelectBaseType}
         >
           {iLogBaseTypes.map((type) => (

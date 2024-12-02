@@ -1,8 +1,9 @@
 import openbis from '@openbis/openbis.esm';
-import { iLogID, labID, collectionID, env, ILOG_BASE_TYPES_VOCABULARY, iLogBaseTypesPropertyCode, ILOG_BASE_TYPES_PROPERTY } from '../shared/common';
+import { iLogID, labID, collectionID, env, ILOG_BASE_TYPES_VOCABULARY, iLogBaseTypesPropertyCode, ILOG_BASE_TYPES_PROPERTY, INSTRUMENT_TYPE_DEFINITION, COMPONENT_TYPE_DEFINITION } from '../shared/common';
 
 import { createVocabulary, getVocabulary } from '../vocabulary/vocabularyAPI';
 import { createPropertyType } from '../propertyType/propertyTypeAPI';
+import { createObjectType } from '../type/typeAPI';
 
 
 // Initialize the iLog property type
@@ -138,6 +139,9 @@ export async function initIlog(
   const projectId = await createProject(api, spaceId);
   const collection = await createCollection(api, projectId);
   const baseType = await createIlogBaseTypeProperty(api);
+  const componentBase = await createObjectType(api, COMPONENT_TYPE_DEFINITION);
+  const instrumentBase = await createObjectType(api, INSTRUMENT_TYPE_DEFINITION);
+
   env.setEnv(collection, collection.getProject(), collection.getProject().getSpace());
   console.log('App environment initialized.');
 }
