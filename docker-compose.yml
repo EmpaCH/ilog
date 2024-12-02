@@ -15,7 +15,7 @@ services:
 
   app:
     container_name: openbis-app
-    image: openbis/openbis-app:20.10.8
+    image: openbis/openbis-app:6.5
     depends_on:
       - db
     env_file:
