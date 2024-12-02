@@ -153,6 +153,7 @@ export async function createObjectType(
   const props = new openbis.SynchronousOperationExecutionOptions();
   props.setExecuteInOrder(true);
   await api.executeOperations(ops, props);
+  await createTypeSettingsDefinition(api, objectTypeDefinition.code);
 }
 
 export async function createInstrumentObjectType(
