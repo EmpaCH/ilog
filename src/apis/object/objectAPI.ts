@@ -1,5 +1,5 @@
-import openbis from '@openbis/openbis.esm';
-import { iLogID, labID, collectionID, env } from '../shared/common';
+import openbis from "@openbis/openbis.esm";
+import { iLogID, labID, collectionID, env } from "../shared/common";
 
 // TODO
 // 1.Look for templates in the settings

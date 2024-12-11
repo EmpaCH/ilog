@@ -32,6 +32,9 @@ const Trashcan = () => {
 
   const getSelectedKeys = (): openbis.IDeletionId[] => {
     let deletionIds: openbis.IDeletionId[] = [];
+    if (selectedKeys == "all") {
+      return deletedItems.map(deletion => deletion.getId() as openbis.IDeletionId);
+    }
     for (const key of selectedKeys) {
       deletionIds.push(
         JSON.parse((key.valueOf() as string).split('_')[0]) as openbis.IDeletionId
@@ -54,6 +57,7 @@ const Trashcan = () => {
       setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
       setShowMessage(true);
     }).finally(() => {
+      setSelectedKeys(new Set([]));
       setTimeout(() => {
         setShowMessage(false);
         }, 3000);
@@ -74,6 +78,7 @@ const Trashcan = () => {
       setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
       setShowMessage(true);
     }).finally(() => {
+      setSelectedKeys(new Set([]));
       setTimeout(() => {
         setShowMessage(false);
         }, 3000);

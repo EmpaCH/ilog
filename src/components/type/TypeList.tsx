@@ -1,11 +1,12 @@
 import React,  { useContext, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AuthContext } from '../../context/auth/authContext';
-import { getTypes, deleteType } from '../../apis/type/typeAPI';
+import { getObjectTypes, deleteObjectType } from '../../apis/type/typeAPI';
 import openbis from '@openbis/openbis.esm';
 import { List } from '../shared/list';
 import { MessageModal } from '../shared/messageModal';
 import { Column, TypeRow } from '../shared/list.types';
+import { iLogBaseTypesPropertyCode } from '../../apis/shared/common';
 
 export const TypeList = () => {
   const { apiFacade } = useContext(AuthContext);
@@ -14,9 +15,9 @@ export const TypeList = () => {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const res = useQuery({
-    queryKey: ['getTypes'],
+    queryKey: ['getObjectTypes'],
     queryFn: async () => {
-      return getTypes(apiFacade);
+      return getObjectTypes(apiFacade);
     },
   });
 
@@ -26,13 +27,13 @@ export const TypeList = () => {
 
   const onDelete = async (
     event: React.MouseEvent<HTMLButtonElement>,
-    permId: openbis.EntityTypePermId,
+    permId: any,
     code: string,
   ) => {
     event.preventDefault();
-    await deleteType(
+    await deleteObjectType(
       apiFacade,
-      permId,
+      permId as openbis.EntityTypePermId,
     ).then(() => {
       res.refetch();
       setDeletionMessage(`'${code}' deleted successfully.`);
@@ -69,6 +70,12 @@ export const TypeList = () => {
       align: "start",
     },
     {
+      key: "category",
+      name: "Category",
+      sorting: false,
+      align: "start",
+    },
+    {
       key: "btns",
       name: "",
       sorting: false,
@@ -78,11 +85,16 @@ export const TypeList = () => {
 
   const rows: TypeRow[] = types.map(
     (type: openbis.SampleType) => {
+      const categoryAssignment = type.getPropertyAssignments()
+        .find((assignment) => assignment.getPropertyType().getCode() === iLogBaseTypesPropertyCode);
+
       return {
         permId: type.getPermId(),
         code: type.getCode(),
         prefix: type.getGeneratedCodePrefix(),
         description: type.getDescription(),
+        category: categoryAssignment?.getPropertyType().getCode(),
+        // TODO: use 'category' to show whether the item it an Instrument or Component
       }
     }
   );
@@ -95,7 +107,7 @@ export const TypeList = () => {
         rows={rows}
         defaultSortColumn="code"
         navigatePath="/types/creator"
-        onDelete={onDelete}    
+        onDelete={onDelete}
       />
       <MessageModal
         message={deletionMessage}
