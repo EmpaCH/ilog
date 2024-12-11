@@ -20,4 +20,6 @@ export interface ObjectRow {
   type: string;
 };
 
-export type Row = TypeRow | ObjectRow;
+export interface Row {
+  [key: string]: any;
+}

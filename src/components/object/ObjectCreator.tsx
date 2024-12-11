@@ -5,7 +5,7 @@ import { Button, Input, Divider } from '@nextui-org/react';
 import { AuthContext } from '../../context/auth/authContext';
 import { useCreateObject } from '../../apis/object/useCreate';
 import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
-import { getTypes } from '../../apis/type/typeAPI';
+import { getObjectTypes } from '../../apis/type/typeAPI';
 
 export const ObjectCreator = () => {
   const { apiFacade } = useContext(AuthContext);
@@ -22,7 +22,7 @@ export const ObjectCreator = () => {
   const types = useQuery({
     queryKey: ['getSampleTypes'],
     queryFn: async () => {
-      return getTypes(apiFacade, searchTerm);
+      return getObjectTypes(apiFacade, searchTerm);
     },
   });
 

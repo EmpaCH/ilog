@@ -26,13 +26,13 @@ export const ObjectList = () => {
 
   const onDelete = async (
     event: React.MouseEvent<HTMLButtonElement>,
-    permId: openbis.SamplePermId,
+    permId: any,
     code: string,
   ) => {
     event.preventDefault();
     await deleteObject(
       apiFacade,
-      permId,
+      permId as openbis.SamplePermId,
     ).then(() => {
       res.refetch();
       setDeletionMessage(`'${code}' deleted successfully.`);

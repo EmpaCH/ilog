@@ -1,5 +1,5 @@
-import React from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import React from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Table,
   TableHeader,
@@ -10,19 +10,24 @@ import {
   Input,
   Button,
   Pagination,
-  SortDescriptor
-} from '@nextui-org/react';
-import SearchIcon from '@mui/icons-material/Search';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
-import { Column, Row } from './list.types';
+  SortDescriptor,
+} from "@nextui-org/react";
+import SearchIcon from "@mui/icons-material/Search";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
+import { Column, Row } from "./list.types";
+import openbis from "@openbis/openbis.esm";
 
 export const List = (props: {
-  columns: Column[],
-  rows: Row[],
-  defaultSortColumn: string,
-  navigatePath: string,
-  onDelete,
+  columns: Column[];
+  rows: Row[];
+  defaultSortColumn: string;
+  navigatePath: string;
+  onDelete: (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    code: string
+  ) => void;
 }) => {
   const navigate = useNavigate();
   const [filterValue, setFilterValue] = React.useState("");
@@ -37,9 +42,10 @@ export const List = (props: {
   const filteredItems = React.useMemo(() => {
     let filteredItems: Row[] = [...props.rows];
     if (hasSearchFilter) {
-        filteredItems = filteredItems.filter((items) =>
-          items[props.defaultSortColumn].toLowerCase().includes(filterValue.toLowerCase()
-        ),
+      filteredItems = filteredItems.filter((items) =>
+        items[props.defaultSortColumn]
+          .toLowerCase()
+          .includes(filterValue.toLowerCase())
       );
     }
     return filteredItems;
@@ -73,10 +79,13 @@ export const List = (props: {
     }
   }, [page]);
 
-  const onRowsPerPageChange = React.useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setRowsPerPage(Number(e.target.value));
-    setPage(1);
-  }, []);
+  const onRowsPerPageChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      setRowsPerPage(Number(e.target.value));
+      setPage(1);
+    },
+    []
+  );
 
   const onSearchChange = React.useCallback((value?: string) => {
     if (value) {
@@ -88,13 +97,13 @@ export const List = (props: {
   }, []);
 
   const onClear = React.useCallback(() => {
-    setFilterValue("")
-    setPage(1)
-  },[])
+    setFilterValue("");
+    setPage(1);
+  }, []);
 
-  const toCreator = (() => {
-    navigate({ to: props.navigatePath })
-  });
+  const toCreator = () => {
+    navigate({ to: props.navigatePath });
+  };
 
   const topContent = React.useMemo(() => {
     return (
@@ -116,7 +125,9 @@ export const List = (props: {
           </div>
         </div>
         <div className="flex justify-between items-center">
-          <span className="text-default-400 text-small">Total {props.rows.length} items</span>
+          <span className="text-default-400 text-small">
+            Total {props.rows.length} items
+          </span>
           <label className="flex items-center text-default-400 text-small">
             Rows per page:
             <select
@@ -151,10 +162,20 @@ export const List = (props: {
           onChange={setPage}
         />
         <div className="hidden sm:flex w-[30%] justify-end gap-2">
-          <Button isDisabled={pages === 1} size="sm" variant="flat" onPress={onPreviousPage}>
+          <Button
+            isDisabled={pages === 1}
+            size="sm"
+            variant="flat"
+            onPress={onPreviousPage}
+          >
             Previous
           </Button>
-          <Button isDisabled={pages === 1} size="sm" variant="flat" onPress={onNextPage}>
+          <Button
+            isDisabled={pages === 1}
+            size="sm"
+            variant="flat"
+            onPress={onNextPage}
+          >
             Next
           </Button>
         </div>
@@ -174,45 +195,57 @@ export const List = (props: {
     );
   };
 
-  const printText = ((text: string) => {
-    const words = text.split(/\s+/);
-    if (words[0].length > 0) {
-      return words.slice(0, 20).join(' ') + (words.length > 20 ? '...' : '');
-    }
-    return '';
-  });
+  const renderRowCells = (
+    permId: any,
+    row: { [key: string]: any }
+  ) => {
+    return Object.entries(row).map(([key, value]) => (
+      <TableCell key={`${permId}-${key}`}>{printText(value)}</TableCell>
+    ));
+  }
 
   const renderTableRow = (row: Row) => {
     const { permId, ...newRow } = row;
     return (
       <TableRow key={permId.getPermId()}>
-        {Object.entries(newRow).map(([key, value]) => (
-          <TableCell key={`${permId}-${key}`}>
-            {printText(value)}
-          </TableCell>
-        ))}
-        <TableCell style={{ width: "155px"}}>
+        {...renderRowCells(permId, newRow)}
+        <TableCell style={{ width: "155px" }}>
           <Button
             type="button"
             color="success"
             variant="light"
             size="sm"
-            onClick={(e) => { console.log('onEdit', e) }}
+            onClick={(e) => {
+              console.log("onEdit", e);
+            }}
           >
-            <DriveFileRenameOutlineIcon/>
+            <DriveFileRenameOutlineIcon />
           </Button>
           <Button
             type="button"
             color="danger"
             variant="light"
             size="sm"
-            onClick={(e) => props.onDelete(e,  permId, newRow[props.defaultSortColumn])}
+            onClick={(e) =>
+              props.onDelete(e, permId, (newRow as Record<string, string>)[props.defaultSortColumn])
+            }
           >
-            <DeleteOutlineIcon/>
+            <DeleteOutlineIcon />
           </Button>
         </TableCell>
       </TableRow>
     );
+  };
+
+  const printText = (text: string | null) => {
+    if (text === null) {
+      return "";
+    }
+    const words = text.split(/\s+/);
+    if (words[0].length > 0) {
+      return words.slice(0, 20).join(" ") + (words.length > 20 ? "..." : "");
+    }
+    return "";
   };
 
   return (
@@ -231,18 +264,11 @@ export const List = (props: {
       onSortChange={setSortDescriptor}
     >
       <TableHeader>
-        {props.columns.map((column) => (
-          renderTableColumn(column)
-        ))}
+        {props.columns.map((column) => renderTableColumn(column))}
       </TableHeader>
-      <TableBody
-        aria-label="Items found"
-        emptyContent={"No items found"}
-      >
-        {sortedItems.map((item) => (
-          renderTableRow(item)
-        ))}
+      <TableBody aria-label="Items found" emptyContent={"No items found"}>
+        {sortedItems.map((item) => renderTableRow(item))}
       </TableBody>
     </Table>
   );
-}
+};
