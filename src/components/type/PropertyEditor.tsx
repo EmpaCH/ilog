@@ -112,7 +112,7 @@ export const PropertyEditor = ({
       </CardHeader>
 
       <CardBody>
-        <form>
+        <div>
           <Input
             label="Code"
             defaultValue={state.code}
@@ -162,11 +162,11 @@ export const PropertyEditor = ({
           ) : null}
           <Checkbox
             defaultChecked={state.multivalued}
-            onChange={(value) => dispatch({ type: "SET_MULTIVALUED" })}
+            onChange={(value) => dispatch({ type: "SET_MULTIVALUED", payload: value.target.checked })}
           >
             Multivalued
           </Checkbox>
-        </form>
+        </div>
       </CardBody>
     </Card>
   );

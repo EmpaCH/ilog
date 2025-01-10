@@ -4,7 +4,9 @@ import {
   createObjectTypeSettingsDefinition,
   deleteObjectTypeSettingsDefinition,
   convertObjectTypeDefinitionToOperations,
-  convertCreationsToOperations
+  convertCreationsToOperations,
+  convertPropertyTypesSchemaToUpdateOperations,
+  convertObjectTypeDefinitionToUpdateOperations
 } from "./helpersTypeAPI";
 import { ObjectTypeDefinition } from "./commonType";
 import { getPropertyTypes } from "../propertyType/propertyTypeAPI";
@@ -24,10 +26,16 @@ export async function getObjectTypes(
   sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
   const fo = new openbis.SampleTypeFetchOptions();
   const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+
   ao.withEntityType();
-  ao.withPropertyType().withSampleType();
+  ao.withPropertyTypeUsing(po);
   fo.withPropertyAssignmentsUsing(ao);
+  
   const result = await api.searchSampleTypes(sc, fo);
+  console.log("getObjectTypes", result.getObjects());
   return result.getObjects();
 }
 
@@ -66,6 +74,57 @@ export async function createObjectType(
   const props = new openbis.SynchronousOperationExecutionOptions();
   props.setExecuteInOrder(true);
   await api.executeOperations(ops, props);
+  await createObjectTypeSettingsDefinition(api, otd.code);
+}
+
+/**
+ * Update an existing object type and automatically update its settings in ELN.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param otd - The object type definition.
+ * @param typeId - The ID of the type to update.
+ */
+export async function updateObjectType(
+  api: openbis.OpenBISJavaScriptFacade,
+  otd: ObjectTypeDefinition
+): Promise<void> {
+  console.log("Updating object type", otd);
+
+  const existingPropertyTypes = await getPropertyTypes(api);
+  const existingObjectTypes = await getObjectTypes(api);
+  const creations = convertObjectTypeDefinitionToOperations(otd);
+
+  // First Create non existing property types and object types
+  const filteredPropertyTypeCreations = creations.propertyTypeCreations.filter(
+    (creation) => {
+      // Check if there is an element in existingPropertyTypes with the same code as the current creation
+      return !existingPropertyTypes.some((type) => type.code === creation.getCode());
+    }
+  );
+  const filteredObjectTypeCreations = creations.objectTypeCreations.filter(
+    (creation) => {
+      // Check if there is an element in existingObjectTypes with the same code as the current creation
+      return !existingObjectTypes.some((type) => type.getCode() === creation.getCode());
+    }
+  );
+
+  const ops = convertCreationsToOperations({
+    propertyTypeCreations: filteredPropertyTypeCreations,
+    objectTypeCreations: filteredObjectTypeCreations,
+  });
+  const props = new openbis.SynchronousOperationExecutionOptions();
+  props.setExecuteInOrder(true);
+  await api.executeOperations(ops, props);
+
+  // Then update the existing property types 
+  const updatePropOps = convertPropertyTypesSchemaToUpdateOperations(
+    otd.propertyTypes, existingPropertyTypes);
+  await api.executeOperations(updatePropOps, props);
+
+  // Finally update the object type
+  const updateOps = convertObjectTypeDefinitionToUpdateOperations(
+    otd, existingObjectTypes);
+  await api.executeOperations(updateOps, props);
+
   await createObjectTypeSettingsDefinition(api, otd.code);
 }
 

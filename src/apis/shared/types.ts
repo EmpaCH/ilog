@@ -1,5 +1,5 @@
 
-import { ObjectSchema, ObjectTypeDefinition } from "../type/commonType";
+import { PropertyTypesSchema, ObjectTypeDefinition } from "../type/commonType";
 import { Vocabulary } from "../vocabulary/commonVocabulary";
 import { PropertyType } from "../propertyType/commonPropertyType";
 import { iLogID } from "./environment";
@@ -13,7 +13,7 @@ export const iLogLocationGroup = "Location";
 export const iLogManufacturerGroup = "Manufacturer";
 
 // Schema definitions for iLog base types
-export const iLogBaseSchema: ObjectSchema = {
+export const iLogBaseSchema: PropertyTypesSchema = {
   [iLogGeneralInfoGroup]: [
     { code: "$NAME", type: "reference" },
     { code: iLogID, type: "reference" },
@@ -74,25 +74,25 @@ export const iLogBaseSchema: ObjectSchema = {
 };
 
 // Empty schema and type definition
-export const EMPTY_SCHEMA: ObjectSchema = iLogBaseSchema;
+export const EMPTY_SCHEMA: PropertyTypesSchema = iLogBaseSchema;
 export const EMPTY_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "",
-  prefix: "",
+  generatedCodePrefix: "",
   description: "",
-  propertyAssignments: EMPTY_SCHEMA,
+  propertyTypes: EMPTY_SCHEMA,
 };
 
 // Component schema and type definition
-export const COMPONENT_SCHEMA: ObjectSchema = iLogBaseSchema;
+export const COMPONENT_SCHEMA: PropertyTypesSchema = iLogBaseSchema;
 export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "COMPONENT",
-  prefix: "COMPONENT",
+  generatedCodePrefix: "COMPONENT",
   description: "Component",
-  propertyAssignments: COMPONENT_SCHEMA,
+  propertyTypes: COMPONENT_SCHEMA,
 };
 
 // Instrument schema and type definition
-export const INSTRUMENT_SCHEMA: ObjectSchema = {
+export const INSTRUMENT_SCHEMA: PropertyTypesSchema = {
   ...iLogBaseSchema,
   Components: [
     {
@@ -108,9 +108,9 @@ export const INSTRUMENT_SCHEMA: ObjectSchema = {
 };
 export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "INSTRUMENT",
-  prefix: "INSTRUMENT",
+  generatedCodePrefix: "INSTRUMENT",
   description: "Instrument",
-  propertyAssignments: INSTRUMENT_SCHEMA,
+  propertyTypes: INSTRUMENT_SCHEMA,
 };
 
 // Type definitions for iLog base types
@@ -138,14 +138,14 @@ export const ILOG_BASE_TYPES_PROPERTY: PropertyType = {
 };
 
 // Default iLog types
-export const getDefaultPropertyAssignments = (
+export const getDefaultPropertyTypes = (
   baseType: iLogBaseTypesType
 ) => {
   switch (baseType) {
     case "INSTRUMENT":
-      return INSTRUMENT_TYPE_DEFINITION.propertyAssignments;
+      return INSTRUMENT_TYPE_DEFINITION.propertyTypes;
     case "COMPONENT":
-      return COMPONENT_TYPE_DEFINITION.propertyAssignments;
+      return COMPONENT_TYPE_DEFINITION.propertyTypes;
   }
 };
 

@@ -11,39 +11,74 @@ import {
 import {
   INSTRUMENT_TYPE_DEFINITION,
   iLogBaseTypes,
-  iLogBaseAllTypes
+  iLogBaseAllTypes,
+  EMPTY_TYPE_DEFINITION
 } from "../../apis/shared/common";
 import {
-  ObjectSchema,
+  PropertyTypesSchema,
   ObjectTypeDefinition,
+  convertOpenBISSampleTypeToObjectTypeDefinition,
 } from "../../apis/type/commonType";
 import { LocalPrimitivePropertyType } from "../../apis/propertyType/commonPropertyType";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
 import { typeCreatorReducer } from "./TypeActions";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
-import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
+import { useCreateObjectType, useUpdateObjectType } from "../../apis/type/useCreateObjectType";
+import { getObjectTypes } from "../../apis/type/typeAPI";
+import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
+import openbis from "@openbis/openbis.esm";
 
 // define whether this will be a Type Creator or Editor component
-const creatorOptions = ["create", "edit"] as const;
-type CreatorOption = (typeof creatorOptions)[number];
+const creatorModes = ["create", "edit"] as const;
+type CreatorMode = (typeof creatorModes)[number];
 interface TypeCreatorProps {
-  type: CreatorOption;
-  objectTypeDefinition: ObjectTypeDefinition;
+  mode: CreatorMode;
+  objectTypeCode: string;
 }
 
 export const TypeCreator: React.FC<TypeCreatorProps> = ({
-  type,
-  objectTypeDefinition,
+  mode,
+  objectTypeCode,
 }) => {
+  
   const typeCreation = useCreateObjectType();
+  const typeUpdate = useUpdateObjectType();
   const allPropertyTypesResult = useGetPropertyTypes();
+  const allObjectTypesResult = useGetAllTypes();
   const navigate = useNavigate();
+  let objectTypeTemplate: ObjectTypeDefinition;
+
+  if (allObjectTypesResult.status == "success" && objectTypeCode !== "") {
+    console.log("allObjectTypesResult", allObjectTypesResult.data);
+    const openbisSampleType = allObjectTypesResult.data?.find(
+      (it) => {
+        return it.getCode().toUpperCase() === objectTypeCode.toUpperCase()
+      }
+    ) as openbis.SampleType;
+    objectTypeTemplate = openbisSampleType ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType) : EMPTY_TYPE_DEFINITION;
+  } else {
+    objectTypeTemplate = EMPTY_TYPE_DEFINITION;
+  }
+
   const [state, dispatch] = useReducer(typeCreatorReducer, {
-    schema: objectTypeDefinition,
+    schema: objectTypeTemplate,
     propertyCount: 0,
   });
 
+  // useEffect(() => {
+  //   const savedState = localStorage.getItem("typeCreatorState");
+  //   if (savedState) {
+  //     dispatch({
+  //       type: "LOAD_SAVED_STATE",
+  //       payload: JSON.parse(savedState),
+  //     });
+  //   }
+  // }, []);
+
+  // useEffect(() => {
+  //   localStorage.setItem("typeCreatorState", JSON.stringify(state));
+  // }, [state]);
   const [loading, setLoading] = useState(false);
   const [initial, setInitial] = useState(true);
   const [message, setMessage] = useState("");
@@ -53,53 +88,79 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
   const [newPropertyCount, setNewPropertyCount] = useState(0);
 
   const lockedPropertyCodes = Object.entries(
-    INSTRUMENT_TYPE_DEFINITION.propertyAssignments
+    INSTRUMENT_TYPE_DEFINITION.propertyTypes
   ).flatMap(([group, assignment]) => assignment.map((el) => el.code));
 
   const lockedGroups = Object.keys(
-    INSTRUMENT_TYPE_DEFINITION.propertyAssignments
+    INSTRUMENT_TYPE_DEFINITION.propertyTypes
   );
 
   if (allPropertyTypesResult.status == "success" && initial) {
-    const resolvedTypes = Object.entries(state.schema.propertyAssignments).map(
-      ([group, assignments]) => {
+    const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
+      ([group, propertyTypesGroup]) => {
         return [
           group,
-          assignments.flatMap((assigmnent) => {
+          propertyTypesGroup.flatMap((propertyType) => {
             return allPropertyTypesResult.data.filter(
-              (it) => it.code === assigmnent.code
+              (it) => it.code === propertyType.code
             );
           }),
         ];
       }
     );
     dispatch({
-      type: "SET_ALL_PROPERTY_ASSIGNMENTS",
-      payload: { schema: Object.fromEntries(resolvedTypes) as ObjectSchema },
+      type: "SET_ALL_PROPERTYTYPES",
+      payload: { schema: Object.fromEntries(resolvedTypes) as PropertyTypesSchema },
     });
     setInitial(false);
-  }
+  }     
+
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
-    typeCreation.mutate({
-      definition: state.schema,
-    }, {
-      onError: (err) => {
-        setMessage(err.message.split(" (Context:")[0]);
-        setMessageColor("rgb(243, 18, 96)");
-        setShowMessage(true);
-        setLoading(false);
-      },
-      onSuccess: () => {
-        setMessage("Type created successfully!");
-        setMessageColor("rgb(23, 201, 100)");
-        setShowMessage(true);
-        handleClear(2000);
-      },
-    });
+
+    if (mode === "edit") {
+      console.log("Updating type with schema:", state.schema);
+      // setMessage("Type update not implemented yet!");
+      // setMessageColor("rgb(255, 165, 0)");
+      // setShowMessage(true);
+      // setLoading(false);
+      typeUpdate.mutate({
+        definition: state.schema,
+      }, {
+        onError: (err) => {
+          setMessage(err.message.split(" (Context:")[0]);
+          setMessageColor("rgb(243, 18, 96)");
+          setShowMessage(true);
+          setLoading(false);
+        },
+        onSuccess: () => {
+          setMessage("Type updated successfully!");
+          setMessageColor("rgb(23, 201, 100)");
+          setShowMessage(true);
+          handleClear(2000);
+        },
+      });
+    } else {
+      typeCreation.mutate({
+        definition: state.schema,
+      }, {
+        onError: (err) => {
+          setMessage(err.message.split(" (Context:")[0]);
+          setMessageColor("rgb(243, 18, 96)");
+          setShowMessage(true);
+          setLoading(false);
+        },
+        onSuccess: () => {
+          setMessage("Type created successfully!");
+          setMessageColor("rgb(23, 201, 100)");
+          setShowMessage(true);
+          handleClear(2000);
+        },
+      });
+    }
   };
 
   const onBack = () => {
@@ -111,7 +172,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     const newProp = {
       code: `NEW_PROPERTY${newPropertyCount}`,
       label: "New Property",
-      description: "",
+      description: "New description",
       dataType: "VARCHAR",
       type: "local",
       multivalued: false,
@@ -121,15 +182,18 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
       payload: { group: propertyGroup, property: newProp },
     });
   };
-
   const handleClear = (ms: number) => {
-    dispatch({ type: "CLEAR", payload: { baseType: "EMPTY" } });
-    setObjectBaseType("");
-    setLoading(false);
-    setTimeout(() => {
-      setMessage("");
-      setShowMessage(false);
-    }, ms);
+    if (mode === "edit") {
+      window.location.reload();
+    } else {
+      dispatch({ type: "CLEAR", payload: { baseType: "EMPTY" } });
+      setObjectBaseType("");
+      setLoading(false);
+      setTimeout(() => {
+        setMessage("");
+        setShowMessage(false);
+      }, ms);
+    }
   };
 
   const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
@@ -186,19 +250,26 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
         });
         break;
       case "ADD_GROUP":
-        dispatch({ type: "ADD_GROUP", payload: event.payload.group });
+        dispatch({ type: "ADD_GROUP", payload: "newgroup" });
+        break;
+      case "REMOVE_GROUP":
+        dispatch({ type: "REMOVE_GROUP", payload: { group: event.payload.group } });
+        break;
+      case "REORDER_GROUPS":
+        dispatch({ type: "REORDER_GROUPS", payload: { fromIndex: event.payload.fromIndex, toIndex: event.payload.toIndex } });
         break;
     }
   };
 
   return (
     <div className="md-size-div">
-      <h2>Create Type</h2>
+      <h2>{mode === "edit" ? "Edit Type" : "Create Type"}</h2>
       <form onSubmit={handleSubmit}>
         <Select
           isRequired
           label="Is this type an instrument or a component?"
-          selectedKeys={[objectBaseType]}
+          // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
+          selectedKeys={[state.schema.baseType ?? "INSTRUMENT"]}
           onChange={handleSelectBaseType}
         >
           {iLogBaseTypes.map((type) => (
@@ -224,7 +295,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           placeholder="If left empty then the code's first 5 characters will be used as a prefix"
           type="text"
           className="form-field"
-          value={state.schema.prefix ?? ""}
+          value={state.schema.generatedCodePrefix ?? ""}
           onValueChange={(value) =>
             dispatch({ type: "SET_PREFIX", payload: value })
           }
@@ -240,7 +311,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
         />
         <Divider className="my-4" />
         <GroupedPropertyEditors
-          schema={state.schema.propertyAssignments}
+          schema={state.schema.propertyTypes}
           lockedPropertyCodes={lockedPropertyCodes}
           onEvent={handlePropertyEditorEvents}
           lockedGroups={lockedGroups}
@@ -261,22 +332,28 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           >
             Back
           </Button>
-          <Button
+            <Button
             type="button"
             color="danger"
             className="mx-2"
-            onClick={() => handleClear(0)}
-          >
-            Clear
-          </Button>
+            onClick={() => {
+              if (mode === "edit") {
+              window.location.reload();
+              } else {
+              handleClear(0);
+              }
+            }}
+            >
+            {mode === "edit" ? "Reset" : "Clear"}
+            </Button>
           <Button
-            type="submit"
-            color="primary"
-            className="mx-2"
-            isDisabled={typeCreation.isPending}
-            isLoading={loading}
+          type="submit"
+          color="primary"
+          className="mx-2"
+          isDisabled={typeCreation.isPending}
+          isLoading={loading}
           >
-            Create
+          {mode === "edit" ? "Update" : "Create"}
           </Button>
         </div>
       </form>
