@@ -28,6 +28,11 @@ export const List = (props: {
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string
   ) => void;
+  onEdit: (
+    event: React.MouseEvent<HTMLButtonElement, MouseEvent>,
+    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    code: string
+  ) => void;
 }) => {
   const navigate = useNavigate();
   const [filterValue, setFilterValue] = React.useState("");
@@ -200,6 +205,7 @@ export const List = (props: {
     row: { [key: string]: any }
   ) => {
     return Object.entries(row).map(([key, value]) => (
+      // §TODO: sometimes doesn't catch the correct category? then value is undefined
       <TableCell key={`${permId}-${key}`}>{printText(value)}</TableCell>
     ));
   }
@@ -215,9 +221,7 @@ export const List = (props: {
             color="success"
             variant="light"
             size="sm"
-            onClick={(e) => {
-              console.log("onEdit", e);
-            }}
+            onClick={(e) => props.onEdit(e,  permId, newRow[props.defaultSortColumn])}
           >
             <DriveFileRenameOutlineIcon />
           </Button>
@@ -238,7 +242,7 @@ export const List = (props: {
   };
 
   const printText = (text: string | null) => {
-    if (text === null) {
+    if (text == null) {
       return "";
     }
     const words = text.split(/\s+/);

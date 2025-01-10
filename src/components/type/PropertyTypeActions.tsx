@@ -7,7 +7,7 @@ export type PropertyTypeEditorActions =
   | { type: "SET_OBJECT_TYPE"; payload: string }
   | { type: "SET_VOCABULARY"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
-  | { type: "SET_MULTIVALUED";};
+  | { type: "SET_MULTIVALUED"; payload: boolean };
 
 export type PropertyTypeEditorState = LocalPropertyTypeVariants;
 
@@ -31,7 +31,7 @@ export const propertyTypeEditorReducer = (
     case "SET_DESCRIPTION":
       return { ...state, description: action.payload };
     case "SET_MULTIVALUED":
-      return { ...state, multivalued: !state.multivalued };
+      return { ...state, multivalued: !action.payload };
     default:
       return state;
   }

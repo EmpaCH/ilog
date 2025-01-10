@@ -1,5 +1,6 @@
-import React,  { useContext, useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { HistoryState, useNavigate } from "@tanstack/react-router";
 import { AuthContext } from '../../context/auth/authContext';
 import { getObjectTypes, deleteObjectType } from '../../apis/type/typeAPI';
 import openbis from '@openbis/openbis.esm';
@@ -8,8 +9,14 @@ import { MessageModal } from '../shared/messageModal';
 import { Column, TypeRow } from '../shared/list.types';
 import { iLogBaseTypesPropertyCode } from '../../apis/shared/common';
 
+interface TypeCreatorState {
+  openbisSampleType: openbis.SampleType;
+  mode: string;
+}
+
 export const TypeList = () => {
   const { apiFacade } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [deletionMessage, setDeletionMessage] = useState('');
   const [showMessage, setShowMessage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -49,8 +56,29 @@ export const TypeList = () => {
         }, 3000);
     });
   };
+  
+  const handleEdit = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    code: string,
+  ) => {
+    event.preventDefault();
+    const type = types.find((t) => t.getCode() === code);
+    if (type) {
+      navigate({
+        to: `/types/creator?mode=edit&objecttypecode=${type.getCode()}`,
+      });
+    } else {
+      setDeletionMessage(`Type with code '${code}' not found.`);
+      setIsSuccess(false);
+      setShowMessage(true);
+      setTimeout(() => {
+      setShowMessage(false);
+      }, 3000);
+    }
+  };
 
-  const columns: Column[] = [
+  const columns: Column[] = [ 
     {
       key: "code",
       name: "Code",
@@ -108,6 +136,7 @@ export const TypeList = () => {
         defaultSortColumn="code"
         navigatePath="/types/creator"
         onDelete={onDelete}
+        onEdit={handleEdit}
       />
       <MessageModal
         message={deletionMessage}
