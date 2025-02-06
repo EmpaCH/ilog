@@ -15,7 +15,7 @@ import {
   Checkbox,
   Autocomplete,
   AutocompleteItem,
-} from "@nextui-org/react";
+} from "@heroui/react";
 
 import {
   PropertyTypeEditorActions,

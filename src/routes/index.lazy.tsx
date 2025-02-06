@@ -1,5 +1,5 @@
 import { createLazyFileRoute, Link } from '@tanstack/react-router';
-import { Divider } from '@nextui-org/react';
+import { Divider } from "@heroui/react";
 
 export const Route = createLazyFileRoute('/')({
   component: Index,

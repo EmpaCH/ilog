@@ -1,17 +1,16 @@
 import React, { useState } from "react";
-import { Button, Input } from "@nextui-org/react";
+import { Button, Input } from "@heroui/react";
 import SaveIcon from "@mui/icons-material/Save";
 
-
 /*
-This component implements an accordion title that can be edited
- */
-
+  This component implements an accordion title that can be edited
+*/
 export interface EditableAccordionTitleProps {
   initialTitle: string;
   onChange: (newTitle: string) => void;
   locked: Boolean;
 }
+
 export const EditableAccordionTitle: React.FC<EditableAccordionTitleProps> = ({
   initialTitle,
   onChange,
@@ -28,7 +27,7 @@ export const EditableAccordionTitle: React.FC<EditableAccordionTitleProps> = ({
         }}
         placeholder={title}
       />
-      <Button isIconOnly onClick={()=> onChange(title)}> <SaveIcon/></Button>
+      <Button isIconOnly onPress={()=> onChange(title)}> <SaveIcon/></Button>
     </form>
   );
 };

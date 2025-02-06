@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import {Modal, ModalContent, ModalBody, useDisclosure} from '@nextui-org/react';
+import {Modal, ModalContent, ModalBody, useDisclosure} from "@heroui/react";
 
 export const MessageModal = (props: {
   message: string,

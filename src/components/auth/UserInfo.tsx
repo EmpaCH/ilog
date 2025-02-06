@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useContext, useMemo } from 'react';
 import { AuthContext } from '../../context/auth/authContext';
 import openbis from '@openbis/openbis.esm';
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from '@nextui-org/react';
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
 
 const renderTableRow = (person: openbis.Person) => {
   return (

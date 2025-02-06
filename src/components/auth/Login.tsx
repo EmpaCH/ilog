@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react';
 import { Link, useRouter, useNavigate } from '@tanstack/react-router';
-import { Button, Input, Divider } from '@nextui-org/react';
+import { Button, Input, Divider } from "@heroui/react";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { AuthContext } from '../../context/auth/authContext';
@@ -62,13 +62,13 @@ function Login() {
             id="password"
             label="Password"
             endContent={
-              <button className="focus:outline-none" type="button" onClick={toggleVisibility} aria-label="toggle password visibility">
+              <Button isIconOnly variant="light" type="button" onPress={toggleVisibility} aria-label="toggle password visibility">
                 {isVisible ? (
                   <VisibilityIcon className="text-2xl text-default-400 pointer-events-none" />
                 ) : (
                   <VisibilityOffIcon className="text-2xl text-default-400 pointer-events-none" />
                 )}
-              </button>
+              </Button>
             }
             type={isVisible ? "text" : "password"}
             className="form-field"

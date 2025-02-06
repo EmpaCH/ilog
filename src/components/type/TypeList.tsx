@@ -1,28 +1,23 @@
-import React, { useContext, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { HistoryState, useNavigate } from "@tanstack/react-router";
-import { AuthContext } from '../../context/auth/authContext';
-import { getObjectTypes, deleteObjectType } from '../../apis/type/typeAPI';
-import openbis from '@openbis/openbis.esm';
-import { List } from '../shared/list';
-import { MessageModal } from '../shared/messageModal';
-import { Column, TypeRow } from '../shared/list.types';
-import { iLogBaseTypesPropertyCode } from '../../apis/shared/common';
-
-interface TypeCreatorState {
-  openbisSampleType: openbis.SampleType;
-  mode: string;
-}
+import { useContext, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { AuthContext } from "../../context/auth/authContext";
+import { getObjectTypes, deleteObjectType } from "../../apis/type/typeAPI";
+import openbis from "@openbis/openbis.esm";
+import { List } from "../shared/list";
+import { MessageModal } from "../shared/messageModal";
+import { Column, TypeRow } from "../shared/list.types";
+import { iLogBaseTypesPropertyCode } from "../../apis/shared/common";
 
 export const TypeList = () => {
   const { apiFacade } = useContext(AuthContext);
   const navigate = useNavigate();
-  const [deletionMessage, setDeletionMessage] = useState('');
+  const [deletionMessage, setDeletionMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
   const res = useQuery({
-    queryKey: ['getObjectTypes'],
+    queryKey: ["getObjectTypes"],
     queryFn: async () => {
       return getObjectTypes(apiFacade);
     },
@@ -33,11 +28,9 @@ export const TypeList = () => {
   }, [res]);
 
   const onDelete = async (
-    event: React.MouseEvent<HTMLButtonElement>,
     permId: any,
     code: string,
   ) => {
-    event.preventDefault();
     await deleteObjectType(
       apiFacade,
       permId as openbis.EntityTypePermId,
@@ -47,7 +40,7 @@ export const TypeList = () => {
       setIsSuccess(true);
       setShowMessage(true);
     }).catch((e) => {
-      setDeletionMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
+      setDeletionMessage(e.message.replace(/\s*\([^)]*\)/g, ""));
       setIsSuccess(false);
       setShowMessage(true);
     }).finally(() => {
@@ -57,19 +50,17 @@ export const TypeList = () => {
     });
   };
   
-  const handleEdit = async (
-    event: React.MouseEvent<HTMLButtonElement>,
+  const onEdit = async (
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => {
-    event.preventDefault();
     const type = types.find((t) => t.getCode() === code);
     if (type) {
       navigate({
         to: `/types/creator?mode=edit&objecttypecode=${type.getCode()}`,
       });
     } else {
-      setDeletionMessage(`Type with code '${code}' not found.`);
+      setDeletionMessage(`Type with code "${code}" not found.`);
       setIsSuccess(false);
       setShowMessage(true);
       setTimeout(() => {
@@ -122,7 +113,7 @@ export const TypeList = () => {
         prefix: type.getGeneratedCodePrefix(),
         description: type.getDescription(),
         category: categoryAssignment?.getPropertyType().getCode(),
-        // TODO: use 'category' to show whether the item it an Instrument or Component
+        // TODO: use "category" to show whether the item it an Instrument or Component
       }
     }
   );
@@ -136,7 +127,7 @@ export const TypeList = () => {
         defaultSortColumn="code"
         navigatePath="/types/creator"
         onDelete={onDelete}
-        onEdit={handleEdit}
+        onEdit={onEdit}
       />
       <MessageModal
         message={deletionMessage}
