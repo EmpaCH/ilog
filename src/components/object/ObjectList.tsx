@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AuthContext } from '../../context/auth/authContext';
 import { getObjects, deleteObject } from '../../apis/object/objectAPI';
@@ -25,11 +25,9 @@ export const ObjectList = () => {
   }, [res]);
 
   const onDelete = async (
-    event: React.MouseEvent<HTMLButtonElement>,
     permId: any,
     code: string,
   ) => {
-    event.preventDefault();
     await deleteObject(
       apiFacade,
       permId as openbis.SamplePermId,

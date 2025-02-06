@@ -7,7 +7,7 @@ import {
   Divider,
   Select,
   SelectItem,
-} from "@nextui-org/react";
+} from "@heroui/react";
 import {
   INSTRUMENT_TYPE_DEFINITION,
   iLogBaseTypes,
@@ -328,7 +328,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
             type="button"
             color="default"
             className="mx-2"
-            onClick={onBack}
+            onPress={onBack}
           >
             Back
           </Button>
@@ -336,11 +336,11 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
             type="button"
             color="danger"
             className="mx-2"
-            onClick={() => {
+            onPress={() => {
               if (mode === "edit") {
-              window.location.reload();
+                window.location.reload();
               } else {
-              handleClear(0);
+                handleClear(0);
               }
             }}
             >

@@ -1,10 +1,10 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Button, Input, Divider } from '@nextui-org/react';
+import { Button, Input, Divider } from "@heroui/react";
 import { AuthContext } from '../../context/auth/authContext';
 import { useCreateObject } from '../../apis/object/useCreate';
-import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
+import { Autocomplete, AutocompleteItem } from "@heroui/react";
 import { getObjectTypes } from '../../apis/type/typeAPI';
 
 export const ObjectCreator = () => {
@@ -106,7 +106,7 @@ export const ObjectCreator = () => {
             type="button"
             color="default"
             className="mx-2"
-            onClick={onBack}
+            onPress={onBack}
           >
             Back
           </Button>
@@ -114,7 +114,7 @@ export const ObjectCreator = () => {
             type="button"
             color="danger"
             className="mx-2"
-            onClick={() => onClear(0)}
+            onPress={() => onClear(0)}
           >
             Clear
           </Button>

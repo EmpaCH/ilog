@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Button, Accordion, AccordionItem } from "@nextui-org/react";
+import { Button, Accordion, AccordionItem } from "@heroui/react";
 import { PropertyEditor } from "./PropertyEditor";
 import { Icon, Tabs, Tab} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -7,10 +7,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { PropertyType } from "../../apis/propertyType/commonPropertyType";
 import { PropertyTypesSchema } from "../../apis/type/commonType";
 import { produce, current, original, enableMapSet } from "immer";
-import { EditableAccordionTitle } from "./EditableAccordionTitle";
+// import { EditableAccordionTitle } from "./EditableAccordionTitle";
 
 enableMapSet();
-
 
 // These are the events that the GroupedPropertyEditor emits
 // They must be handled by the parent component
@@ -343,7 +342,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                     startContent={
                       <Button
                         isIconOnly
-                        onClick={() =>
+                        onPress={() =>
                           onEvent({
                             type: "REMOVE_PROPERTY",
                             payload: {
@@ -373,7 +372,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
               </Accordion>
               <Button
                 isIconOnly
-                onClick={() =>
+                onPress={() =>
                   onEvent({
                     type: "ADD_PROPERTY",
                     payload: { group: propertyGroup },
@@ -392,7 +391,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                 </Icon>
               </Button>
               <Button
-                onClick={() => {
+                onPress={() => {
                   onEvent({
                     type: "REMOVE_GROUP",
                     payload: { group: propertyGroup },

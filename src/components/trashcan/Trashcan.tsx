@@ -1,22 +1,22 @@
-import React, { useContext, useMemo, useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AuthContext } from '../../context/auth/authContext';
-import { getTrashedObjects, restoreTrashedObjects, deleteTrashedObjects } from '../../apis/trashcan/trashcanAPI';
-import { MessageModal } from '../shared/messageModal';
-import {Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Button, Selection} from '@nextui-org/react';
-import UndoIcon from '@mui/icons-material/Undo';
-import ClearIcon from '@mui/icons-material/Clear';
-import openbis from '@openbis/openbis.esm';
+import React, { useContext, useMemo, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AuthContext } from "../../context/auth/authContext";
+import { getTrashedObjects, restoreTrashedObjects, deleteTrashedObjects } from "../../apis/trashcan/trashcanAPI";
+import { MessageModal } from "../shared/messageModal";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Button, Selection } from "@heroui/react";
+import UndoIcon from "@mui/icons-material/Undo";
+import ClearIcon from "@mui/icons-material/Clear";
+import openbis from "@openbis/openbis.esm";
 
 const Trashcan = () => {
   const { apiFacade } = useContext(AuthContext);
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
   const [disabledButtons, setDisabledButtons] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
 
   const res = useQuery({
-    queryKey: ['getTrashedObjects'],
+    queryKey: ["getTrashedObjects"],
     queryFn: async () => {
       return getTrashedObjects(apiFacade);
     },
@@ -37,24 +37,22 @@ const Trashcan = () => {
     }
     for (const key of selectedKeys) {
       deletionIds.push(
-        JSON.parse((key.valueOf() as string).split('_')[0]) as openbis.IDeletionId
+        JSON.parse((key.valueOf() as string).split("_")[0]) as openbis.IDeletionId
       );
     }
     return deletionIds;
   };
 
   const onRestore = async (
-    event: React.MouseEvent<HTMLButtonElement>,
     items: openbis.IDeletionId[],
   ) => {
-    event.preventDefault();
     await restoreTrashedObjects(
       apiFacade,
       items,
     ).then(() => {
       res.refetch();
     }).catch((e) => {
-      setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
+      setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ""));
       setShowMessage(true);
     }).finally(() => {
       setSelectedKeys(new Set([]));
@@ -65,17 +63,15 @@ const Trashcan = () => {
   };
 
   const onDelete = async (
-    event: React.MouseEvent<HTMLButtonElement>,
     items: openbis.IDeletionId[],
   ) => {
-    event.preventDefault();
     await deleteTrashedObjects(
       apiFacade,
       items,
     ).then(() => {
       res.refetch();
     }).catch((e) => {
-      setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
+      setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ""));
       setShowMessage(true);
     }).finally(() => {
       setSelectedKeys(new Set([]));
@@ -97,7 +93,7 @@ const Trashcan = () => {
               className="text-white"
               disabled={disabledButtons}
               disableAnimation={disabledButtons}
-              onClick={(e) => {onRestore(e, getSelectedKeys())}}
+              onPress={(e) => {onRestore(getSelectedKeys())}}
             >
               Restore
             </Button>
@@ -106,7 +102,7 @@ const Trashcan = () => {
               startContent={<ClearIcon/>}
               disabled={disabledButtons}
               disableAnimation={disabledButtons}
-              onClick={(e) => {onDelete(e, getSelectedKeys())}}
+              onPress={(e) => {onDelete(getSelectedKeys())}}
             >
               Permanently delete
             </Button>
@@ -118,7 +114,7 @@ const Trashcan = () => {
 
   const getItemCategory = (item: openbis.DeletedObject) => {
     const kind = item.getEntityKind();
-    return kind == 'SAMPLE' ? 'OBJECT' : kind;
+    return kind == "SAMPLE" ? "OBJECT" : kind;
   };
 
   const renderTableRow = (deletion: openbis.Deletion) => {
@@ -126,7 +122,7 @@ const Trashcan = () => {
 
     return (
       <TableRow key={`${JSON.stringify(deletion.getId())}_${item.getIdentifier()}`}>
-        <TableCell>{item.getIdentifier().split('/').slice(-1)[0]}</TableCell>
+        <TableCell>{item.getIdentifier().split("/").slice(-1)[0]}</TableCell>
         <TableCell>{getItemCategory(item)}</TableCell>
         <TableCell>{item.getEntityTypeCode()}</TableCell>
         <TableCell style={{ width: "155px"}}>
@@ -135,7 +131,7 @@ const Trashcan = () => {
             color="success"
             variant="light"
             size="sm"
-            onClick={(e) => {onRestore(e, [deletion.getId()])}}
+            onPress={(e) => {onRestore([deletion.getId()])}}
           >
             <UndoIcon/>
           </Button>
@@ -144,7 +140,7 @@ const Trashcan = () => {
             color="danger"
             variant="light"
             size="sm"
-            onClick={(e) => {onDelete(e, [deletion.getId()])}}
+            onPress={(e) => {onDelete([deletion.getId()])}}
           >
             <ClearIcon/>
           </Button>

@@ -6,7 +6,7 @@ import {
 } from '@tanstack/react-router';
 import { useContext, useEffect } from 'react';
 import { AuthContext } from '../context/auth/authContext';
-import { Button } from '@nextui-org/react';
+import { Button } from "@heroui/react";
 import { initIlog } from '../apis/shared/init';
 
 export const Route = createFileRoute('/_auth')({
@@ -72,7 +72,7 @@ function AuthLayout() {
               type="button"
               color="primary"
               variant="ghost"
-              onClick={handleLogout}
+              onPress={handleLogout}
             >
               Logout
             </Button>
