@@ -4,7 +4,7 @@ import {
   LocalPropertyTypeVariants,
   PropertyType,
 } from "../../apis/propertyType/commonPropertyType";
-import {
+import {  
   Button,
   Card,
   CardBody,
@@ -29,22 +29,27 @@ type PropertyEditorProps = {
 };
 
 type DataTypeSelectProps = {
+  disabled?: boolean;
   defaultValue: DataType;
   onSelectionChange: (val: DataType) => void;
 };
 
 const DataTypeSelect = ({
+  disabled=false,
   defaultValue,
   onSelectionChange,
 }: DataTypeSelectProps) => {
   return (
     <Select
+      disabled={disabled}
       label="Select a data type"
       defaultSelectedKeys={[defaultValue]}
       selectionMode="single"
-      onSelectionChange={(selection) =>
-        onSelectionChange(selection.currentKey as DataType)
-      }
+      onSelectionChange={(selection) => {
+        if(!disabled) {
+          onSelectionChange(selection.currentKey as DataType)
+        }
+      }}
     >
       {ALL_DATA_TYPES.map((type) => {
         return <SelectItem key={type}>{type}</SelectItem>;
@@ -77,6 +82,7 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
 
 export const PropertyEditor = ({
   propertyTypeDefinitions,
+  locked,
   onEdit,
 }: PropertyEditorProps) => {
   const [state, dispatch] = useReducer(
@@ -105,10 +111,20 @@ export const PropertyEditor = ({
   //   //onEdit(state as PropertyType);
   // };
 
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      const form = (event.target as HTMLInputElement).form;
+      const index = Array.prototype.indexOf.call(form, event.target);
+      (form?.elements[index + 1] as HTMLElement)?.focus();
+      event.preventDefault();
+    }
+  }
+  
+
   return (
-    <Card>
+    <Card isDisabled={locked} style={{ pointerEvents: locked ? "none" : "auto" }}>
       <CardHeader className="flex gap-3">
-        {`Property: ${state.code}`}
+      {`Property: ${state.code}`}
       </CardHeader>
 
       <CardBody>
@@ -122,6 +138,7 @@ export const PropertyEditor = ({
                 payload: value.target.value,
               })
             }
+            onKeyDown={handleInputKeyDown}
           />
 
           <Input
@@ -133,6 +150,7 @@ export const PropertyEditor = ({
                 payload: value.target.value,
               })
             }
+            onKeyDown={handleInputKeyDown}
           />
           <Input
             label="Label"
@@ -143,8 +161,9 @@ export const PropertyEditor = ({
                 payload: value.target.value,
               })
             }
+            onKeyDown={handleInputKeyDown}
           />
-          <DataTypeSelect
+          <DataTypeSelect  
             defaultValue={propertyTypeDefinitions.dataType}
             onSelectionChange={(value) =>
               dispatch({ type: "SET_DATA_TYPE", payload: value })
@@ -152,7 +171,7 @@ export const PropertyEditor = ({
           />
 
           {state.dataType === "CONTROLLEDVOCABULARY" ? (
-            <Input label="Vocabulary ID" />
+            <Input disabled={locked} label="Vocabulary ID" />
           ) : null}
           {state.dataType === "OBJECT" ? (
             <ObjectTypeAutoComplete
@@ -160,12 +179,15 @@ export const PropertyEditor = ({
               onSelectionChange={(str) => str}
             />
           ) : null}
-          <Checkbox
+            <Checkbox
             defaultChecked={state.multivalued}
-            onChange={(value) => dispatch({ type: "SET_MULTIVALUED", payload: value.target.checked })}
-          >
+            checked={state.multivalued}
+            onChange={(value) => 
+              dispatch({ type: "SET_MULTIVALUED", payload: value.target.checked })
+            }
+            >
             Multivalued
-          </Checkbox>
+            </Checkbox>
         </div>
       </CardBody>
     </Card>

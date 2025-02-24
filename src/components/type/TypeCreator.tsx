@@ -7,6 +7,7 @@ import {
   Divider,
   Select,
   SelectItem,
+  Spinner,
 } from "@heroui/react";
 import {
   INSTRUMENT_TYPE_DEFINITION,
@@ -25,7 +26,6 @@ import { typeCreatorReducer } from "./TypeActions";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
 import { useCreateObjectType, useUpdateObjectType } from "../../apis/type/useCreateObjectType";
-import { getObjectTypes } from "../../apis/type/typeAPI";
 import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
 import openbis from "@openbis/openbis.esm";
 
@@ -42,61 +42,50 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
   objectTypeCode,
 }) => {
   
+  // Initialize the useCreateObjectType and useUpdateObjectType hooks and fetch object and property types
   const typeCreation = useCreateObjectType();
   const typeUpdate = useUpdateObjectType();
   const allPropertyTypesResult = useGetPropertyTypes();
   const allObjectTypesResult = useGetAllTypes();
   const navigate = useNavigate();
-  let objectTypeTemplate: ObjectTypeDefinition;
 
-  if (allObjectTypesResult.status == "success" && objectTypeCode !== "") {
-    console.log("allObjectTypesResult", allObjectTypesResult.data);
-    const openbisSampleType = allObjectTypesResult.data?.find(
-      (it) => {
-        return it.getCode().toUpperCase() === objectTypeCode.toUpperCase()
-      }
-    ) as openbis.SampleType;
-    objectTypeTemplate = openbisSampleType ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType) : EMPTY_TYPE_DEFINITION;
-  } else {
-    objectTypeTemplate = EMPTY_TYPE_DEFINITION;
-  }
-
+  // Dispatch is used to update the state of the component
   const [state, dispatch] = useReducer(typeCreatorReducer, {
-    schema: objectTypeTemplate,
-    propertyCount: 0,
-  });
+    schema: EMPTY_TYPE_DEFINITION,
+  }); 
 
-  // useEffect(() => {
-  //   const savedState = localStorage.getItem("typeCreatorState");
-  //   if (savedState) {
-  //     dispatch({
-  //       type: "LOAD_SAVED_STATE",
-  //       payload: JSON.parse(savedState),
-  //     });
-  //   }
-  // }, []);
-
-  // useEffect(() => {
-  //   localStorage.setItem("typeCreatorState", JSON.stringify(state));
-  // }, [state]);
+  // Initialize the loading state and message state (initial represents whether the object and property types have been fetched)
   const [loading, setLoading] = useState(false);
   const [initial, setInitial] = useState(true);
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [messageColor, setMessageColor] = useState("rgb(23, 201, 100)");
-  const [objectBaseType, setObjectBaseType] = useState("");
-  const [newPropertyCount, setNewPropertyCount] = useState(0);
+  const [objectBaseType, setObjectBaseType] = useState(""); // §TODO: Basetype behavior not well defined yet
 
+  // Some basic property types are given based on the ilogbasetype we lock these properties
   const lockedPropertyCodes = Object.entries(
     INSTRUMENT_TYPE_DEFINITION.propertyTypes
-  ).flatMap(([group, assignment]) => assignment.map((el) => el.code));
-
+  ).flatMap(([_, assignment]) => assignment.map((el) => el.code));
   const lockedGroups = Object.keys(
     INSTRUMENT_TYPE_DEFINITION.propertyTypes
   );
 
-  if (allPropertyTypesResult.status == "success" && initial) {
-    const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
+  // If the object and property types have been fetched, set the object type template and property types
+  if (allPropertyTypesResult.status == "success" && allObjectTypesResult.status == "success" && initial) {
+    // Set the object type template
+    const openbisSampleType = allObjectTypesResult.data?.find(
+      (it) => {
+        return it.getCode().toUpperCase() === objectTypeCode.toUpperCase()
+      }
+    ) as openbis.SampleType;
+    const objectTypeTemplate: ObjectTypeDefinition = openbisSampleType ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType) : EMPTY_TYPE_DEFINITION;
+    dispatch({
+      type: "SET_OBJECT_TYPE_TEMPLATE",
+      payload: { objecttypetemplate: objectTypeTemplate}
+    })
+    
+    // Set the property types
+    const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
       ([group, propertyTypesGroup]) => {
         return [
           group,
@@ -112,8 +101,13 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
       type: "SET_ALL_PROPERTYTYPES",
       payload: { schema: Object.fromEntries(resolvedTypes) as PropertyTypesSchema },
     });
+
+    // Set the initial state to false
     setInitial(false);
   }     
+
+
+
 
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -123,10 +117,6 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
-      // setMessage("Type update not implemented yet!");
-      // setMessageColor("rgb(255, 165, 0)");
-      // setShowMessage(true);
-      // setLoading(false);
       typeUpdate.mutate({
         definition: state.schema,
       }, {
@@ -167,10 +157,9 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     navigate({ to: "/types" });
   };
 
-  const handleAddProperty = (propertyGroup: string) => {
-    setNewPropertyCount((prev) => prev + 1);
+  const handleAddProperty = (propertyGroup: string, propertyCode: string) => {
     const newProp = {
-      code: `NEW_PROPERTY${newPropertyCount}`,
+      code: propertyCode,
       label: "New Property",
       description: "New description",
       dataType: "VARCHAR",
@@ -178,10 +167,11 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
       multivalued: false,
     } as LocalPrimitivePropertyType;
     dispatch({
-      type: "SET_PROPERTY_ASSIGNMENT",
+      type: "SET_NEW_PROPERTY",
       payload: { group: propertyGroup, property: newProp },
     });
   };
+
   const handleClear = (ms: number) => {
     if (mode === "edit") {
       window.location.reload();
@@ -210,7 +200,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
   const handlePropertyEditorEvents = (event: GroupedPropertyEditorsEvents) => {
     switch (event.type) {
       case "ADD_PROPERTY":
-        handleAddProperty(event.payload.group);
+        handleAddProperty(event.payload.group, event.payload.code);
         break;
       case "EDIT_PROPERTY":
         dispatch({
@@ -261,6 +251,21 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     }
   };
 
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      const form = (event.target as HTMLInputElement).form;
+      const index = Array.prototype.indexOf.call(form, event.target);
+      (form?.elements[index + 1] as HTMLElement)?.focus();
+      event.preventDefault();
+    }
+  }
+
+
+  // If trying to edit an object, then show a spinner until the object is fetched
+  if (initial && mode === "edit") {
+    return <Spinner />;
+  }
+
   return (
     <div className="md-size-div">
       <h2>{mode === "edit" ? "Edit Type" : "Create Type"}</h2>
@@ -284,11 +289,46 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           label="Code"
           type="text"
           className="form-field"
-          value={state.schema.code ?? null}
-          onValueChange={(value) =>
-            dispatch({ type: "SET_CODE", payload: value })
-          }
+          value={state.schema.code ?? ""}
+          onValueChange={(value) => {
+            dispatch({ type: "SET_CODE", payload: value });
+          }}
+          onBlur={(event) => {
+            if (objectTypeCode !== (event.target as HTMLInputElement).value) {
+              const existingType = allObjectTypesResult.data?.find(
+              (type) => type.getCode() === (event.target as HTMLInputElement).value
+              );
+                if (existingType) {
+                  const confirmSwitch = window.confirm(
+                    "This type already exists. Do you want to switch to edit mode? Note: changes will remain, to get original use reset."
+                  );
+                  if (confirmSwitch) {
+                    navigate({ to: `/types/creator?mode=edit&objecttypecode=${(event.target as HTMLInputElement).value}` });
+                  } 
+                } else if (mode === "edit") {
+                  const confirmSwitch = window.confirm(
+                    "You cannot change the code of an Objecttype. Do you want to switch to create mode?"
+                  );
+                  if (confirmSwitch) {
+                    navigate({ to: `/types/creator?mode=create&objecttypecode=${(event.target as HTMLInputElement).value}` });
+                  } else {
+                    dispatch({ type: "SET_CODE", payload: objectTypeCode });
+                  }
+                }
+
+
+            }
+            
+          }}
+          autoComplete="off"
+          list="type-suggestions"
+          onKeyDown={handleInputKeyDown}
         />
+        <datalist id="type-suggestions">
+          {allObjectTypesResult.data?.map((type) => (
+            <option key={type.getCode()} value={type.getCode()} />
+          ))}
+        </datalist>
         <Input
           id="prefix"
           label="Prefix"
@@ -299,6 +339,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           onValueChange={(value) =>
             dispatch({ type: "SET_PREFIX", payload: value })
           }
+          onKeyDown={handleInputKeyDown}
         />
         <Textarea
           id="description"
@@ -338,9 +379,9 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
             className="mx-2"
             onPress={() => {
               if (mode === "edit") {
-                window.location.reload();
+              window.location.reload();
               } else {
-                handleClear(0);
+              handleClear(0);
               }
             }}
             >

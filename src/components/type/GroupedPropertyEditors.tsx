@@ -4,17 +4,19 @@ import { PropertyEditor } from "./PropertyEditor";
 import { Icon, Tabs, Tab} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { PropertyType } from "../../apis/propertyType/commonPropertyType";
+import LockIcon from "@mui/icons-material/Lock";
+import { LocalPropertyType, PropertyType, LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
 import { PropertyTypesSchema } from "../../apis/type/commonType";
 import { produce, current, original, enableMapSet } from "immer";
-// import { EditableAccordionTitle } from "./EditableAccordionTitle";
+import { EditableAccordionTitle } from "./EditableAccordionTitle";
 
 enableMapSet();
+
 
 // These are the events that the GroupedPropertyEditor emits
 // They must be handled by the parent component
 export type GroupedPropertyEditorsEvents =
-  | { type: "ADD_PROPERTY"; payload: { group: string } }
+  | { type: "ADD_PROPERTY"; payload: { group: string; code: string } }
   | {
       type: "EDIT_PROPERTY";
       payload: { group: string; property: PropertyType };
@@ -78,6 +80,10 @@ const groupedPropertyEditorsReducer = produce(
         delete draft.accordionItemKeyMapping[action.payload.oldCode];
         break;
       }
+      case "ADD_PROPERTY": {
+        draft.accordionItemKeyMapping[action.payload.code] = createPropertyKey();
+        break;
+      }
       case "REORDER_GROUPS": {
         break;
       }
@@ -85,7 +91,8 @@ const groupedPropertyEditorsReducer = produce(
   }
 );
 
-export const createPropertyKey = (property: PropertyType) => {
+// Generating random keys for list items
+export const createPropertyKey = () => {
   return `${Math.random().toString(36).substring(7)}`;
 };
 
@@ -99,7 +106,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
     Object.entries(schema).flatMap(([propertyGroup, properties]) => {
       return properties.map((property) => [
         String(property.code),
-        createPropertyKey(property),
+        createPropertyKey(),
       ]);
     })
   );
@@ -137,114 +144,6 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
       });
     }
   };
-
-  // return (
-  //   <>
-  //     <Accordion>
-  //       {Object.entries(schema).flatMap(([propertyGroup, properties]) => {
-  //         return (
-  //           <AccordionItem
-  //             key={propertyGroup}
-  //             textValue={propertyGroup}
-  //             title={
-  //               <EditableAccordionTitle
-  //                 initialTitle={propertyGroup}
-  //                 locked={lockedGroups.includes(propertyGroup)}
-  //                 onChange={(newTitle) =>
-  //                   onEvent({
-  //                     type: "RENAME_GROUP",
-  //                     payload: { newGroup: newTitle, oldGroup: propertyGroup },
-  //                   })
-  //                 }
-  //               />
-  //             }
-  //             startContent={
-  //               <Button
-  //                 isDisabled={lockedGroups.includes(propertyGroup)}
-  //                 isIconOnly
-  //                 onClick={() =>
-  //                   onEvent({
-  //                     type: "REMOVE_GROUP",
-  //                     payload: {
-  //                       group: propertyGroup,
-  //                     },
-  //                   })
-  //                 }
-  //                 color="danger"
-  //               >
-  //                 <DeleteIcon />
-  //               </Button>
-  //             }
-  //           >
-  //             <Accordion>
-  //               {properties.map((property) => (
-  //                 <AccordionItem
-  //                   isDisabled={lockedPropertyCodes.includes(property.code)}
-  //                   key={state.accordionItemKeyMapping[property.code]}
-  //                   title={property.code}
-  //                   startContent={
-  //                     <Button
-  //                       isIconOnly
-  //                       onClick={() =>
-  //                         onEvent({
-  //                           type: "REMOVE_PROPERTY",
-  //                           payload: {
-  //                             group: propertyGroup,
-  //                             property: property,
-  //                           },
-  //                         })
-  //                       }
-  //                       color="danger"
-  //                     >
-  //                       <DeleteIcon />
-  //                     </Button>
-  //                   }
-  //                 >
-  //                   <PropertyEditor
-  //                     onEdit={(newProperty) =>
-  //                       handlePropertyChanges(
-  //                         propertyGroup,
-  //                         property,
-  //                         newProperty
-  //                       )
-  //                     }
-  //                     propertyTypeDefinitions={property}
-  //                   />
-  //                 </AccordionItem>
-  //               ))}
-  //             </Accordion>
-  //             <Button
-  //               isIconOnly
-  //               onClick={() =>
-  //                 onEvent({
-  //                   type: "ADD_PROPERTY",
-  //                   payload: { group: propertyGroup },
-  //                 })
-  //               }
-  //               color="primary"
-  //             >
-  //               <Icon>
-  //                 <AddIcon />
-  //               </Icon>
-  //             </Button>
-  //           </AccordionItem>
-  //         );
-  //       })}
-  //     </Accordion>
-  //     <Button
-  //       onClick={() => {
-  //         onEvent({
-  //           type: "ADD_GROUP",
-  //           payload: { group: `group${state.groupCount + 1}` },
-  //         });
-  //         dispatch({ type: "ADD_GROUP" });
-  //       }}
-  //     >
-  //       Add Property Group
-  //     </Button>
-  //   </>
-  // );
-
   
   const [selectedTab, setSelectedTab] = React.useState(0);
 
@@ -312,13 +211,13 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         <Tab
           label="+ Add Group"
           onClick={() => {
-        const newGroup = `group${state.groupCount + 1}`;
-        onEvent({
-          type: "ADD_GROUP",
-          payload: { group: newGroup },
-        });
-        dispatch({ type: "ADD_GROUP" });
-        setSelectedTab(Object.keys(schema).length); // Switch to the new tab
+            const newGroup = `group${state.groupCount + 1}`;
+            onEvent({
+              type: "ADD_GROUP",
+              payload: { group: newGroup },
+            });
+            dispatch({ type: "ADD_GROUP" });
+            setSelectedTab(Object.keys(schema).length); // Switch to the new tab
           }}
           style={{ backgroundColor: "#f0f0f0" }} // Add grey background
         />
@@ -333,28 +232,52 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         >
           {selectedTab === index && (
             <>
-              <Accordion>
+              <Accordion selectionMode="multiple">
                 {properties.map((property) => (
                   <AccordionItem
-                    isDisabled={lockedPropertyCodes.includes(property.code)}
                     key={state.accordionItemKeyMapping[property.code]}
                     title={property.code}
+                    // style={{ backgroundColor: "lightgrey" }}
                     startContent={
-                      <Button
-                        isIconOnly
-                        onPress={() =>
-                          onEvent({
-                            type: "REMOVE_PROPERTY",
-                            payload: {
-                              group: propertyGroup,
-                              property: property,
-                            },
-                          })
-                        }
-                        color="danger"
-                      >
-                        <DeleteIcon />
-                      </Button>
+                        lockedPropertyCodes.includes(property.code) ? (
+                          <Icon
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              backgroundColor: "grey",
+                              borderRadius: "8px",
+                              width: "30px",
+                              height: "30px",
+                            }}
+                          >
+                            <LockIcon style={{ color: "white" }} />
+                          </Icon>
+                        ) : (
+                          <div
+                            onClick={() =>
+                              onEvent({
+                                type: "REMOVE_PROPERTY",
+                                payload: {
+                                  group: propertyGroup,
+                                  property: property,
+                                },
+                              })
+                            }
+                            style={{
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              backgroundColor: "red",
+                              borderRadius: "8px",
+                              width: "30px",
+                              height: "30px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            <DeleteIcon style={{ color: "white" }} />
+                          </div>
+                        )
                     }
                   >
                     <PropertyEditor
@@ -365,19 +288,23 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                           newProperty
                         )
                       }
-                      propertyTypeDefinitions={property}
+                      locked={lockedPropertyCodes.includes(property.code)}
+                      propertyTypeDefinitions={property as LocalPropertyTypeVariants}
                     />
                   </AccordionItem>
                 ))}
               </Accordion>
               <Button
                 isIconOnly
-                onPress={() =>
+                onPress={() => {
+                  // generate random one with 5 digits
+                  const newPropertyCode = `NEW_PROPERTY_${10000 + Math.floor(Math.random() * 90000)}`;
                   onEvent({
                     type: "ADD_PROPERTY",
-                    payload: { group: propertyGroup },
+                    payload: { group: propertyGroup, code: newPropertyCode },
                   })
-                }
+                  dispatch({ type: "ADD_PROPERTY", payload: { code: newPropertyCode } });
+                }}
                 color="primary"
               >
                 <Icon
