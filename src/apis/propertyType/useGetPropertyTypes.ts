@@ -3,12 +3,12 @@ import { getPropertyTypes } from "./propertyTypeAPI";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 
-const QUERY_PREFIX = "GET_ALL_PROPERTY_TYPES";
+export const ALL_PROPERTY_TYPES_QUERY_PREFIX = "GET_ALL_PROPERTY_TYPES";
 export const useGetPropertyTypes = () => {
   const { apiFacade } = useContext(AuthContext);
 
   return useQuery({
-    queryKey: [QUERY_PREFIX],
+    queryKey: [ALL_PROPERTY_TYPES_QUERY_PREFIX],
     queryFn: () => {
       return getPropertyTypes(apiFacade);
     },

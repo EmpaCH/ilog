@@ -11,6 +11,19 @@ import {
 import { ObjectTypeDefinition } from "./commonType";
 import { getPropertyTypes } from "../propertyType/propertyTypeAPI";
 
+export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
+  const fo = new openbis.SampleTypeFetchOptions();
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withPropertyAssignmentsUsing(ao);
+  return fo;
+}
+
 /**
  * Get all object types with the iLog base type property and apply filtering by code if search field is provided.
  * @param api - The OpenBIS JavaScript facade instance.
@@ -24,20 +37,21 @@ export async function getObjectTypes(
   const sc = new openbis.SampleTypeSearchCriteria();
   sc.withCode().thatStartsWith(search.toUpperCase());
   sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
-  const fo = new openbis.SampleTypeFetchOptions();
-  const ao = new openbis.PropertyAssignmentFetchOptions();
-  const po = new openbis.PropertyTypeFetchOptions();
-  po.withSampleType();
-  po.withVocabulary();
-
-  ao.withEntityType();
-  ao.withPropertyTypeUsing(po);
-  fo.withPropertyAssignmentsUsing(ao);
+  const fo = createObjectTypeFetchOptions()
   
   const result = await api.searchSampleTypes(sc, fo);
-  console.log("getObjectTypes", result.getObjects());
   return result.getObjects();
 }
+
+export async function getObjectType(api: openbis.OpenBISJavaScriptFacade, permId: string): Promise<openbis.SampleType> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatEquals(permId);
+  const fo = createObjectTypeFetchOptions();
+  const result = await api.searchSampleTypes(sc, fo);
+  return result.getObjects()[0];
+}
+
+
 
 /**
  * Create a new object type and automatically enable it in ELN settings.

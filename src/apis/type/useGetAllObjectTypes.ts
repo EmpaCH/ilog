@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { getObjectTypes } from "./typeAPI";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
+import { getPropertyAssignments } from "../propertyType/propertyTypeAPI";
+import { getObjectTypes } from "./typeAPI";
 
-const QUERY_PREFIX = "GET_ALL_OBJECT_TYPES";
-export const useGetAllTypes = () => {
+export const ALL_OBJECT_TYPES_QUERY_PREFIX = "GET_ALL_OBJECT_TYPES";
+export const useGetAllObjectTypes = () => {
   const { apiFacade } = useContext(AuthContext);
 
   return useQuery({
-    queryKey: [QUERY_PREFIX],
+    queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX],
     queryFn: () => {
       return getObjectTypes(apiFacade);
     },

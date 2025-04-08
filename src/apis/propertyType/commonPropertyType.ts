@@ -59,7 +59,10 @@ export function convertPropertyTypeToCreation(
       switch (propertyType.dataType) {
         case "OBJECT": {
           creation.setSampleTypeId(
-            new openbis.EntityTypePermId(propertyType.objectType.toUpperCase(), "SAMPLE")
+            new openbis.EntityTypePermId(
+              propertyType.objectType.toUpperCase(),
+              "SAMPLE"
+            )
           );
           return creation;
         }
@@ -73,6 +76,27 @@ export function convertPropertyTypeToCreation(
           return creation;
         }
       }
+    }
+  }
+}
+
+export function convertPropertyTypeToUpdate(
+  propertyType: PropertyType
+): openbis.PropertyTypeUpdate {
+  const update = new openbis.PropertyTypeUpdate();
+  update.setTypeId(propertyType.code.toUpperCase());
+  switch (propertyType.type) {
+    case "reference": {
+      return update;
+    }
+    case "local": {
+      update.setTypeId(propertyType.code.toUpperCase());
+      update.convertToDataType(
+        convertDataTypeToOpenBISDataType(propertyType.dataType)
+      );
+      update.setLabel(propertyType.label);
+      update.setDescription(propertyType.description);
+      return update;
     }
   }
 }
@@ -97,4 +121,20 @@ export function getPropertyTypeId(
   } else {
     return new openbis.PropertyTypePermId(propertyType.code.toUpperCase());
   }
+}
+
+export interface PropertyAssignment {
+  propertyTypeCode: string;
+  objectTypeCode: string;
+  mandatory: boolean;
+}
+
+export function convertPropertyAssignment(
+  assigment: openbis.PropertyAssignment
+): PropertyAssignment {
+  return {
+    propertyTypeCode: assigment.getPropertyType().getCode(),
+    objectTypeCode: assigment.getEntityType().getCode(),
+    mandatory: assigment.isMandatory(),
+  };
 }

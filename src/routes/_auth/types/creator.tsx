@@ -1,5 +1,5 @@
 import { createFileRoute, Router, useLocation, ParsedLocation, HistoryState } from '@tanstack/react-router'
-import { TypeCreator } from '../../../components/type/TypeCreator'
+import { ObjectTypeCreator } from '../../../components/type/ObjectTypeCreator.tsx'
 import { EMPTY_TYPE_DEFINITION } from '../../../apis/shared/common'
 import { convertOpenBISSampleTypeToObjectTypeDefinition, ObjectTypeDefinition } from '../../../apis/type/commonType'
 import openbis from '@openbis/openbis.esm';
@@ -24,7 +24,7 @@ export const Route = createFileRoute('/_auth/types/creator')({
       
     }
 
-    return TypeCreator({
+    return ObjectTypeCreator({
       objectTypeCode: objectTypeCode || '',
       mode: mode,
     });

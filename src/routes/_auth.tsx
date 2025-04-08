@@ -1,44 +1,40 @@
 import {
   createFileRoute,
   Link,
+  Navigate,
   Outlet,
   useRouter,
-} from '@tanstack/react-router';
-import { useContext, useEffect } from 'react';
-import { AuthContext } from '../context/auth/authContext';
+} from "@tanstack/react-router";
+import { useContext, useMemo } from "react";
+import { AuthContext } from "../context/auth/authContext";
+import { INIT_ILOG_KEY, useInitIlog } from "../apis/shared/useInitIlog";
 import { Button } from "@heroui/react";
-import { initIlog } from '../apis/shared/init';
+import { InitComponent } from "../components/auth/Init";
+import { useGetInit } from "../apis/shared/useGetInit";
 
-export const Route = createFileRoute('/_auth')({
+export const Route = createFileRoute("/_auth")({
   component: AuthLayout,
-})
+});
 
 function AuthLayout() {
-  const router = useRouter()
-  const navigate = Route.useNavigate()
-  const { apiFacade, logout }  = useContext(AuthContext)
+  const router = useRouter();
+  const navigate = Route.useNavigate();
+  const { logout, isAuthenticated } = useContext(AuthContext);
+  const { status, data } = useGetInit();
 
-  useEffect(() => {
-    initIlog(apiFacade);
-  }, []);
-
-  useEffect(() => { 
-    if (!localStorage.getItem('token')) {
-      router.invalidate().finally(() => {
-        navigate({ to: '/' })
-      })
-    }
-  });
+  if (!isAuthenticated) {
+    return <Navigate router={router} to="/" />;
+  }
 
   const handleLogout = () => {
-    if (window.confirm('Are you sure you want to logout?')) {
+    if (window.confirm("Are you sure you want to logout?")) {
       logout().then(() => {
         router.invalidate().finally(() => {
-          navigate({ to: '/' })
-        })
-      })
+          navigate({ to: "/" });
+        });
+      });
     }
-  }
+  };
 
   return (
     <>
@@ -48,19 +44,19 @@ function AuthLayout() {
             <Link to="/home" className="[&.active]:font-bold">
               Home
             </Link>
-            {' | '}
+            {" | "}
             <Link to="/user_info" className="[&.active]:font-bold">
               User Info
             </Link>
-            {' | '}
+            {" | "}
             <Link to="/types" className="[&.active]:font-bold">
               Types
             </Link>
-            {' | '}
+            {" | "}
             <Link to="/objects" className="[&.active]:font-bold">
               Objects
             </Link>
-            {' | '}
+            {" | "}
             <Link to="/trashcan" className="[&.active]:font-bold">
               Trashcan
             </Link>
@@ -81,7 +77,8 @@ function AuthLayout() {
       </div>
       <div className="main-div">
         <Outlet />
+        <InitComponent show={status !== "success"} />
       </div>
     </>
-  )
+  );
 }

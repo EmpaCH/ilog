@@ -22,6 +22,18 @@ export async function getObjects(
   return result.getObjects();
 }
 
+export async function getObject(
+  api: openbis.OpenBISJavaScriptFacade,
+  permId: string,
+){
+  const sc = new openbis.SampleSearchCriteria();
+  sc.withPermId().thatEquals(permId);
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects();
+}
+
 export async function createObject(
   api: openbis.OpenBISJavaScriptFacade,
   type: string,

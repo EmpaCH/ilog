@@ -1,6 +1,12 @@
 import openbis from "@openbis/openbis.esm";
 import { convertOpenBISPropertyType } from "../type/commonType";
-import { PropertyType, convertPropertyTypeToCreation, LocalPropertyType } from "./commonPropertyType";
+import {
+  PropertyType,
+  convertPropertyTypeToCreation,
+  LocalPropertyType,
+  convertPropertyAssignment,
+  PropertyAssignment,
+} from "./commonPropertyType";
 
 /**
  * Fetches a property type by its code.
@@ -45,7 +51,7 @@ export async function createPropertyType(
   // Set execution options to execute operations in order
   const options = new openbis.SynchronousOperationExecutionOptions();
   options.setExecuteInOrder(true);
-  
+
   if (!ops) {
     return;
   } else {
@@ -69,8 +75,19 @@ export async function getPropertyTypes(
   // Search for property types
   const result = await api.searchPropertyTypes(sc, fo);
   // Filter out internally managed property types and convert the rest
-  return result
-    .getObjects()
-    .filter((property) => !property.isManagedInternally())
-    .map(convertOpenBISPropertyType);
+  return result.getObjects().map(convertOpenBISPropertyType);
+}
+
+export async function getPropertyAssignments(
+  api: openbis.OpenBISJavaScriptFacade
+): Promise<PropertyAssignment[]> {
+  const fetchOptions = new openbis.PropertyAssignmentFetchOptions();
+  fetchOptions.withPropertyType();
+  fetchOptions.withEntityType();
+  const assigments = await api.searchPropertyAssignments(
+    new openbis.PropertyAssignmentSearchCriteria(),
+    fetchOptions
+  );
+  //console.log("getPropertyAssignments", assigments.getObjects());
+  return assigments.getObjects().map(convertPropertyAssignment);
 }

@@ -4,8 +4,7 @@ import {
   iLogBaseAllTypes,
 } from "../../apis/shared/common";
 import { PropertyTypesSchema, ObjectTypeDefinition } from "../../apis/type/commonType";
-
-import { produce, current, original } from "immer";
+import { produce } from "immer";
 
 export type TypeCreatorActions =
   | { type: "SET_PREFIX"; payload: string }
@@ -46,10 +45,8 @@ export type TypeCreatorState = {
   schema: ObjectTypeDefinition;
 };
 
-
-
-export const typeCreatorReducer = produce(
-  (draft: TypeCreatorState, action: TypeCreatorActions) => {
+export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreatorActions): TypeCreatorState => { return produce(
+  (state), (draft:TypeCreatorState) => {
     switch (action.type) {
       case "CLEAR":
         draft.schema = getDefaultPropertyTypeDefintion(action.payload.baseType);
@@ -167,4 +164,4 @@ export const typeCreatorReducer = produce(
         break;
     }
   }
-);
+)};

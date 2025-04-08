@@ -54,7 +54,7 @@ type GroupedPropertyEditorsStateAction =
   | { type: "REMOVE_GROUP"; payload: { group: string } }
   | { type: "REORDER_GROUPS"; payload: { fromIndex: number; toIndex: number } }
   | { type: "CHANGE_PROPERTY_CODE"; payload: { oldCode: string; newCode: string } }
-  | { type: "ADD_PROPERTY"; payload: { code: string } };
+  | { type: "ADD_PROPERTY"; payload: { group: string; code: string } };
 
 // Reducer to handle component state changes
 // The most important is renaming the property, because
@@ -303,7 +303,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                     type: "ADD_PROPERTY",
                     payload: { group: propertyGroup, code: newPropertyCode },
                   })
-                  dispatch({ type: "ADD_PROPERTY", payload: { code: newPropertyCode } });
+                  dispatch({ type: "ADD_PROPERTY", payload: { code: newPropertyCode, group: propertyGroup } });
                 }}
                 color="primary"
               >

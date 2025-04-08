@@ -60,9 +60,21 @@ export async function parseElnSettingsProperties(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<ElnSettingsProperties> {
   const res = await getElnSettings(api);
-  return JSON.parse(res[generalElnSettings].getProperty(propertyElnSettings)) as ElnSettingsProperties;
+  return deserializeElnSettings(res);
 }
 
+export function deserializeElnSettings(res: { [index: string]: openbis.Sample; }): ElnSettingsProperties | PromiseLike<ElnSettingsProperties> {
+
+  return JSON.parse(res[generalElnSettings].getJsonProperty(propertyElnSettings) ?? "{}") as ElnSettingsProperties;
+}
+
+export function enableObjectTypesInElnSettings(properties: ElnSettingsProperties, typeName: string): ElnSettingsProperties {
+  properties.sampleTypeDefinitionsExtension = {
+    ...properties.sampleTypeDefinitionsExtension,
+    [typeName]: newTypeSettings,
+  };
+  return properties;
+}
 /**
  * Updates the ELN settings with new properties in the given OpenBIS API.
  * @param api - The OpenBIS API instance.

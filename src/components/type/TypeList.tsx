@@ -8,6 +8,8 @@ import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
 import { Column, TypeRow } from "../shared/list.types";
 import { iLogBaseTypesPropertyCode } from "../../apis/shared/common";
+import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
+import { useDeleteObjectType } from "../../apis/type/useDeleteObjectType";
 
 export const TypeList = () => {
   const { apiFacade } = useContext(AuthContext);
@@ -15,44 +17,32 @@ export const TypeList = () => {
   const [deletionMessage, setDeletionMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const res = useGetAllObjectTypes();
 
-  const res = useQuery({
-    queryKey: ["getObjectTypes"],
-    queryFn: async () => {
-      return getObjectTypes(apiFacade);
-    },
-  });
-
-  const types = useMemo(() => {
-    return res.data ? [...res.data] : [];
-  }, [res]);
-
-  const onDelete = async (
-    permId: any,
-    code: string,
-  ) => {
-    await deleteObjectType(
-      apiFacade,
-      permId as openbis.EntityTypePermId,
-    ).then(() => {
-      res.refetch();
+  const types = res.data ? [...res.data] : [];
+  
+  const deletion = useDeleteObjectType();
+  const onDelete = async (permId: any, code: string) => {
+    await deletion.mutateAsync(permId.permId);
+    if (deletion.isSuccess) {
       setDeletionMessage(`'${code}' deleted successfully.`);
       setIsSuccess(true);
       setShowMessage(true);
-    }).catch((e) => {
-      setDeletionMessage(e.message.replace(/\s*\([^)]*\)/g, ""));
+      // res.refetch();
+    }
+    if (deletion.isError) {
+      setDeletionMessage(deletion.error.message.replace(/\s*\([^)]*\)/g, ""));
       setIsSuccess(false);
       setShowMessage(true);
-    }).finally(() => {
-      setTimeout(() => {
-        setShowMessage(false);
-        }, 3000);
-    });
+    }
+    setTimeout(() => {
+      setShowMessage(false);
+    }, 3000);
   };
-  
+
   const onEdit = async (
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
-    code: string,
+    code: string
   ) => {
     const type = types.find((t) => t.getCode() === code);
     if (type) {
@@ -64,12 +54,12 @@ export const TypeList = () => {
       setIsSuccess(false);
       setShowMessage(true);
       setTimeout(() => {
-      setShowMessage(false);
+        setShowMessage(false);
       }, 3000);
     }
   };
 
-  const columns: Column[] = [ 
+  const columns: Column[] = [
     {
       key: "code",
       name: "Code",
@@ -102,26 +92,28 @@ export const TypeList = () => {
     },
   ];
 
-  const rows: TypeRow[] = types.map(
-    (type: openbis.SampleType) => {
-      const categoryAssignment = type.getPropertyAssignments()
-        .find((assignment) => assignment.getPropertyType().getCode() === iLogBaseTypesPropertyCode);
+  const rows: TypeRow[] = types.map((type: openbis.SampleType) => {
+    const categoryAssignment = type
+      .getPropertyAssignments()
+      .find(
+        (assignment) =>
+          assignment.getPropertyType().getCode() === iLogBaseTypesPropertyCode
+      );
 
-      return {
-        permId: type.getPermId(),
-        code: type.getCode(),
-        prefix: type.getGeneratedCodePrefix(),
-        description: type.getDescription(),
-        category: categoryAssignment?.getPropertyType().getCode(),
-        // TODO: use "category" to show whether the item it an Instrument or Component
-      }
-    }
-  );
+    return {
+      permId: type.getPermId(),
+      code: type.getCode(),
+      prefix: type.getGeneratedCodePrefix(),
+      description: type.getDescription(),
+      category: categoryAssignment?.getPropertyType().getCode(),
+      // TODO: use "category" to show whether the item it an Instrument or Component
+    };
+  });
 
   return (
     <>
       <h2>Type List</h2>
-      <List 
+      <List
         columns={columns}
         rows={rows}
         defaultSortColumn="code"
@@ -136,4 +128,4 @@ export const TypeList = () => {
       />
     </>
   );
-}
+};
