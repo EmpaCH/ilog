@@ -13,7 +13,7 @@ import {
   INSTRUMENT_TYPE_DEFINITION,
   iLogBaseTypes,
   iLogBaseAllTypes,
-  EMPTY_TYPE_DEFINITION
+  EMPTY_TYPE_DEFINITION,
 } from "../../apis/shared/common";
 import {
   PropertyTypesSchema,
@@ -25,9 +25,10 @@ import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes
 import { typeCreatorReducer } from "./TypeActions";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
-import { useCreateObjectType, useUpdateObjectType } from "../../apis/type/useCreateObjectType";
-import { useGetAllTypes } from "../../apis/type/useGetAllTypes";
+import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
+import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 import openbis from "@openbis/openbis.esm";
+import { useGetObjectType } from "../../apis/type/useGetObjectType.ts";
 
 // define whether this will be a Type Creator or Editor component
 const creatorModes = ["create", "edit"] as const;
@@ -37,16 +38,15 @@ interface TypeCreatorProps {
   objectTypeCode: string;
 }
 
-export const TypeCreator: React.FC<TypeCreatorProps> = ({
+export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   mode,
   objectTypeCode,
 }) => {
-  
-  // Initialize the useCreateObjectType and useUpdateObjectType hooks and fetch object and property types
+  // Initialize the useCreateObjectType hook and fetch object and property types
   const typeCreation = useCreateObjectType();
-  const typeUpdate = useUpdateObjectType();
   const allPropertyTypesResult = useGetPropertyTypes();
-  const allObjectTypesResult = useGetAllTypes();
+  // const objectTypeResult = useGetObjectType(objectTypeCode);
+  const allObjectTypesResult = useGetAllObjectTypes();
   const navigate = useNavigate();
 
   // Dispatch is used to update the state of the component
@@ -66,12 +66,12 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
   const lockedPropertyCodes = Object.entries(
     INSTRUMENT_TYPE_DEFINITION.propertyTypes
   ).flatMap(([_, assignment]) => assignment.map((el) => el.code));
-  const lockedGroups = Object.keys(
-    INSTRUMENT_TYPE_DEFINITION.propertyTypes
-  );
+
+  const lockedGroups = Object.keys(INSTRUMENT_TYPE_DEFINITION.propertyTypes);
 
   // If the object and property types have been fetched, set the object type template and property types
   if (allPropertyTypesResult.status == "success" && allObjectTypesResult.status == "success" && initial) {
+  // if (objectTypeResult.status == "success" && initial && allPropertyTypesResult.status == "success" && allPropertyTypesResult.data.length > 0) {
     // Set the object type template
     const openbisSampleType = allObjectTypesResult.data?.find(
       (it) => {
@@ -79,6 +79,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
       }
     ) as openbis.SampleType;
     const objectTypeTemplate: ObjectTypeDefinition = openbisSampleType ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType) : EMPTY_TYPE_DEFINITION;
+
     dispatch({
       type: "SET_OBJECT_TYPE_TEMPLATE",
       payload: { objecttypetemplate: objectTypeTemplate}
@@ -86,6 +87,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
     
     // Set the property types
     const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
+    // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
       ([group, propertyTypesGroup]) => {
         return [
           group,
@@ -97,18 +99,17 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
         ];
       }
     );
+
     dispatch({
       type: "SET_ALL_PROPERTYTYPES",
-      payload: { schema: Object.fromEntries(resolvedTypes) as PropertyTypesSchema },
+      payload: {
+        schema: Object.fromEntries(resolvedTypes) as PropertyTypesSchema,
+      },
     });
 
     // Set the initial state to false
     setInitial(false);
-  }     
-
-
-
-
+  }
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -117,39 +118,45 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
-      typeUpdate.mutate({
-        definition: state.schema,
-      }, {
-        onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
-          setMessageColor("rgb(243, 18, 96)");
-          setShowMessage(true);
-          setLoading(false);
+      typeCreation.mutate(
+        {
+          definition: state.schema,
         },
-        onSuccess: () => {
-          setMessage("Type updated successfully!");
-          setMessageColor("rgb(23, 201, 100)");
-          setShowMessage(true);
-          handleClear(2000);
-        },
-      });
+        {
+          onError: (err) => {
+            setMessage(err.message.split(" (Context:")[0]);
+            setMessageColor("rgb(243, 18, 96)");
+            setShowMessage(true);
+            setLoading(false);
+          },
+          onSuccess: () => {
+            setMessage("Type updated successfully!");
+            setMessageColor("rgb(23, 201, 100)");
+            setShowMessage(true);
+            handleClear(2000);
+          },
+        }
+      );
     } else {
-      typeCreation.mutate({
-        definition: state.schema,
-      }, {
-        onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
-          setMessageColor("rgb(243, 18, 96)");
-          setShowMessage(true);
-          setLoading(false);
+      typeCreation.mutate(
+        {
+          definition: state.schema,
         },
-        onSuccess: () => {
-          setMessage("Type created successfully!");
-          setMessageColor("rgb(23, 201, 100)");
-          setShowMessage(true);
-          handleClear(2000);
-        },
-      });
+        {
+          onError: (err) => {
+            setMessage(err.message.split(" (Context:")[0]);
+            setMessageColor("rgb(243, 18, 96)");
+            setShowMessage(true);
+            setLoading(false);
+          },
+          onSuccess: () => {
+            setMessage("Type created successfully!");
+            setMessageColor("rgb(23, 201, 100)");
+            setShowMessage(true);
+            handleClear(2000);
+          },
+        }
+      );
     }
   };
 
@@ -243,10 +250,19 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
         dispatch({ type: "ADD_GROUP", payload: "newgroup" });
         break;
       case "REMOVE_GROUP":
-        dispatch({ type: "REMOVE_GROUP", payload: { group: event.payload.group } });
+        dispatch({
+          type: "REMOVE_GROUP",
+          payload: { group: event.payload.group },
+        });
         break;
       case "REORDER_GROUPS":
-        dispatch({ type: "REORDER_GROUPS", payload: { fromIndex: event.payload.fromIndex, toIndex: event.payload.toIndex } });
+        dispatch({
+          type: "REORDER_GROUPS",
+          payload: {
+            fromIndex: event.payload.fromIndex,
+            toIndex: event.payload.toIndex,
+          },
+        });
         break;
     }
   };
@@ -373,7 +389,7 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
           >
             Back
           </Button>
-            <Button
+          <Button
             type="button"
             color="danger"
             className="mx-2"
@@ -384,17 +400,17 @@ export const TypeCreator: React.FC<TypeCreatorProps> = ({
               handleClear(0);
               }
             }}
-            >
-            {mode === "edit" ? "Reset" : "Clear"}
-            </Button>
-          <Button
-          type="submit"
-          color="primary"
-          className="mx-2"
-          isDisabled={typeCreation.isPending}
-          isLoading={loading}
           >
-          {mode === "edit" ? "Update" : "Create"}
+            {mode === "edit" ? "Reset" : "Clear"}
+          </Button>
+          <Button
+            type="submit"
+            color="primary"
+            className="mx-2"
+            isDisabled={typeCreation.isPending}
+            isLoading={loading}
+          >
+            {mode === "edit" ? "Update" : "Create"}
           </Button>
         </div>
       </form>

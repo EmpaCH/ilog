@@ -12,3 +12,10 @@ tasks:
     desc: Start the development server
     deps:
       - start_openbis
+  
+  test:
+    cmds:
+      - npm run test 
+    desc: Run the tests
+    deps:
+      - start_openbis

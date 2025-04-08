@@ -4,6 +4,7 @@ import { initProperties } from "./initElnSettings";
 import { createObjectType } from "../type/typeAPI";
 import { createPropertyType } from "../propertyType/propertyTypeAPI";
 import { createVocabulary, getVocabulary } from "../vocabulary/vocabularyAPI";
+import { useCreateObjectType } from "../type/useCreateObjectType";
 
 /**
  * Creates the iLog property type if it does not already exist.
@@ -172,6 +173,9 @@ export async function createCollection(
   return result.getObjects()[0];
 }
 
+
+
+
 /**
  * Initializes the iLog environment by creating necessary property types, vocabularies, spaces, projects, and collections.
  * @param api - The OpenBIS JavaScript facade instance.
@@ -186,8 +190,11 @@ export async function initIlog(
   const projectId = await createProject(api, spaceId);
   const collection = await createCollection(api, projectId);
   await createIlogBaseTypeProperty(api);
-  await createObjectType(api, common.COMPONENT_TYPE_DEFINITION);
-  await createObjectType(api, common.INSTRUMENT_TYPE_DEFINITION);
+  const creation = useCreateObjectType();
+  creation.mutate({ definition: common.COMPONENT_TYPE_DEFINITION });
+  creation.mutate({ definition: common.INSTRUMENT_TYPE_DEFINITION });
+
+
   common.env.setEnv(collection, collection.getProject(), collection.getProject().getSpace());
   console.log("App environment initialized.");
 }

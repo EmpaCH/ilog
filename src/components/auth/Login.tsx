@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect } from 'react';
-import { Link, useRouter, useNavigate } from '@tanstack/react-router';
+import { Link, useRouter, useNavigate, Navigate } from '@tanstack/react-router';
 import { Button, Input, Divider } from "@heroui/react";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -17,13 +17,13 @@ function Login() {
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
-  useEffect(() => { 
-    if (isAuthenticated) {
-      router.invalidate().finally(() => {
-        navigate({ to: '/home' })
-      })
-    }
-  });
+  // useEffect(() => { 
+  //   if (isAuthenticated) {
+  //     router.invalidate().finally(() => {
+  //       navigate({ to: '/home' })
+  //     })
+  //   }
+  // }, []);
 
   const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,6 +44,13 @@ function Login() {
       setErrorMessage('Login failed');
     });
   };
+
+  if(isAuthenticated) {
+    console.log('User is logged in, redirecting to /home');
+    return <Navigate to="/home" router={router}/>;
+  }else{
+    console.log('User is not logged in');
+  }
 
   return (
     <div className="main-div">

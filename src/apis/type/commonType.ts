@@ -66,8 +66,10 @@ export interface ObjectTypeDefinition {
 
 // Interface for structured creations
 export interface StructuredCreations {
-  propertyTypeCreations: openbis.PropertyTypeCreation[];
-  objectTypeCreations: openbis.SampleTypeCreation[];
+  propertyTypeCreations?: openbis.PropertyTypeCreation[];
+  propertyTypeUpdates?: openbis.PropertyTypeUpdate[];
+  objectTypeCreations?: openbis.SampleTypeCreation[];
+  objectTypeUpdates?: openbis.SampleTypeUpdate[];
 }
 
 /**
