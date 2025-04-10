@@ -8,7 +8,14 @@ export const useGetObjectType = (permId: string) => {
     return useQuery({
     queryKey: [permId],
     queryFn: async () => {
-      return getObjectType(apiFacade, permId);
+      const res = await getObjectType(apiFacade, permId);
+      if(res === null || res === undefined) {
+        throw new Error("Object type not found");
+      }
+      else {
+        return res;
+      }
+  
     },
   });
 }

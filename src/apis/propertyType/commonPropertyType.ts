@@ -4,6 +4,10 @@ import { convertDataTypeToOpenBISDataType } from "../type/commonType";
 
 export const propertyTypeKinds = ["local", "reference"] as const;
 
+export const CUSTOM_WIDGET_KEY = "custom-widget";
+
+export const CUSTOM_WIDGETS = ["IMAGE"] as const;
+
 export interface PropertyTypeCommon {
   code: string;
   description: string;
@@ -11,10 +15,15 @@ export interface PropertyTypeCommon {
   type: (typeof propertyTypeKinds)[number];
 }
 
+export interface MetadataWithWidget extends Record<string, string | undefined> {
+  [CUSTOM_WIDGET_KEY]?: string | undefined;
+}
+
 export interface LocalPropertyType extends PropertyTypeCommon {
   dataType: DataType;
   type: "local";
   multivalued: boolean;
+  metadata: Record<string, string> | null;
 }
 
 export interface LocalPrimitivePropertyType extends LocalPropertyType {
@@ -37,6 +46,7 @@ export interface LocalControlledVocabularyPropertyType
 
 export interface ReferencePropertyType {
   code: string;
+  description?: string;
   type: "reference";
 }
 
@@ -110,6 +120,10 @@ export function initializeCreation(
   creation.setMultiValue(propertyType.multivalued);
   creation.setLabel(propertyType.label);
   creation.setDescription(propertyType.description);
+  if(propertyType.metadata) {
+    creation.setMetaData(propertyType.metadata);
+  }
+  console.log("PropertyTypeCreation", creation);
   return creation;
 }
 

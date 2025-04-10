@@ -25,10 +25,12 @@ import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes
 import { typeCreatorReducer } from "./TypeActions";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
+
 import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
-import openbis from "@openbis/openbis.esm";
 import { useGetObjectType } from "../../apis/type/useGetObjectType.ts";
+import openbis from "@openbis/openbis.esm";
+import "../../index.css";
 
 // define whether this will be a Type Creator or Editor component
 const creatorModes = ["create", "edit"] as const;
@@ -59,8 +61,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const [initial, setInitial] = useState(true);
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
-  const [messageColor, setMessageColor] = useState("rgb(23, 201, 100)");
-  const [objectBaseType, setObjectBaseType] = useState(""); // §TODO: Basetype behavior not well defined yet
+  const [messageColor, setMessageColor] = useState("success-message");
+  const [objectBaseType, setObjectBaseType] = useState("");
+  const [newPropertyCount, setNewPropertyCount] = useState(0);
 
   // Some basic property types are given based on the ilogbasetype we lock these properties
   const lockedPropertyCodes = Object.entries(
@@ -118,45 +121,39 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
-      typeCreation.mutate(
-        {
-          definition: state.schema,
+      typeCreation.mutate({
+        definition: state.schema,
+      }, {
+        onError: (err) => {
+          setMessage(err.message.split(" (Context:")[0]);
+          setMessageColor("error-message");
+          setShowMessage(true);
+          setLoading(false);
         },
-        {
-          onError: (err) => {
-            setMessage(err.message.split(" (Context:")[0]);
-            setMessageColor("rgb(243, 18, 96)");
-            setShowMessage(true);
-            setLoading(false);
-          },
-          onSuccess: () => {
-            setMessage("Type updated successfully!");
-            setMessageColor("rgb(23, 201, 100)");
-            setShowMessage(true);
-            handleClear(2000);
-          },
-        }
-      );
+        onSuccess: () => {
+          setMessage("Type updated successfully!");
+          setMessageColor("success-message");
+          setShowMessage(true);
+          handleClear(2000);
+        },
+      });
     } else {
-      typeCreation.mutate(
-        {
-          definition: state.schema,
+      typeCreation.mutate({
+        definition: state.schema,
+      }, {
+        onError: (err) => {
+          setMessage(err.message.split(" (Context:")[0]);
+          setMessageColor("error-message");
+          setShowMessage(true);
+          setLoading(false);
         },
-        {
-          onError: (err) => {
-            setMessage(err.message.split(" (Context:")[0]);
-            setMessageColor("rgb(243, 18, 96)");
-            setShowMessage(true);
-            setLoading(false);
-          },
-          onSuccess: () => {
-            setMessage("Type created successfully!");
-            setMessageColor("rgb(23, 201, 100)");
-            setShowMessage(true);
-            handleClear(2000);
-          },
-        }
-      );
+        onSuccess: () => {
+          setMessage("Type created successfully!");
+          setMessageColor("success-message");
+          setShowMessage(true);
+          handleClear(2000);
+        },
+      });
     }
   };
 
@@ -348,7 +345,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         <Input
           id="prefix"
           label="Prefix"
-          placeholder="If left empty then the code's first 5 characters will be used as a prefix"
+          placeholder="If left empty then the code's first 10 characters will be used as a prefix"
           type="text"
           className="form-field"
           value={state.schema.generatedCodePrefix ?? ""}

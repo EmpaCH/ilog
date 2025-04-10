@@ -9,8 +9,13 @@ export const useSearchPropertyType = (code: string) => {
 
   return useQuery({
     queryKey: [QUERY_PREFIX, code],
-    queryFn: () => {
-      return getPropertyType(apiFacade, code);
+    queryFn: async () => {
+      const res = await getPropertyType(apiFacade, code);
+      if (res === null || res === undefined) {
+        throw new Error("Property type not found");
+      } else {
+        return res;
+      }
     },
   });
 };

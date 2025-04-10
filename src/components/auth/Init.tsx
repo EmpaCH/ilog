@@ -39,7 +39,7 @@ export function InitComponent({ show }: { show: boolean }) {
       <Modal isOpen={show || showModal}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
-            Initalising iLog
+            Initializing iLog
           </ModalHeader>
           <ModalBody>
             <Card>

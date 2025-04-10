@@ -21,6 +21,7 @@ import { Route as AuthHomeImport } from './routes/_auth/home'
 import { Route as AuthTypesIndexImport } from './routes/_auth/types/index'
 import { Route as AuthObjectsIndexImport } from './routes/_auth/objects/index'
 import { Route as AuthTypesCreatorImport } from './routes/_auth/types/creator'
+import { Route as AuthObjectsHistoryImport } from './routes/_auth/objects/history'
 import { Route as AuthObjectsCreatorImport } from './routes/_auth/objects/creator'
 
 // Create Virtual Routes
@@ -71,6 +72,11 @@ const AuthObjectsIndexRoute = AuthObjectsIndexImport.update({
 
 const AuthTypesCreatorRoute = AuthTypesCreatorImport.update({
   path: '/types/creator',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthObjectsHistoryRoute = AuthObjectsHistoryImport.update({
+  path: '/objects/history',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -132,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthObjectsCreatorImport
       parentRoute: typeof AuthImport
     }
+    '/_auth/objects/history': {
+      id: '/_auth/objects/history'
+      path: '/objects/history'
+      fullPath: '/objects/history'
+      preLoaderRoute: typeof AuthObjectsHistoryImport
+      parentRoute: typeof AuthImport
+    }
     '/_auth/types/creator': {
       id: '/_auth/types/creator'
       path: '/types/creator'
@@ -165,6 +178,7 @@ export const routeTree = rootRoute.addChildren({
     AuthTrashcanRoute,
     AuthUserinfoRoute,
     AuthObjectsCreatorRoute,
+    AuthObjectsHistoryRoute,
     AuthTypesCreatorRoute,
     AuthObjectsIndexRoute,
     AuthTypesIndexRoute,
@@ -195,6 +209,7 @@ export const routeTree = rootRoute.addChildren({
         "/_auth/trashcan",
         "/_auth/user_info",
         "/_auth/objects/creator",
+        "/_auth/objects/history",
         "/_auth/types/creator",
         "/_auth/objects/",
         "/_auth/types/"
@@ -217,6 +232,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_auth/objects/creator": {
       "filePath": "_auth/objects/creator.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/objects/history": {
+      "filePath": "_auth/objects/history.tsx",
       "parent": "/_auth"
     },
     "/_auth/types/creator": {

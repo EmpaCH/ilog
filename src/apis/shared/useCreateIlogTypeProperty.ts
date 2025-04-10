@@ -12,11 +12,11 @@ export const useCreateIlogTypeProperty = () => {
     const { apiFacade } = useContext(AuthContext);
     const existingPropertyTypesResult = useGetPropertyTypes();
     const ilogExisting = useSearchPropertyType(ILOG_BASE_TYPES_PROPERTY.code);
+    console.log('iLog property type', ilogExisting.error);
     return useMutation({
         mutationFn: async () => {
             const ilogExistingRes = await ilogExisting.refetch();
-            const existingPropertyTypesResultRes = await existingPropertyTypesResult.refetch();
-            if(ilogExistingRes.isSuccess && existingPropertyTypesResultRes.isSuccess){
+            if(ilogExistingRes.isSuccess && ilogExistingRes.data !== null) {
                 if (ilogExistingRes.data !== null) {
                     const newProp = new openbis.PropertyTypeCreation();
                     newProp.setCode(iLogID);

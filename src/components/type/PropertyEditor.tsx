@@ -1,10 +1,12 @@
 import React, { useEffect, useReducer, useState } from "react";
 import { DataType, ALL_DATA_TYPES } from "../../apis/type/commonType";
 import {
+  CUSTOM_WIDGETS,
+  CUSTOM_WIDGET_KEY,
   LocalPropertyTypeVariants,
   PropertyType,
 } from "../../apis/propertyType/commonPropertyType";
-import {  
+import {
   Button,
   Card,
   CardBody,
@@ -21,6 +23,8 @@ import {
   PropertyTypeEditorActions,
   propertyTypeEditorReducer,
 } from "./PropertyTypeActions";
+import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
+import { useGetVocabularies } from "../../apis/vocabulary/useGetVocabularies";
 
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
@@ -35,7 +39,7 @@ type DataTypeSelectProps = {
 };
 
 const DataTypeSelect = ({
-  disabled=false,
+  disabled = false,
   defaultValue,
   onSelectionChange,
 }: DataTypeSelectProps) => {
@@ -46,8 +50,8 @@ const DataTypeSelect = ({
       defaultSelectedKeys={[defaultValue]}
       selectionMode="single"
       onSelectionChange={(selection) => {
-        if(!disabled) {
-          onSelectionChange(selection.currentKey as DataType)
+        if (!disabled) {
+          onSelectionChange(selection.currentKey as DataType);
         }
       }}
     >
@@ -118,13 +122,17 @@ export const PropertyEditor = ({
       (form?.elements[index + 1] as HTMLElement)?.focus();
       event.preventDefault();
     }
-  }
-  
+  };
+
+  const allVocabularies = useGetVocabularies();
 
   return (
-    <Card isDisabled={locked} style={{ pointerEvents: locked ? "none" : "auto" }}>
+    <Card
+      isDisabled={locked}
+      style={{ pointerEvents: locked ? "none" : "auto" }}
+    >
       <CardHeader className="flex gap-3">
-      {`Property: ${state.code}`}
+        {`Property: ${state.code}`}
       </CardHeader>
 
       <CardBody>
@@ -157,13 +165,13 @@ export const PropertyEditor = ({
             defaultValue={state.label}
             onChange={(value) =>
               dispatch({
-                type: "SET_DESCRIPTION",
+                type: "SET_LABEL",
                 payload: value.target.value,
               })
             }
             onKeyDown={handleInputKeyDown}
           />
-          <DataTypeSelect  
+          <DataTypeSelect
             defaultValue={propertyTypeDefinitions.dataType}
             onSelectionChange={(value) =>
               dispatch({ type: "SET_DATA_TYPE", payload: value })
@@ -171,7 +179,27 @@ export const PropertyEditor = ({
           />
 
           {state.dataType === "CONTROLLEDVOCABULARY" ? (
-            <Input disabled={locked} label="Vocabulary ID" />
+            <Autocomplete
+              disabled={locked}
+              label="Vocabulary ID"
+              onChange={(value) =>
+                dispatch({
+                  type: "SET_VOCABULARY",
+                  payload: value.target.value,
+                })
+              }
+            >
+              {allVocabularies?.data?.map((vocabulary) => {
+                return (
+                  <AutocompleteItem
+                    key={vocabulary.getCode()}
+                    value={vocabulary.getCode()}
+                  >
+                    {vocabulary.getCode()}
+                  </AutocompleteItem>
+                );
+              }) ?? <></>}
+            </Autocomplete>
           ) : null}
           {state.dataType === "OBJECT" ? (
             <ObjectTypeAutoComplete
@@ -179,15 +207,32 @@ export const PropertyEditor = ({
               onSelectionChange={(str) => str}
             />
           ) : null}
-            <Checkbox
+          <Checkbox
             defaultChecked={state.multivalued}
             checked={state.multivalued}
-            onChange={(value) => 
-              dispatch({ type: "SET_MULTIVALUED", payload: value.target.checked })
+            onChange={(value) =>
+              dispatch({
+                type: "SET_MULTIVALUED",
+                payload: value.target.checked,
+              })
             }
-            >
+          >
             Multivalued
-            </Checkbox>
+          </Checkbox>
+          <Select
+            label="Widget"
+            onChange={(value) =>
+              dispatch({
+                type: "SET_WIDGET",
+                payload: { widget: value.target.value },
+              })
+            }
+            selectedKeys={[state.metadata?.[CUSTOM_WIDGET_KEY] || ""]}
+          >
+            {CUSTOM_WIDGETS.map((widget) => (
+              <SelectItem key={widget}>{widget}</SelectItem>
+            ))}
+          </Select>
         </div>
       </CardBody>
     </Card>

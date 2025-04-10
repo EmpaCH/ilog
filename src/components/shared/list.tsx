@@ -15,6 +15,7 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
+import HistoryIcon from "@mui/icons-material/History";
 import { Column, Row } from "./list.types";
 import openbis from "@openbis/openbis.esm";
 
@@ -23,13 +24,17 @@ export const List = (props: {
   rows: Row[];
   defaultSortColumn: string;
   navigatePath: string;
+  enableHistory?: boolean;
   onDelete: (
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
-    code: string
+    code: string,
   ) => void;
   onEdit: (
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
-    code: string
+    code: string,
+  ) => void;
+  onHistory?: (
+    code: string,
   ) => void;
 }) => {
   const navigate = useNavigate();
@@ -213,13 +218,24 @@ export const List = (props: {
     return (
       <TableRow key={permId.getPermId()}>
         {...renderRowCells(permId, newRow)}
-        <TableCell style={{ width: "155px" }}>
+        <TableCell style={{ width: props.enableHistory ? "220px" : "155px" }}>
+          {props.enableHistory && 
+            <Button
+              type="button"
+              color="primary"
+              variant="light"
+              size="sm"
+              onPress={() => props.onHistory && props.onHistory(newRow[props.defaultSortColumn])}
+            >
+              <HistoryIcon />
+            </Button>
+          }
           <Button
             type="button"
             color="success"
             variant="light"
             size="sm"
-            onPress={(e) => props.onEdit(permId, newRow[props.defaultSortColumn])}
+            onPress={() => props.onEdit(permId, newRow[props.defaultSortColumn])}
           >
             <DriveFileRenameOutlineIcon />
           </Button>
@@ -228,7 +244,7 @@ export const List = (props: {
             color="danger"
             variant="light"
             size="sm"
-            onPress={(e) =>
+            onPress={() =>
               props.onDelete(permId, (newRow as Record<string, string>)[props.defaultSortColumn])
             }
           >
