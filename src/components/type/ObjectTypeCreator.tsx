@@ -10,10 +10,11 @@ import {
   Spinner,
 } from "@heroui/react";
 import {
-  INSTRUMENT_TYPE_DEFINITION,
   iLogBaseTypes,
   iLogBaseAllTypes,
+  iLogBaseTypesType,
   EMPTY_TYPE_DEFINITION,
+  getDefaultPropertyTypeDefintion,
 } from "../../apis/shared/common";
 import {
   PropertyTypesSchema,
@@ -25,10 +26,8 @@ import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes
 import { typeCreatorReducer } from "./TypeActions";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
-
 import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
-import { useGetObjectType } from "../../apis/type/useGetObjectType.ts";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 
@@ -62,15 +61,14 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [messageColor, setMessageColor] = useState("success-message");
-  const [objectBaseType, setObjectBaseType] = useState("");
-  const [newPropertyCount, setNewPropertyCount] = useState(0);
+  const [objectBaseType, setObjectBaseType] = useState(EMPTY_TYPE_DEFINITION);
 
   // Some basic property types are given based on the ilogbasetype we lock these properties
   const lockedPropertyCodes = Object.entries(
-    INSTRUMENT_TYPE_DEFINITION.propertyTypes
+    objectBaseType.propertyTypes
   ).flatMap(([_, assignment]) => assignment.map((el) => el.code));
 
-  const lockedGroups = Object.keys(INSTRUMENT_TYPE_DEFINITION.propertyTypes);
+  const lockedGroups = Object.keys(objectBaseType.propertyTypes);
 
   // If the object and property types have been fetched, set the object type template and property types
   if (allPropertyTypesResult.status == "success" && allObjectTypesResult.status == "success" && initial) {
@@ -118,6 +116,14 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
+
+    if (state.schema.baseType === "INSTRUMENT" && state.schema.propertyTypes.Components.length === 0) {
+      setMessage("An instrument must have at least one component.");
+      setMessageColor("error-message");
+      setShowMessage(true);
+      setLoading(false);
+      return;
+    }
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
@@ -180,8 +186,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     if (mode === "edit") {
       window.location.reload();
     } else {
-      dispatch({ type: "CLEAR", payload: { baseType: "EMPTY" } });
-      setObjectBaseType("");
+      dispatch({ type: "CLEAR", payload: {} });
+      setObjectBaseType(EMPTY_TYPE_DEFINITION);
       setLoading(false);
       setTimeout(() => {
         setMessage("");
@@ -191,12 +197,15 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   };
 
   const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
-    setObjectBaseType(value.target.value);
-    const newValue = value.target.value != "" ? value.target.value : "EMPTY";
+    const selectedValue = iLogBaseTypes.includes(value.target.value as string as iLogBaseTypesType) ?
+      value.target.value as iLogBaseTypesType
+      : "EMPTY";
+    const selectedType = getDefaultPropertyTypeDefintion(selectedValue)
+    setObjectBaseType(selectedType);
     dispatch({
-      type: "CLEAR",
+      type: "SET_BASE_TYPE",
       payload: {
-        baseType: newValue as iLogBaseAllTypes,
+        newBaseType: selectedValue as iLogBaseAllTypes,
       },
     });
   };
@@ -273,7 +282,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     }
   }
 
-
   // If trying to edit an object, then show a spinner until the object is fetched
   if (initial && mode === "edit") {
     return <Spinner />;
@@ -287,7 +295,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           isRequired
           label="Is this type an instrument or a component?"
           // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
-          selectedKeys={[state.schema.baseType ?? "INSTRUMENT"]}
           onChange={handleSelectBaseType}
         >
           {iLogBaseTypes.map((type) => (
@@ -328,10 +335,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
                     dispatch({ type: "SET_CODE", payload: objectTypeCode });
                   }
                 }
-
-
             }
-            
           }}
           autoComplete="off"
           list="type-suggestions"
