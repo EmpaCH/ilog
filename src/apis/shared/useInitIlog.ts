@@ -6,11 +6,10 @@ import {
 import { useCreateIlogTypeProperty } from "./useCreateIlogTypeProperty";
 import { useCreateSpace } from "../space/useCreateSpace";
 import { useCreateProject } from "../project/useCreateProject";
-import { labID, iLogID } from "./environment";
+import { labID, iLogID, collectionID } from "./environment";
 import { useCreateCollection } from "../collection/useCreateCollection";
 import { useGetElnSettings } from "../eln/useGetElnSettings";
 import { useUpdateElnSettings } from "../eln/useUpdateElnSettings";
-import { useCreateObject } from "../object/useCreate";
 import {
   COMPONENT_TYPE_DEFINITION,
   ILOG_BASE_TYPES_PROPERTY,
@@ -51,7 +50,7 @@ export const useInitIlog = () => {
   const collectionCreation = useCreateCollection(
     labID,
     iLogID,
-    iLogID,
+    collectionID,
     "COLLECTION",
     "COLLECTION"
   );
@@ -104,8 +103,8 @@ export const useInitIlog = () => {
           "Initializing iLog property type...",
           iLogPropertyCreation.status
         );
-        await iLogPropertyCreation.mutateAsync();
-
+        const res = await iLogPropertyCreation.mutateAsync();
+        console.log("iLog property type", res);
         console.log("iLog property type initialized.");
         emitMessage(
           "Initializing iLog vocabulary...",

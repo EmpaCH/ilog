@@ -1,5 +1,5 @@
 import openbis from "@openbis/openbis.esm";
-import { iLogID, labID, collectionID, env } from "../shared/common";
+import { iLogID, labID, collectionID } from "../shared/common";
 
 // TODO
 // 1.Look for templates in the settings
@@ -9,6 +9,11 @@ import { iLogID, labID, collectionID, env } from "../shared/common";
 //   Probably we can use some internal field to keep track of the inheritance relationships on the openbis 
 //   Maybe we create a very base type in openbis which has some hidden fields that we use to track the inheritance
 
+/**
+ * Get all objects from the iLog inventory Equipment collection.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @returns A promise that resolves to an array of Sample objects.
+ */
 export async function getObjects(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<openbis.Sample[]> {
@@ -18,44 +23,100 @@ export async function getObjects(
   sc.withExperiment().withCode().thatEquals(collectionID);
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
+  fo.withProperties();
+  fo.withPropertiesHistory();
+
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withType().withPropertyAssignmentsUsing(ao);
+
   const result = await api.searchSamples(sc, fo);
   return result.getObjects();
 }
 
 export async function getObject(
   api: openbis.OpenBISJavaScriptFacade,
-  permId: string,
-){
+  code: string,
+): Promise<openbis.Sample[]>{
   const sc = new openbis.SampleSearchCriteria();
-  sc.withPermId().thatEquals(permId);
+  sc.withCode().thatEquals(code);
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
+  fo.withProperties();
+  fo.withPropertiesHistory();
+
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withType().withPropertyAssignmentsUsing(ao);
+
   const result = await api.searchSamples(sc, fo);
   return result.getObjects();
 }
 
+/**
+ * Create a new object in the iLog inventory Equipment collection.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param type - The object type.
+ * @param name - The object name.
+ */
 export async function createObject(
   api: openbis.OpenBISJavaScriptFacade,
   type: string,
-  name: string,
-  location: string,
-  props:  {[key: string]: string},
+  code: string,
+  properties: object,
+  spacePermId: openbis.SpacePermId,
+  projectPermId: openbis.ProjectPermId,
+  collectionPermId: openbis.ExperimentPermId,
 ): Promise<void> {
-  if (env.isDefined()) {
-    const newObj = new openbis.SampleCreation();
-    newObj.setTypeId(new openbis.EntityTypePermId(type));
-    newObj.setCode(name);
-    newObj.setProperty(iLogID, true);
-    newObj.setExperimentId(env.collection.getPermId());
-    newObj.setProjectId(env.project.getPermId());
-    newObj.setSpaceId(env.space.getPermId());
-    await api.createSamples([newObj]);
+  const newObj = new openbis.SampleCreation();
+  newObj.setTypeId(new openbis.EntityTypePermId(type));
+  newObj.setCode(code);
+  newObj.setProperty(iLogID, true);
+  newObj.setExperimentId(collectionPermId);
+  newObj.setProjectId(projectPermId);
+  newObj.setSpaceId(spacePermId);
+  for (const [key, value] of Object.entries(properties)) {
+    newObj.setProperty(key, value);
   }
-  else {
-    console.log('App environment is undefined.');
-  }
+  await api.createSamples([newObj]);
 }
 
+/**
+ * Update an existing object.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param sampleId - The ID of the object to update.
+ * @param name - The object updated name.
+ */
+export async function updateObject(
+  api: openbis.OpenBISJavaScriptFacade,
+  sampleId: openbis.ISampleId,
+  properties: object,
+): Promise<void> {
+  const updateObj = new openbis.SampleUpdate();
+  updateObj.setSampleId(sampleId);
+  for (const [key, value] of Object.entries(properties)) {
+    updateObj.setProperty(key, value);
+  }
+  await api.updateSamples([updateObj]);
+  // const tag = new openbis.TagCreation();
+  // tag.setCode("test");
+  // tag.setSampleIds([sampleId]);
+  // await api.createTags([tag]);
+}
+
+/**
+ * Delete an object.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param sampleId - The ID of the object to delete.
+ */
 export async function deleteObject(
   api: openbis.OpenBISJavaScriptFacade,
   sampleId: openbis.SamplePermId,
@@ -63,16 +124,4 @@ export async function deleteObject(
   const sdo = new openbis.SampleDeletionOptions();
   sdo.setReason('Object no longer needed.');
   await api.deleteSamples([sampleId], sdo);
-}
-
-// TODO
-export async function updateObject(
-  api: openbis.OpenBISJavaScriptFacade,
-  sampleId: openbis.ISampleId,
-  props:  {[key: string]: string},
-): Promise<void> {
-  const update = new openbis.SampleUpdate();
-  update.setSampleId(sampleId);
-  update.setProperties(props);
-  await api.updateSamples([update]);
 }

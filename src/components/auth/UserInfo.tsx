@@ -21,7 +21,7 @@ const renderTableRow = (person: openbis.Person) => {
       <TableCell>
         {new Date(person.getRegistrationDate()).toLocaleDateString()}
       </TableCell>
-      <TableCell>{person.getRoleAssignments().flatMap(role=>`${role.getSpace()}: ${role.getRole()}`)}</TableCell>
+      <TableCell>{person.getRoleAssignments().flatMap(role=>`${role.getRole()}`)}</TableCell>
     </TableRow>
   );
 };

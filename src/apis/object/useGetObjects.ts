@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { getObject } from './objectAPI';
+import { getObjects } from './objectAPI';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/auth/authContext';
 
-export const useGetObject = (code: string) => {
+const QUERY_PREFIX = "GET_ALL_OBJECTS";
+
+export const useGetObjects = () => {
   const { apiFacade } = useContext(AuthContext);
 
   return useQuery({
-    queryKey: [code],
+    queryKey: [QUERY_PREFIX],
     queryFn: () => {
-      return getObject(apiFacade, code);
+      return getObjects(apiFacade);
     },
   });
 };

@@ -21,10 +21,12 @@ export async function getPropertyType(
   // Create search criteria for the property type code
   const searchCriteria = new openbis.PropertyTypeSearchCriteria();
   searchCriteria.withCode().thatEquals(propertyTypeCode);
+  const fo = new openbis.PropertyTypeFetchOptions();
+  fo.withVocabulary();
   // Search for the property type
   const result = await api.searchPropertyTypes(
     searchCriteria,
-    new openbis.PropertyTypeFetchOptions()
+    fo
   );
   // Get the first result
   const propertyType = result.getObjects()[0];

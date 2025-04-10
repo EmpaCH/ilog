@@ -50,3 +50,15 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: revert;
   padding-bottom: 10px;
 }
+
+.success-message {
+  color: rgb(23, 201, 100);
+}
+
+.error-message {
+  color: rgb(243, 18, 96);
+}
+
+.warning-message {
+  color: rgb(255, 165, 0);
+}

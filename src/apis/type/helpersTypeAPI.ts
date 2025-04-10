@@ -34,10 +34,10 @@ export async function createObjectTypeSettingsDefinition(
   // Parse existing ELN settings properties
   var properties = await parseElnSettingsProperties(api);
   // Expand the settings with the appropriate properties for enabling the new type
-  properties.sampleTypeDefinitionsExtension = {
-    ...properties.sampleTypeDefinitionsExtension,
-    [typeName]: newTypeSettings,
-  };
+    properties.sampleTypeDefinitionsExtension = {
+      ...properties.sampleTypeDefinitionsExtension,
+      [typeName]: newTypeSettings,
+    };
   // Update the ELN settings with the new properties
   await updateElnSettings(api, properties);
 }
@@ -134,8 +134,6 @@ function filterPropertyTypeSchema(
     : {};
 }
 
-
-
 /**
  * Convert an object type definition to creations / updates.
  * @param objectDefinition - The object type definition to convert.
@@ -148,7 +146,7 @@ export function convertObjectTypeDefinitionToOperations(
   existingPropertyAssignments: PropertyAssignment[]
 ): StructuredCreations {
   //const propertyTypes = flattenObjectSchema(objectDefinition.propertyTypes);
-  // Filter the property types do not exist
+  // Filter the property types that do not exist
   const schemaToCreate = filterPropertyTypeSchema(
     objectDefinition.propertyTypes,
     (type) => {
@@ -202,7 +200,7 @@ export function convertObjectTypeDefinitionToOperations(
     sampleTypeCreation.setGeneratedCodePrefix(
       objectDefinition.generatedCodePrefix.length > 0
         ? objectDefinition.generatedCodePrefix
-        : objectDefinition.code.slice(0, 5)
+        : objectDefinition.code.slice(0, 10)
     );
     sampleTypeCreation.setPropertyAssignments(assignmentCreations);
     sampleTypeCreation.setDescription(objectDefinition.description);
@@ -327,7 +325,7 @@ export function convertObjectTypeDefinitionToUpdateOperations(
   update.setGeneratedCodePrefix(
     objectDefinition.generatedCodePrefix.length > 0
       ? objectDefinition.generatedCodePrefix
-      : objectDefinition.code.slice(0, 5)
+      : objectDefinition.code.slice(0, 10)
   );
   update.setListable(true);
 
@@ -339,5 +337,5 @@ export function convertObjectTypeDefinitionToUpdateOperations(
   );
   update.setPropertyAssignmentActions(assignmentUpdates.getActions());
 
-  return [update] ?? [];
+  return update ? [update] : [];
 }

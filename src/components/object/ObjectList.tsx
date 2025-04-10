@@ -1,22 +1,29 @@
-import { useContext, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AuthContext } from '../../context/auth/authContext';
-import { getObjects, deleteObject } from '../../apis/object/objectAPI';
-import openbis from '@openbis/openbis.esm';
-import { List } from '../shared/list';
-import { MessageModal } from '../shared/messageModal';
-import { Column, ObjectRow } from '../shared/list.types';
+import { useContext, useMemo, useReducer } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
+import { AuthContext } from "../../context/auth/authContext";
+import { getObjects, deleteObject } from "../../apis/object/objectAPI";
+import openbis from "@openbis/openbis.esm";
+import { List } from "../shared/list";
+import { MessageModal } from "../shared/messageModal";
+import { Column, ObjectRow } from "../shared/list.types";
+import {
+  objectListLocalReducer,
+  EMPTY_OBJECT_LIST_DEFINITION,
+} from "./ObjectLocalActions";
 
 export const ObjectList = () => {
   const { apiFacade } = useContext(AuthContext);
-  const [deletionMessage, setDeletionMessage] = useState('');
-  const [showMessage, setShowMessage] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const navigate = useNavigate();
+
+  const [state, dispatch] = useReducer(objectListLocalReducer,
+    EMPTY_OBJECT_LIST_DEFINITION,
+  );
 
   const res = useQuery({
-    queryKey: ['getObjects'],
+    queryKey: ["getObjects"],
     queryFn: async () => {
-      return getObjects(apiFacade);
+      return await getObjects(apiFacade);
     },
   });
 
@@ -33,18 +40,51 @@ export const ObjectList = () => {
       permId as openbis.SamplePermId,
     ).then(() => {
       res.refetch();
-      setDeletionMessage(`'${code}' deleted successfully.`);
-      setIsSuccess(true);
-      setShowMessage(true);
+      handleMessage(`'${code}' deleted successfully.`, true, true);
     }).catch((e) => {
-      setDeletionMessage(e.message.replace(/\s*\([^)]*\)/g, ''));
-      setIsSuccess(false);
-      setShowMessage(true);
-    }).finally(() => {
-      setTimeout(() => {
-        setShowMessage(false);
-        }, 3000);
+      handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
     });
+  };
+
+  const onEdit = async (
+    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    code: string,
+  ) => {
+    const object = objects.find((t) => t.getCode() === code);
+    if (object) {
+      navigate({
+        to: `/objects/creator?mode=edit&objectcode=${object.getCode()}`,
+      });
+    } else {
+      handleMessage(`Object with code '${code}' not found.`, false, true);
+    }
+  };
+
+  const onHistory = async (
+    code: string,
+  ) => {
+    const object = objects.find((t) => t.getCode() === code);
+    if (object) {
+      navigate({
+        to: `/objects/history?objectcode=${object.getCode()}`,
+      });
+    } else {
+      handleMessage(`Object with code '${code}' not found.`, false, true);
+    }
+  };
+
+  const handleMessage = (
+    msg: string,
+    isSuccess: boolean,
+    showMsg: boolean,
+  ) => {
+    dispatch({ type: "SET_DELETION_MESSAGE", payload: msg });
+    dispatch({ type: "SET_IS_SUCCESS", payload: isSuccess });
+    dispatch({ type: "SET_SHOW_MESSAGE", payload: showMsg });
+
+    setTimeout(() => {
+      dispatch({ type: "CLEAR" });
+    }, 3000);
   };
 
   const columns: Column[] = [
@@ -77,21 +117,24 @@ export const ObjectList = () => {
       }
     }
   );
-
+ 
   return (
     <>
       <h2>Object List</h2>
-      <List 
+      <List
         columns={columns}
         rows={rows}
         defaultSortColumn="name"
         navigatePath="/objects/creator"
-        onDelete={onDelete}    
+        enableHistory={true}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        onHistory={onHistory}
       />
       <MessageModal
-        message={deletionMessage}
-        isOpen={showMessage}
-        isSuccess={isSuccess}
+        message={state.deletionMessage}
+        isOpen={state.showMessage}
+        isSuccess={state.isSuccess}
       />
     </>
   );

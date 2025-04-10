@@ -19,6 +19,22 @@ export const iLogBaseSchema: PropertyTypesSchema = {
     { code: iLogID, type: "reference" },
     { code: iLogBaseTypesPropertyCode, type: "reference" },
     {
+      code: "VALID_FROM",
+      type: "local",
+      multivalued: false,
+      dataType: "VARCHAR",
+      label: "ValidFrom",
+      description: "ValidFrom",
+    },
+    {
+      code: "DESCRIPTION",
+      type: "local",
+      multivalued: false,
+      dataType: "VARCHAR",
+      label: "Description",
+      description: "Description",
+    },
+    {
       code: "RESPONSIBLE",
       type: "local",
       multivalued: true,

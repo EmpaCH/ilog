@@ -53,8 +53,6 @@ export interface PropertyTypesSchema {
   [group: string]: PropertyType[];
 }
 
-
-
 // Interface for object type definition
 export interface ObjectTypeDefinition {
   code: string;
@@ -229,6 +227,7 @@ export function convertOpenBISPropertyType(
     description: propertyType.getDescription(),
     dataType: convertOpenBISDataTypeToDataType(propertyType.getDataType()),
     multivalued: propertyType.isMultiValue(),
+    metadata: propertyType.getMetaData(),
   };
   if (dataType == "CONTROLLEDVOCABULARY") {
     return {
