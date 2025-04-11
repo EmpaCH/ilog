@@ -8,6 +8,7 @@ import {
   Select,
   SelectItem,
   Spinner,
+  Autocomplete,
 } from "@heroui/react";
 import {
   INSTRUMENT_TYPE_DEFINITION,
@@ -54,7 +55,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   // Dispatch is used to update the state of the component
   const [state, dispatch] = useReducer(typeCreatorReducer, {
     schema: EMPTY_TYPE_DEFINITION,
-  }); 
+  });
 
   // Initialize the loading state and message state (initial represents whether the object and property types have been fetched)
   const [loading, setLoading] = useState(false);
@@ -73,24 +74,28 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const lockedGroups = Object.keys(INSTRUMENT_TYPE_DEFINITION.propertyTypes);
 
   // If the object and property types have been fetched, set the object type template and property types
-  if (allPropertyTypesResult.status == "success" && allObjectTypesResult.status == "success" && initial) {
-  // if (objectTypeResult.status == "success" && initial && allPropertyTypesResult.status == "success" && allPropertyTypesResult.data.length > 0) {
+  if (
+    allPropertyTypesResult.status == "success" &&
+    allObjectTypesResult.status == "success" &&
+    initial
+  ) {
+
     // Set the object type template
-    const openbisSampleType = allObjectTypesResult.data?.find(
-      (it) => {
-        return it.getCode().toUpperCase() === objectTypeCode.toUpperCase()
-      }
-    ) as openbis.SampleType;
-    const objectTypeTemplate: ObjectTypeDefinition = openbisSampleType ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType) : EMPTY_TYPE_DEFINITION;
+    const openbisSampleType = allObjectTypesResult.data?.find((it) => {
+      return it.getCode().toUpperCase() === objectTypeCode.toUpperCase();
+    }) as openbis.SampleType;
+    const objectTypeTemplate: ObjectTypeDefinition = openbisSampleType
+      ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType)
+      : EMPTY_TYPE_DEFINITION;
 
     dispatch({
       type: "SET_OBJECT_TYPE_TEMPLATE",
-      payload: { objecttypetemplate: objectTypeTemplate}
-    })
-    
+      payload: { objecttypetemplate: objectTypeTemplate },
+    });
+
     // Set the property types
     const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
-    // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
+      // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
       ([group, propertyTypesGroup]) => {
         return [
           group,
@@ -114,6 +119,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     setInitial(false);
   }
 
+  const objectTypes = allObjectTypesResult.isSuccess ? allObjectTypesResult.data.map((type) =>
+    convertOpenBISSampleTypeToObjectTypeDefinition(type)
+  ) : [];
+
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowMessage(false);
@@ -121,39 +130,45 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
-      typeCreation.mutate({
-        definition: state.schema,
-      }, {
-        onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
-          setMessageColor("error-message");
-          setShowMessage(true);
-          setLoading(false);
+      typeCreation.mutate(
+        {
+          definition: state.schema,
         },
-        onSuccess: () => {
-          setMessage("Type updated successfully!");
-          setMessageColor("success-message");
-          setShowMessage(true);
-          handleClear(2000);
-        },
-      });
+        {
+          onError: (err) => {
+            setMessage(err.message.split(" (Context:")[0]);
+            setMessageColor("error-message");
+            setShowMessage(true);
+            setLoading(false);
+          },
+          onSuccess: () => {
+            setMessage("Type updated successfully!");
+            setMessageColor("success-message");
+            setShowMessage(true);
+            handleClear(2000);
+          },
+        }
+      );
     } else {
-      typeCreation.mutate({
-        definition: state.schema,
-      }, {
-        onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
-          setMessageColor("error-message");
-          setShowMessage(true);
-          setLoading(false);
+      typeCreation.mutate(
+        {
+          definition: state.schema,
         },
-        onSuccess: () => {
-          setMessage("Type created successfully!");
-          setMessageColor("success-message");
-          setShowMessage(true);
-          handleClear(2000);
-        },
-      });
+        {
+          onError: (err) => {
+            setMessage(err.message.split(" (Context:")[0]);
+            setMessageColor("error-message");
+            setShowMessage(true);
+            setLoading(false);
+          },
+          onSuccess: () => {
+            setMessage("Type created successfully!");
+            setMessageColor("success-message");
+            setShowMessage(true);
+            handleClear(2000);
+          },
+        }
+      );
     }
   };
 
@@ -192,13 +207,17 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
     setObjectBaseType(value.target.value);
+    const newTemplae = objectTypes.find((el) => (el.code == value.target.value))
+    if(newTemplae !== undefined){
+      dispatch({type: "SET_ALL_PROPERTYTYPES", payload: {schema: newTemplae.propertyTypes}})
+    }
     const newValue = value.target.value != "" ? value.target.value : "EMPTY";
-    dispatch({
-      type: "CLEAR",
-      payload: {
-        baseType: newValue as iLogBaseAllTypes,
-      },
-    });
+    // dispatch({
+    //   type: "CLEAR",
+    //   payload: {
+    //     baseType: newValue as iLogBaseAllTypes,
+    //   },
+    // });
   };
 
   const handlePropertyEditorEvents = (event: GroupedPropertyEditorsEvents) => {
@@ -271,8 +290,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       (form?.elements[index + 1] as HTMLElement)?.focus();
       event.preventDefault();
     }
-  }
-
+  };
 
   // If trying to edit an object, then show a spinner until the object is fetched
   if (initial && mode === "edit") {
@@ -285,14 +303,14 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       <form onSubmit={handleSubmit}>
         <Select
           isRequired
-          label="Is this type an instrument or a component?"
+          label="What is the base type of this type?"
           // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
           selectedKeys={[state.schema.baseType ?? "INSTRUMENT"]}
           onChange={handleSelectBaseType}
         >
-          {iLogBaseTypes.map((type) => (
-            <SelectItem key={type} value={type}>
-              {type}
+          {objectTypes.map((type) => (
+            <SelectItem key={type.code} value={type.code}>
+              {type.code}
             </SelectItem>
           ))}
         </Select>
@@ -309,29 +327,31 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           onBlur={(event) => {
             if (objectTypeCode !== (event.target as HTMLInputElement).value) {
               const existingType = allObjectTypesResult.data?.find(
-              (type) => type.getCode() === (event.target as HTMLInputElement).value
+                (type) =>
+                  type.getCode() === (event.target as HTMLInputElement).value
               );
-                if (existingType) {
-                  const confirmSwitch = window.confirm(
-                    "This type already exists. Do you want to switch to edit mode? Note: changes will remain, to get original use reset."
-                  );
-                  if (confirmSwitch) {
-                    navigate({ to: `/types/creator?mode=edit&objecttypecode=${(event.target as HTMLInputElement).value}` });
-                  } 
-                } else if (mode === "edit") {
-                  const confirmSwitch = window.confirm(
-                    "You cannot change the code of an Objecttype. Do you want to switch to create mode?"
-                  );
-                  if (confirmSwitch) {
-                    navigate({ to: `/types/creator?mode=create&objecttypecode=${(event.target as HTMLInputElement).value}` });
-                  } else {
-                    dispatch({ type: "SET_CODE", payload: objectTypeCode });
-                  }
+              if (existingType) {
+                const confirmSwitch = window.confirm(
+                  "This type already exists. Do you want to switch to edit mode? Note: changes will remain, to get original use reset."
+                );
+                if (confirmSwitch) {
+                  navigate({
+                    to: `/types/creator?mode=edit&objecttypecode=${(event.target as HTMLInputElement).value}`,
+                  });
                 }
-
-
+              } else if (mode === "edit") {
+                const confirmSwitch = window.confirm(
+                  "You cannot change the code of an Objecttype. Do you want to switch to create mode?"
+                );
+                if (confirmSwitch) {
+                  navigate({
+                    to: `/types/creator?mode=create&objecttypecode=${(event.target as HTMLInputElement).value}`,
+                  });
+                } else {
+                  dispatch({ type: "SET_CODE", payload: objectTypeCode });
+                }
+              }
             }
-            
           }}
           autoComplete="off"
           list="type-suggestions"
@@ -392,9 +412,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             className="mx-2"
             onPress={() => {
               if (mode === "edit") {
-              window.location.reload();
+                window.location.reload();
               } else {
-              handleClear(0);
+                handleClear(0);
               }
             }}
           >

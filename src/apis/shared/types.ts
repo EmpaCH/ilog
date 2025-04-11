@@ -105,6 +105,7 @@ export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   generatedCodePrefix: "COMPONENT",
   description: "Component",
   propertyTypes: COMPONENT_SCHEMA,
+  baseType: "ILOG"
 };
 
 // Instrument schema and type definition
@@ -127,6 +128,7 @@ export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   generatedCodePrefix: "INSTRUMENT",
   description: "Instrument",
   propertyTypes: INSTRUMENT_SCHEMA,
+  baseType: "ILOG"
 };
 
 // Type definitions for iLog base types

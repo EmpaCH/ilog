@@ -205,6 +205,7 @@ export function convertObjectTypeDefinitionToOperations(
     sampleTypeCreation.setPropertyAssignments(assignmentCreations);
     sampleTypeCreation.setDescription(objectDefinition.description);
     sampleTypeCreation.setListable(true);
+    sampleTypeCreation.setMetaData({type: objectDefinition.code, baseType: objectDefinition.baseType})
   } else {
     sampleTypeUpdate = new openbis.SampleTypeUpdate();
     sampleTypeUpdate.setTypeId(new openbis.EntityTypePermId(objectDefinition.code.toUpperCase()));
