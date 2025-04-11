@@ -18,6 +18,7 @@ import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthUserinfoImport } from './routes/_auth/user_info'
 import { Route as AuthTrashcanImport } from './routes/_auth/trashcan'
 import { Route as AuthHomeImport } from './routes/_auth/home'
+import { Route as AuthAnnotationsImport } from './routes/_auth/annotations'
 import { Route as AuthTypesIndexImport } from './routes/_auth/types/index'
 import { Route as AuthObjectsIndexImport } from './routes/_auth/objects/index'
 import { Route as AuthTypesCreatorImport } from './routes/_auth/types/creator'
@@ -57,6 +58,11 @@ const AuthTrashcanRoute = AuthTrashcanImport.update({
 
 const AuthHomeRoute = AuthHomeImport.update({
   path: '/home',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthAnnotationsRoute = AuthAnnotationsImport.update({
+  path: '/annotations',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -109,6 +115,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/login'
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
+    }
+    '/_auth/annotations': {
+      id: '/_auth/annotations'
+      path: '/annotations'
+      fullPath: '/annotations'
+      preLoaderRoute: typeof AuthAnnotationsImport
+      parentRoute: typeof AuthImport
     }
     '/_auth/home': {
       id: '/_auth/home'
@@ -174,6 +187,7 @@ declare module '@tanstack/react-router' {
 export const routeTree = rootRoute.addChildren({
   IndexLazyRoute,
   AuthRoute: AuthRoute.addChildren({
+    AuthAnnotationsRoute,
     AuthHomeRoute,
     AuthTrashcanRoute,
     AuthUserinfoRoute,
@@ -205,6 +219,7 @@ export const routeTree = rootRoute.addChildren({
     "/_auth": {
       "filePath": "_auth.tsx",
       "children": [
+        "/_auth/annotations",
         "/_auth/home",
         "/_auth/trashcan",
         "/_auth/user_info",
@@ -217,6 +232,10 @@ export const routeTree = rootRoute.addChildren({
     },
     "/login": {
       "filePath": "login.tsx"
+    },
+    "/_auth/annotations": {
+      "filePath": "_auth/annotations.tsx",
+      "parent": "/_auth"
     },
     "/_auth/home": {
       "filePath": "_auth/home.tsx",

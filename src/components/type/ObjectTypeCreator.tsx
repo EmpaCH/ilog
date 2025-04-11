@@ -79,7 +79,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     allObjectTypesResult.status == "success" &&
     initial
   ) {
-
     // Set the object type template
     const openbisSampleType = allObjectTypesResult.data?.find((it) => {
       return it.getCode().toUpperCase() === objectTypeCode.toUpperCase();
@@ -119,9 +118,11 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     setInitial(false);
   }
 
-  const objectTypes = allObjectTypesResult.isSuccess ? allObjectTypesResult.data.map((type) =>
-    convertOpenBISSampleTypeToObjectTypeDefinition(type)
-  ) : [];
+  const objectTypes = allObjectTypesResult.isSuccess
+    ? allObjectTypesResult.data.map((type) =>
+        convertOpenBISSampleTypeToObjectTypeDefinition(type)
+      )
+    : [];
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -207,17 +208,17 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
     setObjectBaseType(value.target.value);
-    const newTemplae = objectTypes.find((el) => (el.code == value.target.value))
-    if(newTemplae !== undefined){
-      dispatch({type: "SET_ALL_PROPERTYTYPES", payload: {schema: newTemplae.propertyTypes}})
+    const newTemplate = objectTypes.find((el) => el.code == value.target.value);
+    console.log("newTemplate", newTemplate);
+    if (newTemplate !== undefined) {
+      dispatch({
+        type: "SET_BASE_TYPE",
+        payload: {
+          schema: newTemplate.propertyTypes,
+          baseType: newTemplate.code,
+        },
+      });
     }
-    const newValue = value.target.value != "" ? value.target.value : "EMPTY";
-    // dispatch({
-    //   type: "CLEAR",
-    //   payload: {
-    //     baseType: newValue as iLogBaseAllTypes,
-    //   },
-    // });
   };
 
   const handlePropertyEditorEvents = (event: GroupedPropertyEditorsEvents) => {
@@ -305,7 +306,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           isRequired
           label="What is the base type of this type?"
           // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
-          selectedKeys={[state.schema.baseType ?? "INSTRUMENT"]}
+          selectedKeys={[state.schema.baseType]}
           onChange={handleSelectBaseType}
         >
           {objectTypes.map((type) => (

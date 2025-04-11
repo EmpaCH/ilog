@@ -36,6 +36,7 @@ export type TypeCreatorActions =
       type: "CHANGE_PROPERTY_CODE";
       payload: { oldCode: string; newCode: string, group: string };
     }
+  | {type: "SET_BASE_TYPE"; payload: { baseType: string, schema: PropertyTypesSchema }}
   | {
       type: "CLEAR";
       payload: { baseType: iLogBaseAllTypes };
@@ -161,6 +162,10 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
           draft.schema.propertyTypes[action.payload.property.type].filter(
             (property) => property.code !== action.payload.property.code
           );
+        break;
+      case "SET_BASE_TYPE":
+        draft.schema.baseType = action.payload.baseType;
+        draft.schema.propertyTypes = action.payload.schema;
         break;
     }
   }
