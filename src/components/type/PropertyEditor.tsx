@@ -25,6 +25,7 @@ import {
 } from "./PropertyTypeActions";
 import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
 import { useGetVocabularies } from "../../apis/vocabulary/useGetVocabularies";
+import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
@@ -72,7 +73,7 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
   onSelectionChange,
 }) => {
   return (
-    <Autocomplete label="Select object type">
+    <Autocomplete label="Select object type" onSelectionChange={(val)=>onSelectionChange(val as string)}>
       {objectTypes.map((objectType) => {
         return (
           <AutocompleteItem key={objectType} value={objectType}>
@@ -100,14 +101,14 @@ export const PropertyEditor = ({
   // actions of this component are dispatched.
   // TODO: find better solution
 
-  const [stateToPass, setStateToPass] = useState<PropertyType>(
-    state as PropertyType
+  const [stateToPass, setStateToPass] = useState<LocalPropertyTypeVariants>(
+    state as LocalPropertyTypeVariants
   );
   useEffect(() => {
     setStateToPass(state);
   }, [state]);
   useEffect(() => {
-    onEdit(stateToPass as PropertyType);
+    onEdit(stateToPass as LocalPropertyTypeVariants);
   }, [stateToPass]);
 
   // const wrappedDispatch = (action: PropertyTypeEditorActions) => {
@@ -125,6 +126,7 @@ export const PropertyEditor = ({
   };
 
   const allVocabularies = useGetVocabularies();
+  const allObjectTypes = useGetAllObjectTypes();
 
   return (
     <Card
@@ -182,10 +184,11 @@ export const PropertyEditor = ({
             <Autocomplete
               disabled={locked}
               label="Vocabulary ID"
-              onChange={(value) =>
+              selectedKey={state.vocabulary}
+              onSelectionChange={(value) =>
                 dispatch({
                   type: "SET_VOCABULARY",
-                  payload: value.target.value,
+                  payload: value as string,
                 })
               }
             >
@@ -203,8 +206,12 @@ export const PropertyEditor = ({
           ) : null}
           {state.dataType === "OBJECT" ? (
             <ObjectTypeAutoComplete
-              objectTypes={["A", "B"]}
-              onSelectionChange={(str) => str}
+              objectTypes={
+                allObjectTypes.data?.map((type) => type.getCode()) ?? []
+              }
+              onSelectionChange={(value) =>
+                dispatch({ type: "SET_OBJECT_TYPE", payload: value })
+              }
             />
           ) : null}
           <Checkbox

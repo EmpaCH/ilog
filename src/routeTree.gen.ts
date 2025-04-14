@@ -18,6 +18,7 @@ import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthUserinfoImport } from './routes/_auth/user_info'
 import { Route as AuthTrashcanImport } from './routes/_auth/trashcan'
 import { Route as AuthHomeImport } from './routes/_auth/home'
+import { Route as AuthAnnotationsImport } from './routes/_auth/annotations'
 import { Route as AuthTypesIndexImport } from './routes/_auth/types/index'
 import { Route as AuthObjectsIndexImport } from './routes/_auth/objects/index'
 import { Route as AuthTypesCreatorImport } from './routes/_auth/types/creator'
@@ -57,6 +58,11 @@ const AuthTrashcanRoute = AuthTrashcanImport.update({
 
 const AuthHomeRoute = AuthHomeImport.update({
   path: '/home',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthAnnotationsRoute = AuthAnnotationsImport.update({
+  path: '/annotations',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -109,6 +115,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/login'
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
+    }
+    '/_auth/annotations': {
+      id: '/_auth/annotations'
+      path: '/annotations'
+      fullPath: '/annotations'
+      preLoaderRoute: typeof AuthAnnotationsImport
+      parentRoute: typeof AuthImport
     }
     '/_auth/home': {
       id: '/_auth/home'
@@ -171,131 +184,21 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-interface AuthRouteChildren {
-  AuthHomeRoute: typeof AuthHomeRoute
-  AuthTrashcanRoute: typeof AuthTrashcanRoute
-  AuthUserinfoRoute: typeof AuthUserinfoRoute
-  AuthObjectsCreatorRoute: typeof AuthObjectsCreatorRoute
-  AuthObjectsHistoryRoute: typeof AuthObjectsHistoryRoute
-  AuthTypesCreatorRoute: typeof AuthTypesCreatorRoute
-  AuthObjectsIndexRoute: typeof AuthObjectsIndexRoute
-  AuthTypesIndexRoute: typeof AuthTypesIndexRoute
-}
-
-const AuthRouteChildren: AuthRouteChildren = {
-  AuthHomeRoute: AuthHomeRoute,
-  AuthTrashcanRoute: AuthTrashcanRoute,
-  AuthUserinfoRoute: AuthUserinfoRoute,
-  AuthObjectsCreatorRoute: AuthObjectsCreatorRoute,
-  AuthObjectsHistoryRoute: AuthObjectsHistoryRoute,
-  AuthTypesCreatorRoute: AuthTypesCreatorRoute,
-  AuthObjectsIndexRoute: AuthObjectsIndexRoute,
-  AuthTypesIndexRoute: AuthTypesIndexRoute,
-}
-
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
-
-export interface FileRoutesByFullPath {
-  '/': typeof IndexLazyRoute
-  '': typeof AuthRouteWithChildren
-  '/login': typeof LoginRoute
-  '/home': typeof AuthHomeRoute
-  '/trashcan': typeof AuthTrashcanRoute
-  '/user_info': typeof AuthUserinfoRoute
-  '/objects/creator': typeof AuthObjectsCreatorRoute
-  '/objects/history': typeof AuthObjectsHistoryRoute
-  '/types/creator': typeof AuthTypesCreatorRoute
-  '/objects': typeof AuthObjectsIndexRoute
-  '/types': typeof AuthTypesIndexRoute
-}
-
-export interface FileRoutesByTo {
-  '/': typeof IndexLazyRoute
-  '': typeof AuthRouteWithChildren
-  '/login': typeof LoginRoute
-  '/home': typeof AuthHomeRoute
-  '/trashcan': typeof AuthTrashcanRoute
-  '/user_info': typeof AuthUserinfoRoute
-  '/objects/creator': typeof AuthObjectsCreatorRoute
-  '/objects/history': typeof AuthObjectsHistoryRoute
-  '/types/creator': typeof AuthTypesCreatorRoute
-  '/objects': typeof AuthObjectsIndexRoute
-  '/types': typeof AuthTypesIndexRoute
-}
-
-export interface FileRoutesById {
-  __root__: typeof rootRoute
-  '/': typeof IndexLazyRoute
-  '/_auth': typeof AuthRouteWithChildren
-  '/login': typeof LoginRoute
-  '/_auth/home': typeof AuthHomeRoute
-  '/_auth/trashcan': typeof AuthTrashcanRoute
-  '/_auth/user_info': typeof AuthUserinfoRoute
-  '/_auth/objects/creator': typeof AuthObjectsCreatorRoute
-  '/_auth/objects/history': typeof AuthObjectsHistoryRoute
-  '/_auth/types/creator': typeof AuthTypesCreatorRoute
-  '/_auth/objects/': typeof AuthObjectsIndexRoute
-  '/_auth/types/': typeof AuthTypesIndexRoute
-}
-
-export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | ''
-    | '/login'
-    | '/home'
-    | '/trashcan'
-    | '/user_info'
-    | '/objects/creator'
-    | '/objects/history'
-    | '/types/creator'
-    | '/objects'
-    | '/types'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | ''
-    | '/login'
-    | '/home'
-    | '/trashcan'
-    | '/user_info'
-    | '/objects/creator'
-    | '/objects/history'
-    | '/types/creator'
-    | '/objects'
-    | '/types'
-  id:
-    | '__root__'
-    | '/'
-    | '/_auth'
-    | '/login'
-    | '/_auth/home'
-    | '/_auth/trashcan'
-    | '/_auth/user_info'
-    | '/_auth/objects/creator'
-    | '/_auth/objects/history'
-    | '/_auth/types/creator'
-    | '/_auth/objects/'
-    | '/_auth/types/'
-  fileRoutesById: FileRoutesById
-}
-
-export interface RootRouteChildren {
-  IndexLazyRoute: typeof IndexLazyRoute
-  AuthRoute: typeof AuthRouteWithChildren
-  LoginRoute: typeof LoginRoute
-}
-
-const rootRouteChildren: RootRouteChildren = {
-  IndexLazyRoute: IndexLazyRoute,
-  AuthRoute: AuthRouteWithChildren,
-  LoginRoute: LoginRoute,
-}
-
-export const routeTree = rootRoute
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+export const routeTree = rootRoute.addChildren({
+  IndexLazyRoute,
+  AuthRoute: AuthRoute.addChildren({
+    AuthAnnotationsRoute,
+    AuthHomeRoute,
+    AuthTrashcanRoute,
+    AuthUserinfoRoute,
+    AuthObjectsCreatorRoute,
+    AuthObjectsHistoryRoute,
+    AuthTypesCreatorRoute,
+    AuthObjectsIndexRoute,
+    AuthTypesIndexRoute,
+  }),
+  LoginRoute,
+})
 
 /* prettier-ignore-end */
 
@@ -316,6 +219,7 @@ export const routeTree = rootRoute
     "/_auth": {
       "filePath": "_auth.tsx",
       "children": [
+        "/_auth/annotations",
         "/_auth/home",
         "/_auth/trashcan",
         "/_auth/user_info",
@@ -328,6 +232,10 @@ export const routeTree = rootRoute
     },
     "/login": {
       "filePath": "login.tsx"
+    },
+    "/_auth/annotations": {
+      "filePath": "_auth/annotations.tsx",
+      "parent": "/_auth"
     },
     "/_auth/home": {
       "filePath": "_auth/home.tsx",
