@@ -39,6 +39,9 @@ export const propertyTypeEditorReducer = (
       return { ...state, label: action.payload };
     case "SET_MULTIVALUED":
       return { ...state, multivalued: !action.payload };
+    case "SET_OBJECT_TYPE":
+      console.log("SET_OBJECT_TYPE", action.payload);
+      return { ...state, objectType: action.payload };
     case "SET_WIDGET":
       return {
         ...state,
