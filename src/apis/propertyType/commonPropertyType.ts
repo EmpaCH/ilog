@@ -60,20 +60,25 @@ export type PropertyType = ReferencePropertyType | LocalPropertyTypeVariants;
 export function convertPropertyTypeToCreation(
   propertyType: PropertyType
 ): openbis.PropertyTypeCreation | null {
+  console.log("PropertyType init", propertyType);
   switch (propertyType.type) {
     case "reference": {
       return null;
     }
     case "local": {
-      const creation = initializeCreation(propertyType);
+      const creation = initializePropertyTypeCreation(propertyType);
+      console.log("PropertyTypeCreation", creation);
       switch (propertyType.dataType) {
         case "OBJECT": {
-          creation.setSampleTypeId(
-            new openbis.EntityTypePermId(
-              propertyType.objectType.toUpperCase(),
-              "SAMPLE"
-            )
-          );
+          if (propertyType?.objectType !== null || propertyType?.objectType !== undefined) {   
+            console.log("ObjectType", propertyType.objectType);
+            creation.setSampleTypeId(
+              new openbis.EntityTypePermId(
+                propertyType.objectType.toUpperCase(),
+                "SAMPLE"
+              )
+            );
+          }
           return creation;
         }
         case "CONTROLLEDVOCABULARY": {
@@ -111,7 +116,7 @@ export function convertPropertyTypeToUpdate(
   }
 }
 
-export function initializeCreation(
+export function initializePropertyTypeCreation(
   propertyType: LocalPropertyType
 ): openbis.PropertyTypeCreation {
   const creation = new openbis.PropertyTypeCreation();
@@ -120,7 +125,7 @@ export function initializeCreation(
   creation.setMultiValue(propertyType.multivalued);
   creation.setLabel(propertyType.label);
   creation.setDescription(propertyType.description);
-  if(propertyType.metadata) {
+  if (propertyType.metadata) {
     creation.setMetaData(propertyType.metadata);
   }
   console.log("PropertyTypeCreation", creation);
@@ -148,7 +153,7 @@ export function convertPropertyAssignment(
 ): PropertyAssignment {
   return {
     propertyTypeCode: assigment.getPropertyType().getCode(),
-    objectTypeCode: assigment.getEntityType().getCode(),
+    objectTypeCode: assigment?.getEntityType().getCode(),
     mandatory: assigment.isMandatory(),
   };
 }

@@ -25,6 +25,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       dataType: "VARCHAR",
       label: "ValidFrom",
       description: "ValidFrom",
+      metadata: null,
     },
     {
       code: "DESCRIPTION",
@@ -33,6 +34,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       dataType: "VARCHAR",
       label: "Description",
       description: "Description",
+      metadata: null,
     },
     {
       code: "RESPONSIBLE",
@@ -41,6 +43,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       dataType: "VARCHAR",
       label: "Responsible",
       description: "Responsible",
+      metadata: null,
     },
     {
       code: "SERIALNUMBER",
@@ -49,6 +52,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       dataType: "VARCHAR",
       type: "local",
       multivalued: false,
+      metadata: null,
     },
     {
       code: "EMPAID",
@@ -57,6 +61,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       description: "Empa ID",
       type: "local",
       multivalued: false,
+      metadata: null,
     },
   ],
   [iLogLocationGroup]: [
@@ -67,6 +72,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       description: "Location",
       type: "local",
       multivalued: false,
+      metadata: null,
     },
   ],
   [iLogManufacturerGroup]: [
@@ -77,6 +83,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       dataType: "VARCHAR",
       type: "local",
       multivalued: false,
+      metadata: null,
     },
     {
       code: "MANUFACTURERID",
@@ -85,12 +92,13 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       dataType: "VARCHAR",
       type: "local",
       multivalued: false,
+      metadata: null,
     },
   ],
 };
 
 // Empty schema and type definition
-export const EMPTY_SCHEMA: PropertyTypesSchema = iLogBaseSchema;
+export const EMPTY_SCHEMA: PropertyTypesSchema = {};
 export const EMPTY_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "",
   generatedCodePrefix: "",
@@ -111,17 +119,7 @@ export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
 // Instrument schema and type definition
 export const INSTRUMENT_SCHEMA: PropertyTypesSchema = {
   ...iLogBaseSchema,
-  Components: [
-    {
-      code: "COMPONENT",
-      type: "local",
-      dataType: "OBJECT",
-      objectType: "COMPONENT",
-      multivalued: true,
-      description: "Components",
-      label: "Components",
-    },
-  ],
+  ["Components"]: [ ],
 };
 export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "INSTRUMENT",
@@ -153,6 +151,7 @@ export const ILOG_BASE_TYPES_PROPERTY: PropertyType = {
   dataType: "CONTROLLEDVOCABULARY",
   vocabulary: iLogBaseTypesVocabularyID,
   multivalued: false,
+  metadata: null,
 };
 
 // Default iLog types
@@ -179,3 +178,20 @@ export const getDefaultPropertyTypeDefintion = (
       return EMPTY_TYPE_DEFINITION;
   }
 };
+
+export const mergePropertyTypes = (
+  schemas: PropertyTypesSchema[]
+): PropertyTypesSchema => {
+  const mergedSchema: PropertyTypesSchema = {};
+  schemas.forEach((schema) => {
+    Object.keys(schema).forEach((group) => {
+      if (!mergedSchema[group]) mergedSchema[group] = [];
+      mergedSchema[group] = [
+        ...mergedSchema[group],
+        ...schema[group].filter(
+          (item) => !mergedSchema[group].some((existing) => existing.code === item.code)
+        ),
+      ]; });
+  });
+  return mergedSchema;
+}
