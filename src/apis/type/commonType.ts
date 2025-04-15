@@ -59,16 +59,16 @@ export interface ObjectTypeDefinition {
   code: string;
   generatedCodePrefix: string;
   description: string;
-  propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema ;
+  propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema;
   baseType?: string;
 }
 
-export interface ResolvedPropertyTypeSchema{
+export interface ResolvedPropertyTypeSchema {
   [group: string]: LocalPropertyType[];
 }
 
-export interface ResolvedObjectTypeDefinition extends ObjectTypeDefinition{
-  propertyTypes: ResolvedPropertyTypeSchema
+export interface ResolvedObjectTypeDefinition extends ObjectTypeDefinition {
+  propertyTypes: ResolvedPropertyTypeSchema;
 }
 
 // Interface for structured creations
@@ -264,7 +264,7 @@ export function convertOpenBISPropertyType(
  * @param baseType
  * @param newType
  */
-function deriveType(
+export function deriveType(
   baseType: ObjectTypeDefinition,
   newTypeCode: string
 ): ObjectTypeDefinition {
@@ -275,30 +275,67 @@ function deriveType(
   };
 }
 /**
- * Extract the list of all fields on an object as a set of 
+ * Extract the list of all fields on an object as a set of
  * tuples (code, type)
  * @param type E
- * @returns 
+ * @returns
  */
-function extractFields(type: ResolvedObjectTypeDefinition){
-  return new Set(Object.entries(type.propertyTypes).map(([propertyGroup, properties]) => {
-    return properties.map((prop => {
-      return [prop.code, prop.dataType]
-    }))
-  }))
+function extractFields(type: ResolvedObjectTypeDefinition) {
+  return new Set(
+    Object.entries(type.propertyTypes).map(([propertyGroup, properties]) => {
+      return properties.map((prop) => {
+        return [prop.code, prop.dataType];
+      });
+    })
+  );
 }
 
 /**
  * Check if the derived type is structurally compatible with the base type
  * TODO: recursively check all object types that are declared as properties
  * @param baseType C
- * @param derivedType 
+ * @param derivedType
  */
-function checkValidSubType(baseType: ResolvedObjectTypeDefinition, derivedType: ResolvedObjectTypeDefinition){
-  
+export function checkValidSubType(
+  baseType: ResolvedObjectTypeDefinition,
+  derivedType: ResolvedObjectTypeDefinition
+) {
   const baseFieldSet = extractFields(baseType);
   const derivedFieldSet = extractFields(derivedType);
   return derivedFieldSet.isSupersetOf(baseFieldSet); //* ts-ignore
+}
+
+/**
+ * Find the inheritance tree of a type
+ * @param type
+ * @param allTypes
+ */
+export function findAncestors(
+  type: ResolvedObjectTypeDefinition,
+  allTypes: ResolvedObjectTypeDefinition[]
+) {
+  console.log(type)
+  function inner(
+    type: ResolvedObjectTypeDefinition,
+    allTypes: ResolvedObjectTypeDefinition[],
+    ancestors: string[] = []
+  ): string[] {
+    console.log(type.code, type.baseType)
+    // IF the type has a base type, we continue searching for its ancestors
+    if (type.baseType !== undefined || type.baseType !== null) {
+      // Find the base type in allTypes
+      const baseType = allTypes.find((t) => t.code === type.baseType);
+      if (baseType !== undefined) {
+        const newAncestors = [baseType.code,...ancestors];
+        return inner(baseType, allTypes, newAncestors);
+      }
+      // If the base type is not found, return the current ancestors
+      return [baseType, ...ancestors];
+    }else{
+      return ancestors;
+    }
+  }
+  return inner(type, allTypes);
 }
 
 // /**
@@ -380,6 +417,7 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
 export function convertOpenBISSampleTypeToObjectTypeDefinition(
   sampleType: openbis.SampleType
 ): ObjectTypeDefinition {
+  console.log("metadata", sampleType.getMetaData())
   return {
     code: sampleType.getCode(),
     generatedCodePrefix: sampleType.getGeneratedCodePrefix(),
@@ -387,5 +425,6 @@ export function convertOpenBISSampleTypeToObjectTypeDefinition(
     propertyTypes: convertPropertyAssignmentsToPropertyTypesSchema(
       sampleType.getPropertyAssignments()
     ),
+    baseType: sampleType.getMetaData()["baseType"],
   };
 }

@@ -294,6 +294,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                   </AccordionItem>
                 ))}
               </Accordion>
+
               <Button
                 isIconOnly
                 onPress={() => {
@@ -317,24 +318,42 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                   <AddIcon />
                 </Icon>
               </Button>
-              <Button
-                onPress={() => {
+                {properties.some((property) =>
+                lockedPropertyCodes.includes(property.code)
+                ) ? (
+                <Button
+                  color="warning"
+                  style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  cursor: "not-allowed",
+                  opacity: 0.5,
+                  }}
+                  disabled
+                >
+                  <LockIcon /> Locked Group
+                </Button>
+                ) : (
+                <Button
+                  onPress={() => {
                   onEvent({
                     type: "REMOVE_GROUP",
                     payload: { group: propertyGroup },
                   });
-                  // dispatch({ type: "REMOVE_GROUP", payload: { group: propertyGroup } });
                   setSelectedTab(0);
-                }}
-                color="danger"
-                style={{
+                  }}
+                  color="danger"
+                  style={{
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
-                }}
-              >
-                <DeleteIcon /> Delete Group
-              </Button>
+                  cursor: "pointer",
+                  }}
+                >
+                  <DeleteIcon /> Delete Group
+                </Button>
+                )}
             </>
           )}
         </div>

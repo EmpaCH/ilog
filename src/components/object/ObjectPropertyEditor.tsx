@@ -1,20 +1,38 @@
 import React from "react";
+import { useMemo } from "react";
 import {
   Accordion,
   AccordionItem,
+  AutocompleteItem,
+  Autocomplete,
   DatePicker,
   DateValue,
   Input,
+  Checkbox,
+  Textarea,
 } from "@heroui/react";
-import { parseDate, getLocalTimeZone } from "@internationalized/date";
-import { Tabs, Tab, Checkbox } from "@mui/material";
+import {
+  parseDate,
+  getLocalTimeZone,
+  now,
+  parseDateTime,
+  parseZonedDateTime,
+  parseAbsolute,
+  ZonedDateTime,
+  DateFormatter,
+  fromAbsolute,
+  fromDate,
+} from "@internationalized/date";
+import { Tabs, Tab } from "@mui/material";
 import { ObjectCreatorState, ObjectCreatorActions } from "./ObjectActions";
 import {
   CUSTOM_WIDGET_KEY,
   LocalPropertyType,
+  LocalPropertyTypeVariants,
 } from "../../apis/propertyType/commonPropertyType";
 import { ImagePropertyEditor } from "../widgets/ImagePropertyEditor";
 import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
+import { Editor } from "@monaco-editor/react";
 
 // The props that are received by the component
 // define whether this will be an Object Creator or Editor component
@@ -32,8 +50,17 @@ const createPropertyKey = () => {
   return `${Math.random().toString(36).substring(7)}`;
 };
 
+const toOpenBISDate = (value: ZonedDateTime): string => {
+  return value.toDate().toISOString().split(".")[0] + "Z";
+};
+
+const fromOpenBISDate = (value: string): ZonedDateTime => {
+  console.log("Parsing date", value);
+  return fromDate(new Date(value), getLocalTimeZone());
+};
+
 interface SpecificPropertyEditorProps {
-  propertyDefinition: LocalPropertyType;
+  propertyDefinition: LocalPropertyTypeVariants;
   propertyValue: string;
   mode: CreatorMode;
   onValueChange: (input: string | boolean | Date) => void;
@@ -45,8 +72,7 @@ const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   mode,
   onValueChange,
 }) => {
-
-  const vocabularyRes = useGetVocabulary(propertyDefinition.vocabulary ?? "");
+  const defaultDate = useMemo(() => now(getLocalTimeZone()), []); // Memoize the default date
 
   if (
     propertyDefinition.dataType == "VARCHAR" &&
@@ -66,19 +92,47 @@ const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       <Input
         disabled={mode === "view"}
         id={propertyDefinition.code}
+        aria-label={propertyDefinition.code}
         placeholder={propertyDefinition.description}
         value={propertyValue}
         type="text"
         onValueChange={onValueChange}
       />
     );
+  } else if (propertyDefinition.dataType == "MULTILINE_VARCHAR") {
+    return (
+      <Textarea
+        disabled={mode === "view"}
+        id={propertyDefinition.code}
+        aria-label={propertyDefinition.code}
+        placeholder={propertyDefinition.description}
+        value={propertyValue}
+        type="text"
+        onValueChange={onValueChange}
+      />
+    );
+  } else if (propertyDefinition.dataType == "OBJECT") {
+    return <p>Not implemented yet</p>;
   } else if (propertyDefinition.dataType == "BOOLEAN") {
     return (
       <Checkbox
         disabled={mode === "view"}
         id={propertyDefinition.code}
+        aria-label={propertyDefinition.code}
         value={propertyValue}
-        onChange={(event, checked) => onValueChange(checked)}
+        onValueChange={(isSelected) => onValueChange(isSelected)}
+      />
+    );
+  } else if (propertyDefinition.dataType == "HYPERLINK") {
+    return (
+      <Input
+        disabled={mode === "view"}
+        id={propertyDefinition.code}
+        aria-label={propertyDefinition.code}
+        placeholder={propertyDefinition.description}
+        value={propertyValue}
+        type="url"
+        onValueChange={onValueChange}
       />
     );
   } else if (
@@ -89,28 +143,73 @@ const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       <Input
         disabled={mode === "view"}
         id={propertyDefinition.code}
+        aria-label={propertyDefinition.code}
         placeholder={propertyDefinition.description}
         value={propertyValue}
         type="number"
         onValueChange={(value) => onValueChange(value)}
       />
     );
-  } else if (
-    propertyDefinition.dataType == "DATE" ||
-    propertyDefinition.dataType == "TIMESTAMP"
-  ) {
+  } else if (propertyDefinition.dataType == "DATE") {
     return (
       <DatePicker
         isDisabled={mode === "view"}
+        showMonthAndYearPickers
         id={propertyDefinition.code}
-        value={parseDate(propertyValue ?? "2000-01-01")}
-        onChange={(value) => onValueChange(value?.toString())}
+        aria-label={propertyDefinition.code}
+        value={parseDate(propertyValue ?? "2022-01-01")} // Use memoized value
+        onChange={(value) => value !== null ? onValueChange(value?.toString()) : null}
+      />
+    );
+  } else if (propertyDefinition.dataType == "TIMESTAMP") {
+    return (
+      <DatePicker
+        hideTimeZone
+        showMonthAndYearPickers
+        isDisabled={mode === "view"}
+        id={propertyDefinition.code}
+        aria-label={propertyDefinition.code}
+        value={fromOpenBISDate(propertyValue ?? new Date().toISOString())}
+        onChange={(value) =>
+          value !== null ? onValueChange(toOpenBISDate(value)) : null
+        }
       />
     );
   } else if (propertyDefinition.dataType == "CONTROLLEDVOCABULARY") {
+    const vocabularyRes = useGetVocabulary(propertyDefinition.vocabulary ?? "");
+    if (vocabularyRes?.isLoading) {
+      return <>Loading...</>;
+    }
+    if (vocabularyRes?.isError) {
+      return <>Error loading vocabulary</>;
+    }
+    if (vocabularyRes?.data) {
+      return (
+        <Autocomplete>
+          {vocabularyRes.data.terms.map((term) => {
+            return (
+              <AutocompleteItem key={term.code} value={term.code}>
+                {term.label}
+              </AutocompleteItem>
+            );
+          }) ?? <></>}
+        </Autocomplete>
+      );
+    }
+  } else if (
+    propertyDefinition.dataType == "JSON" ||
+    propertyDefinition.dataType == "XML"
+  ) {
     return (
-      <>{vocabularyRes?.data}</>
-);
+      <Editor
+        defaultLanguage={propertyDefinition.dataType}
+        height="10vh"
+        defaultValue={propertyValue}
+        onChange={(value) => {
+          onValueChange(value ?? "");
+        }}
+      />
+    );
   } else {
     return (
       <Input

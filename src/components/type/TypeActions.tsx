@@ -2,6 +2,7 @@ import { PropertyType } from "../../apis/propertyType/commonPropertyType";
 import {
   getDefaultPropertyTypeDefintion,
   iLogBaseAllTypes,
+  mergePropertyTypes,
 } from "../../apis/shared/common";
 import { PropertyTypesSchema, ObjectTypeDefinition } from "../../apis/type/commonType";
 import { produce } from "immer";
@@ -10,6 +11,7 @@ export type TypeCreatorActions =
   | { type: "SET_PREFIX"; payload: string }
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
+  | { type: "SET_BASE_TYPE"; payload: { newBaseType: ObjectTypeDefinition } }
   | {
       type: "SET_NEW_PROPERTY";
       payload: { property: PropertyType; group: string };
@@ -36,10 +38,9 @@ export type TypeCreatorActions =
       type: "CHANGE_PROPERTY_CODE";
       payload: { oldCode: string; newCode: string, group: string };
     }
-  | {type: "SET_BASE_TYPE"; payload: { baseType: string, schema: PropertyTypesSchema }}
   | {
       type: "CLEAR";
-      payload: { baseType: iLogBaseAllTypes };
+      payload: { };
     };
 
 export type TypeCreatorState = {
@@ -50,7 +51,6 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
   (state), (draft:TypeCreatorState) => {
     switch (action.type) {
       case "CLEAR":
-        draft.schema = getDefaultPropertyTypeDefintion(action.payload.baseType);
         break;
       case "SET_PREFIX":
         draft.schema.generatedCodePrefix = action.payload;
@@ -60,6 +60,11 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
         break;
       case "SET_DESCRIPTION":
         draft.schema.description = action.payload;
+        break;
+      case "SET_BASE_TYPE":
+        draft.schema.baseType = action.payload.newBaseType.code;
+        // extend current propertyTypes with base types
+        draft.schema.propertyTypes = action.payload.newBaseType.propertyTypes;
         break;
       case "SET_OBJECT_TYPE_TEMPLATE":
         draft.schema = action.payload.objecttypetemplate;

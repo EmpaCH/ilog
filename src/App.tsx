@@ -5,6 +5,9 @@ import { useOpenBIS } from "./hooks/auth/useAuth";
 import { AuthContext } from "./context/auth/authContext";
 import { router } from "./router";
 import "./App.css";
+import { HeroUIProvider } from "@heroui/react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {
@@ -16,7 +19,7 @@ declare module "@tanstack/react-router" {
 
 function InnerApp() {
   const auth = useContext(AuthContext);
-  return <RouterProvider router={router} context={{ auth }} />;
+  return <RouterProvider router={router} context={{ auth }}/>
 }
 
 function App() {
@@ -24,13 +27,14 @@ function App() {
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: 10000 } },
   });
+  const router = useRouter();
 
   return (
-    <QueryClientProvider client={client}>
-      <AuthContext.Provider value={facade}>
-        <InnerApp />
-      </AuthContext.Provider>
-    </QueryClientProvider>
+      <QueryClientProvider client={client}>
+        <AuthContext.Provider value={facade}>
+          <InnerApp />
+        </AuthContext.Provider>
+      </QueryClientProvider>
   );
 }
 
