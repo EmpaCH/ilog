@@ -274,6 +274,21 @@ export function deriveType(
     baseType: baseType.code,
   };
 }
+
+type Branded<T, B extends string> = T & { __brand: B };
+type SerializedPropertyKey = Branded<`${string}:${DataType}`, "SerializedPropertyKey">;
+
+/**
+ * Transforms a property type into a serialized key.
+ * This is used to create a unique key for the property type used to verify structural compatibility
+ * @param key 
+ * @returns 
+ */
+function serializePropertyType(key: LocalPropertyType): SerializedPropertyKey {
+  return `${key.code}:${key.dataType}` as SerializedPropertyKey;
+}
+
+
 /**
  * Extract the list of all fields on an object as a set of
  * tuples (code, type)
@@ -282,9 +297,9 @@ export function deriveType(
  */
 function extractFields(type: ResolvedObjectTypeDefinition) {
   return new Set(
-    Object.entries(type.propertyTypes).map(([propertyGroup, properties]) => {
+    Object.entries(type?.propertyTypes).flatMap(([propertyGroup, properties]) => {
       return properties.map((prop) => {
-        return [prop.code, prop.dataType];
+        return serializePropertyType(prop);
       });
     })
   );
@@ -302,6 +317,9 @@ export function checkValidSubType(
 ) {
   const baseFieldSet = extractFields(baseType);
   const derivedFieldSet = extractFields(derivedType);
+  console.log(
+    "baseFieldSet",baseFieldSet,
+    "derivedFieldSet",derivedFieldSet)
   return derivedFieldSet.isSupersetOf(baseFieldSet); //* ts-ignore
 }
 
@@ -320,7 +338,6 @@ export function findAncestors(
     allTypes: ResolvedObjectTypeDefinition[],
     ancestors: string[] = []
   ): string[] {
-    console.log(type.code, type.baseType)
     // IF the type has a base type, we continue searching for its ancestors
     if (type.baseType !== undefined || type.baseType !== null) {
       // Find the base type in allTypes
@@ -330,7 +347,7 @@ export function findAncestors(
         return inner(baseType, allTypes, newAncestors);
       }
       // If the base type is not found, return the current ancestors
-      return [baseType, ...ancestors];
+      return [...ancestors];
     }else{
       return ancestors;
     }

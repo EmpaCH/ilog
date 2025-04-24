@@ -130,16 +130,14 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
-
-    const ancestors = findAncestors(state.schema, resolvedTypes);
-    const ancestorType = resolvedTypes.find(
-      (type) => type.code === ancestors[0]
-    )?.code as iLogBaseAllTypes;
-    const isValidSubtype = checkValidSubType(state.schema, ancestorType);
+    const ancestors = findAncestors(state.schema, objectTypes);
+    const ancestorType = objectTypes.find((type) => type.code === ancestors[0]);
+    const isValidSubtype = checkValidSubType(ancestorType, state.schema);
     const baseType = ancestors[0];
+
     if (!isValidSubtype) {
       setMessage(
-        `The base type ${baseType} is not a valid subtype of ${ancestorType}.`
+        `The base type ${baseType} is not a valid subtype of ${ancestorType?.code}.`
       );
       setMessageColor("error-message");
       setShowMessage(true);
@@ -150,7 +148,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       baseType === "INSTRUMENT" &&
       state.schema.propertyTypes.Components.length === 0
     ) {
-      setMessage("An instrument must have at least one component.");
+      setMessage("An instrument or a type derived from INSTRUMENT must have at least one component.");
       setMessageColor("error-message");
       setShowMessage(true);
       setLoading(false);
