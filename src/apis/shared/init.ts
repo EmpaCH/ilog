@@ -33,6 +33,31 @@ export async function createIlogTypeProperty(
 }
 
 /**
+ * Creates the iLog logbook property type if it does not already exist.
+ * This property is used to identify iLog logbook entities.
+ * @param api - The OpenBIS JavaScript facade instance.
+ */
+export async function createIlogLogbookTypeProperty(
+  api: openbis.OpenBISJavaScriptFacade,
+): Promise<void> {
+  const sc = new openbis.PropertyTypeSearchCriteria();
+  sc.withCode().thatEquals(common.iLogLogbookID);
+  const fo = new openbis.PropertyTypeFetchOptions();
+  const result = await api.searchPropertyTypes(sc, fo);
+  if (result.getTotalCount() == 0) {
+    const newProp = new openbis.PropertyTypeCreation();
+    newProp.setCode(common.iLogLogbookID);
+    newProp.setLabel(common.iLogLogbookID);
+    newProp.setDataType('BOOLEAN');
+    newProp.setDescription('This is the iLog logbook identifier.');
+    await api.createPropertyTypes([newProp]);
+    console.log('iLog logbook property type initialized.');
+  } else {
+    console.log('iLog logbook property type already exists.');
+  }
+}
+
+/**
  * Creates the iLog type variants vocabulary if it does not already exist.
  * @param api - The OpenBIS JavaScript facade instance.
  */
@@ -193,6 +218,7 @@ export async function initIlog(
   const creation = useCreateObjectType();
   creation.mutate({ definition: common.COMPONENT_TYPE_DEFINITION });
   creation.mutate({ definition: common.INSTRUMENT_TYPE_DEFINITION });
+  creation.mutate({ definition: common.LOGBOOK_ENTRY_TYPE_DEFINITION });
 
 
   common.env.setEnv(collection, collection.getProject(), collection.getProject().getSpace());
