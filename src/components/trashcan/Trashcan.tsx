@@ -1,36 +1,41 @@
-import React, { useContext, useMemo, useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { AuthContext } from "../../context/auth/authContext";
-import { getTrashedObjects, restoreTrashedObjects, deleteTrashedObjects } from "../../apis/trashcan/trashcanAPI";
+import React, { useMemo, useEffect, useState, useRef } from "react";
+import { useGetTrashedObjects } from "../../apis/trashcan/useGetTrashedObjects";
+import { useRestoreTrashedObjects } from "../../apis/trashcan/useRestoreTrashedObjects";
+import { useDeleteTrashedObjects } from "../../apis/trashcan/useDeleteTrashedObjects";
 import { MessageModal } from "../shared/messageModal";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Button, Selection } from "@heroui/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Button } from "@heroui/react";
 import UndoIcon from "@mui/icons-material/Undo";
 import ClearIcon from "@mui/icons-material/Clear";
 import openbis from "@openbis/openbis.esm";
 
-const Trashcan = () => {
-  const { apiFacade } = useContext(AuthContext);
-  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
+export const Trashcan = () => {
+  const allTrashedObjectsResult = useGetTrashedObjects();
+  const restoreTrashedObjects = useRestoreTrashedObjects();
+  const deleteTrashedObjects = useDeleteTrashedObjects();
+
+  const [deletedItems, setDeletedItems] = useState<openbis.Deletion[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<Set<string> | "all">(new Set());
   const [disabledButtons, setDisabledButtons] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
 
-  const res = useQuery({
-    queryKey: ["getTrashedObjects"],
-    queryFn: async () => {
-      return getTrashedObjects(apiFacade);
-    },
-  });
-
-  const deletedItems = useMemo(() => {
-    return res.data ? [...res.data] : [];
-  }, [res]);
+  useMemo(() => {
+    if (allTrashedObjectsResult.status == "success") {
+      setDeletedItems(allTrashedObjectsResult.data);
+    }
+  }, [allTrashedObjectsResult.status, allTrashedObjectsResult.data]);
 
   useEffect(() => {
-    setDisabledButtons((selectedKeys as Set<any>).size == 0);
+    setDisabledButtons(selectedKeys !== "all" && selectedKeys.size === 0);
   }, [selectedKeys]);
 
-  const getSelectedKeys = (): openbis.IDeletionId[] => {
+  const selectedKeysRef = useRef<Set<string> | "all">(new Set());
+  useEffect(() => {
+    selectedKeysRef.current = selectedKeys;
+  }, [selectedKeys]);
+
+  const getItems = (): openbis.IDeletionId[] => {
+    const selectedKeys = selectedKeysRef.current;
     let deletionIds: openbis.IDeletionId[] = [];
     if (selectedKeys == "all") {
       return deletedItems.map(deletion => deletion.getId() as openbis.IDeletionId);
@@ -44,44 +49,40 @@ const Trashcan = () => {
   };
 
   const onRestore = async (
-    items: openbis.IDeletionId[],
+    item?: openbis.IDeletionId,
   ) => {
-    await restoreTrashedObjects(
-      apiFacade,
+    const items = item ? [item] : getItems();
+    await restoreTrashedObjects.mutateAsync(
       items,
-    ).then(() => {
-      res.refetch();
-    }).catch((e) => {
+    ).catch((e) => {
       setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ""));
       setShowMessage(true);
     }).finally(() => {
-      setSelectedKeys(new Set([]));
       setTimeout(() => {
+        setSelectedKeys(new Set([]));
         setShowMessage(false);
         }, 3000);
     });
   };
 
   const onDelete = async (
-    items: openbis.IDeletionId[],
+    item?: openbis.IDeletionId,
   ) => {
-    await deleteTrashedObjects(
-      apiFacade,
+    const items = item ? [item] : getItems();
+    await deleteTrashedObjects.mutateAsync(
       items,
-    ).then(() => {
-      res.refetch();
-    }).catch((e) => {
+    ).catch((e) => {
       setErrorMessage(e.message.replace(/\s*\([^)]*\)/g, ""));
       setShowMessage(true);
     }).finally(() => {
-      setSelectedKeys(new Set([]));
       setTimeout(() => {
+        setSelectedKeys(new Set([]));
         setShowMessage(false);
         }, 3000);
     });
   };
 
-  const topContent = React.useMemo(() => {
+  const topContent = useMemo(() => {
     return (
       <div className="flex flex-col gap-4">
         <div className="flex justify-between items-center">
@@ -91,18 +92,16 @@ const Trashcan = () => {
               color="success"
               startContent={<UndoIcon/>}
               className="text-white"
-              disabled={disabledButtons}
-              disableAnimation={disabledButtons}
-              onPress={(e) => {onRestore(getSelectedKeys())}}
+              isDisabled={disabledButtons}
+              onPress={(e) => onRestore()}
             >
               Restore
             </Button>
             <Button
               color="danger"
               startContent={<ClearIcon/>}
-              disabled={disabledButtons}
-              disableAnimation={disabledButtons}
-              onPress={(e) => {onDelete(getSelectedKeys())}}
+              isDisabled={disabledButtons}
+              onPress={(e) => onDelete()}
             >
               Permanently delete
             </Button>
@@ -110,7 +109,7 @@ const Trashcan = () => {
         </div>
       </div>
     );
-  }, [deletedItems]);
+  }, [deletedItems, disabledButtons]);
 
   const getItemCategory = (item: openbis.DeletedObject) => {
     const kind = item.getEntityKind();
@@ -131,7 +130,7 @@ const Trashcan = () => {
             color="success"
             variant="light"
             size="sm"
-            onPress={(e) => {onRestore([deletion.getId()])}}
+            onPress={(e) => {onRestore(deletion.getId())}}
           >
             <UndoIcon/>
           </Button>
@@ -140,7 +139,7 @@ const Trashcan = () => {
             color="danger"
             variant="light"
             size="sm"
-            onPress={(e) => {onDelete([deletion.getId()])}}
+            onPress={(e) => {onDelete(deletion.getId())}}
           >
             <ClearIcon/>
           </Button>
@@ -160,7 +159,13 @@ const Trashcan = () => {
         topContent={topContent}
         topContentPlacement="outside"
         selectedKeys={selectedKeys}
-        onSelectionChange={setSelectedKeys}
+        onSelectionChange={(keys) => {
+          if (keys === "all") {
+            setSelectedKeys(keys);
+          } else {
+            setSelectedKeys(new Set(Array.from(keys as Set<React.Key>).map(String)));
+          }
+        }}
         classNames={{
           wrapper: "max-h-[557px]",
         }}
@@ -185,5 +190,3 @@ const Trashcan = () => {
     </>
   );
 }
-
-export default Trashcan;

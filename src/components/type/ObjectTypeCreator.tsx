@@ -85,7 +85,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       type: "SET_OBJECT_TYPE_TEMPLATE",
       payload: { objecttypetemplate: objectTypeTemplate}
     })
-    
+
     // Set the property types
     const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
     // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
@@ -316,7 +316,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           onBlur={(event) => {
             if (objectTypeCode !== (event.target as HTMLInputElement).value) {
               const existingType = allObjectTypesResult.data?.find(
-              (type) => type.getCode() === (event.target as HTMLInputElement).value
+                (type) => type.getCode() === (event.target as HTMLInputElement).value
               );
                 if (existingType) {
                   const confirmSwitch = window.confirm(

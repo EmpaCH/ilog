@@ -1,9 +1,7 @@
-import { useContext, useMemo, useReducer } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useReducer, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AuthContext } from "../../context/auth/authContext";
-import { getObjects, deleteObject } from "../../apis/object/objectAPI";
-import openbis from "@openbis/openbis.esm";
+import { useGetObjects } from "../../apis/object/useGetObjects";
+import { useDeleteObject } from "../../apis/object/useDeleteObject";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
 import { Column, ObjectRow } from "../shared/list.types";
@@ -11,37 +9,34 @@ import {
   objectListLocalReducer,
   EMPTY_OBJECT_LIST_DEFINITION,
 } from "./ObjectLocalActions";
+import openbis from "@openbis/openbis.esm";
 
 export const ObjectList = () => {
-  const { apiFacade } = useContext(AuthContext);
+  const allObjectsResult = useGetObjects();
+  const deleteObjectResult = useDeleteObject();
   const navigate = useNavigate();
 
+  const [objects, setObjects] = useState<openbis.Sample[]>([]);
   const [state, dispatch] = useReducer(objectListLocalReducer,
     EMPTY_OBJECT_LIST_DEFINITION,
   );
 
-  const res = useQuery({
-    queryKey: ["getObjects"],
-    queryFn: async () => {
-      return await getObjects(apiFacade);
-    },
-  });
-
-  const objects = useMemo(() => {
-    return res.data ? [...res.data] : [];
-  }, [res]);
+  useMemo(() => {
+    if (allObjectsResult.status == "success") {
+      setObjects(allObjectsResult.data);
+    }
+  }, [allObjectsResult.status, allObjectsResult.data]);
 
   const onDelete = async (
     permId: any,
     code: string,
   ) => {
-    await deleteObject(
-      apiFacade,
+    await deleteObjectResult.mutateAsync(
       permId as openbis.SamplePermId,
     ).then(() => {
-      res.refetch();
       handleMessage(`'${code}' deleted successfully.`, true, true);
     }).catch((e) => {
+      handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
       handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
     });
   };

@@ -31,7 +31,6 @@ export const objectCreatorReducer = produce(
       case "SET_PROPERTIES_SCHEMA":
         return { ...state, propertiesSchema: action.payload };
       case "SET_PROPERTY_VALUES":
-        console.log("SET_PROPERTY_VALUES", action.payload);
         return {
           ...state,
           propertyValues: {
