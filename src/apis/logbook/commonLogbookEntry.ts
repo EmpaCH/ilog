@@ -1,8 +1,8 @@
 import openbis from "@openbis/openbis.esm";
 import { ZonedDateTime } from "@internationalized/date";
-import { PropertyTypesSchema } from "../../apis/type/commonType";
+import { PropertyTypesSchema } from "../type/commonType";
 
-export interface ObjectDefinition {
+export interface LogbookEntryDefinition {
   id: openbis.SampleIdentifier | null;
   type: string;
   code: string;
@@ -18,8 +18,5 @@ export interface ReconstructedHistory {
 }
 
 export interface GroupedHistory {
-  [key: string]: ObjectDefinition;
-}
-export interface MultiObjectGroupedHistory {
-  [uniqueId: string]: GroupedHistory;
+  [key: string]: LogbookEntryDefinition;
 }
