@@ -1,5 +1,5 @@
 import openbis from "@openbis/openbis.esm";
-import { iLogID } from "../shared/common";
+import { iLogID, iLogLogbookID } from "../shared/common";
 import {
   createObjectTypeSettingsDefinition,
   deleteObjectTypeSettingsDefinition,
@@ -43,7 +43,26 @@ export async function getObjectTypes(
   return result.getObjects();
 }
 
-export async function getObjectType(api: openbis.OpenBISJavaScriptFacade, permId: string): Promise<openbis.SampleType> {
+/**
+ * Get all logbook entry types with the iLog base type property and apply filtering by code if search field is provided.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param search - The search string to filter types by code.
+ * @returns A promise that resolves to an array of SampleType objects.
+ */
+export async function getLogbookEntryTypes(
+  api: openbis.OpenBISJavaScriptFacade,
+  search: string = ""
+): Promise<openbis.SampleType[]> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatStartsWith(search.toUpperCase());
+  sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogLogbookID);
+  const fo = createObjectTypeFetchOptions();
+
+  const result = await api.searchSampleTypes(sc, fo);
+  return result.getObjects();
+}
+
+export async function getObjectType(api: openbis.OpenBISJavaScriptFacade, permId: string): Promise<openbis.SampleType | undefined> {
   const sc = new openbis.SampleTypeSearchCriteria();
   sc.withCode().thatEquals(permId);
   const fo = createObjectTypeFetchOptions();

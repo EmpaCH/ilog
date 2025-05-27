@@ -1,0 +1,119 @@
+import openbis from "@openbis/openbis.esm";
+import { iLogID, iLogLogbookID, labID, logbookCollectionID } from "../shared/common";
+
+/**
+ * Get all logbook entries from the iLog inventory Equipment collection.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @returns A promise that resolves to an array of Sample objects.
+ */
+export async function getAllLogbookEntries(
+  api: openbis.OpenBISJavaScriptFacade,
+): Promise<openbis.Sample[]> {
+  const sc = new openbis.SampleSearchCriteria();
+  sc.withSpace().withCode().thatEquals(labID);
+  sc.withProject().withCode().thatEquals(iLogID);
+  sc.withExperiment().withCode().thatEquals(logbookCollectionID);
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  fo.withProperties();
+  fo.withPropertiesHistory();
+
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withType().withPropertyAssignmentsUsing(ao);
+
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects();
+}
+
+export async function getLogbookEntry(
+  api: openbis.OpenBISJavaScriptFacade,
+  code: string,
+): Promise<openbis.Sample[]> {
+  const sc = new openbis.SampleSearchCriteria();
+  sc.withCode().thatEquals(code);
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  fo.withProperties();
+  fo.withPropertiesHistory();
+
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withType().withPropertyAssignmentsUsing(ao);
+
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects();
+}
+
+/**
+ * Create a new logbook entry in the iLog inventory Equipment collection.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param type - The logbook entry type.
+ * @param code - The logbook entry code.
+ * @param properties - The logbook entry properties.
+ * @param spacePermId - The space permission ID.
+ * @param projectPermId - The project permission ID.
+ * @param collectionPermId - The collection permission ID.
+ */
+export async function createLogbookEntry(
+  api: openbis.OpenBISJavaScriptFacade,
+  type: string,
+  code: string,
+  properties: object,
+  spacePermId: openbis.SpacePermId,
+  projectPermId: openbis.ProjectPermId,
+  collectionPermId: openbis.ExperimentPermId,
+): Promise<void> {
+  const newEntry = new openbis.SampleCreation();
+  newEntry.setTypeId(new openbis.EntityTypePermId(type));
+  newEntry.setCode(code);
+  newEntry.setProperty(iLogLogbookID, true);
+  newEntry.setExperimentId(collectionPermId);
+  newEntry.setProjectId(projectPermId);
+  newEntry.setSpaceId(spacePermId);
+  for (const [key, value] of Object.entries(properties)) {
+    newEntry.setProperty(key, value);
+  }
+  await api.createSamples([newEntry]);
+}
+
+/**
+ * Update an existing logbook entry.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param sampleId - The ID of the logbook entry to update.
+ * @param properties - The updated properties.
+ */
+export async function updateLogbookEntry(
+  api: openbis.OpenBISJavaScriptFacade,
+  sampleId: openbis.ISampleId,
+  properties: object,
+): Promise<void> {
+  const updateEntry = new openbis.SampleUpdate();
+  updateEntry.setSampleId(sampleId);
+  for (const [key, value] of Object.entries(properties)) {
+    updateEntry.setProperty(key, value);
+  }
+  await api.updateSamples([updateEntry]);
+}
+
+/**
+ * Delete a logbook entry.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param sampleId - The ID of the logbook entry to delete.
+ */
+export async function deleteLogbookEntry(
+  api: openbis.OpenBISJavaScriptFacade,
+  sampleId: openbis.SamplePermId,
+): Promise<void> {
+  const sdo = new openbis.SampleDeletionOptions();
+  sdo.setReason('Logbook entry no longer needed.');
+  await api.deleteSamples([sampleId], sdo);
+}
