@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo } from "react";
+import { useContext } from "react";
 import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useOpenBIS } from "./hooks/auth/useAuth";
@@ -16,7 +16,7 @@ declare module "@tanstack/react-router" {
 
 function InnerApp() {
   const auth = useContext(AuthContext);
-  return <RouterProvider router={router} context={{ auth }} />;
+  return <RouterProvider router={router} context={{ auth }}/>
 }
 
 function App() {

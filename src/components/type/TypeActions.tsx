@@ -11,7 +11,7 @@ export type TypeCreatorActions =
   | { type: "SET_PREFIX"; payload: string }
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
-  | { type: "SET_BASE_TYPE"; payload: { newBaseType: iLogBaseAllTypes } }
+  | { type: "SET_BASE_TYPE"; payload: { newBaseType: ObjectTypeDefinition } }
   | {
       type: "SET_NEW_PROPERTY";
       payload: { property: PropertyType; group: string };
@@ -62,12 +62,9 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
         draft.schema.description = action.payload;
         break;
       case "SET_BASE_TYPE":
-        draft.schema.baseType = action.payload.newBaseType;
-        const base_types = getDefaultPropertyTypeDefintion(action.payload.newBaseType).propertyTypes;
+        draft.schema.baseType = action.payload.newBaseType.code;
         // extend current propertyTypes with base types
-        draft.schema.propertyTypes = mergePropertyTypes(
-          [draft.schema.propertyTypes, base_types]
-        );
+        draft.schema.propertyTypes = action.payload.newBaseType.propertyTypes;
         break;
       case "SET_OBJECT_TYPE_TEMPLATE":
         draft.schema = action.payload.objecttypetemplate;
@@ -170,6 +167,10 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
           draft.schema.propertyTypes[action.payload.property.type].filter(
             (property) => property.code !== action.payload.property.code
           );
+        break;
+      case "SET_BASE_TYPE":
+        draft.schema.baseType = action.payload.baseType;
+        draft.schema.propertyTypes = action.payload.schema;
         break;
     }
   }
