@@ -5,6 +5,7 @@ export interface Column {
   name: string;
   sorting: boolean;
   align: "start" | "end";
+  filterable?: boolean;
 };
 
 export interface TypeRow {
@@ -23,3 +24,17 @@ export interface ObjectRow {
 export interface Row {
   [key: string]: any;
 }
+
+
+export interface LogbookEntryRow {
+  permId: openbis.SamplePermId;
+  name: string;
+  responsible: string;
+  description: string;
+  involvedEquipment: string[];
+  componentCode: string;
+  type: string;
+  validFrom: string;
+  color?: string;
+  enableModification?: boolean;
+};

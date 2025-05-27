@@ -2,8 +2,10 @@ import openbis from "@openbis/openbis.esm";
 
 // Environment creation settings
 export const iLogID = "ILOG";
+export const iLogLogbookID = "ILOG_LOGBOOK";
 export const labID = "205";
 export const collectionID = "EQUIPMENT";
+export const logbookCollectionID = "LOGBOOK";
 
 // Space (lab) > Project (iLog) > Collection (i.e. Equipment)
 class Env {

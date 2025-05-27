@@ -1,25 +1,25 @@
 import { produce } from "immer";
 import { ZonedDateTime } from "@internationalized/date";
-import { createEmptyObjectDefinition } from "../../apis/object/helpersObjectAPI";
-import { ObjectDefinition } from "../../apis/object/commonObject";
+import { createEmptyLogbookEntryDefinition } from "../../apis/logbook/helpersLogbookEntryAPI";
+import { LogbookEntryDefinition } from "../../apis/logbook/commonLogbookEntry";
 import { PropertyTypesSchema } from "../../apis/type/commonType";
 
-export type ObjectCreatorActions =
+export type LogbookEntryActions =
   | { type: "CLEAR" }
-  | { type: "RESET"; payload: ObjectDefinition }
+  | { type: "RESET"; payload: LogbookEntryDefinition }
   | { type: "SET_TYPE"; payload: string }
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_VALID_FROM"; payload: ZonedDateTime }
   | { type: "SET_PROPERTIES_SCHEMA"; payload: PropertyTypesSchema }
   | { type: "SET_PROPERTY_VALUES"; payload: any };
 
-export type ObjectCreatorState = ObjectDefinition;
+export type LogbookEntryState = LogbookEntryDefinition;
 
-export const objectCreatorReducer = produce(
-  (state: ObjectCreatorState, action: ObjectCreatorActions) => {
+export const logbookEntryReducer = produce(
+  (state: LogbookEntryState, action: LogbookEntryActions) => {
     switch (action.type) {
       case "CLEAR":
-        return createEmptyObjectDefinition();
+        return createEmptyLogbookEntryDefinition();
       case "RESET":
         return action.payload;
       case "SET_TYPE":

@@ -1,17 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { getObjects } from './objectAPI';
+import { getAllLogbookEntries } from './LogbookEntryAPI';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/auth/authContext';
 
-export const GET_ALL_OBJECTS_QUERY_PREFIX = "GET_ALL_OBJECTS";
+const QUERY_PREFIX = "GET_ALL_LOGBOOK_ENTRIES";
 
-export const useGetObjects = () => {
+export const useGetAllLogbookEntries = () => {
   const { apiFacade } = useContext(AuthContext);
 
   return useQuery({
-    queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX],
+    queryKey: [QUERY_PREFIX],
     queryFn: () => {
-      return getObjects(apiFacade);
+      return getAllLogbookEntries(apiFacade);
     },
   });
 };

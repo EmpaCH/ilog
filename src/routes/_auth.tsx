@@ -60,6 +60,10 @@ function AuthLayout() {
             <Link to="/trashcan" className="[&.active]:font-bold">
               Trashcan
             </Link>
+            {" | "}
+            <Link to="/logbook" className="[&.active]:font-bold">
+              Logbook
+            </Link>
           </div>
         </div>
         <div className="main-menu-container">

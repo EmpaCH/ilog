@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useReducer } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Table,
@@ -14,6 +14,7 @@ import {
 } from "@heroui/react";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import FilterIcon from "@mui/icons-material/FilterAltTwoTone"; // Assuming FilterIcon is from MUI
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import HistoryIcon from "@mui/icons-material/History";
 import { Column, Row } from "./list.types";
@@ -23,8 +24,12 @@ export const List = (props: {
   columns: Column[];
   rows: Row[];
   defaultSortColumn: string;
+  idColumn?: string;
+  defaultSortDirection?: "ascending" | "descending";
   navigatePath: string;
   enableHistory?: boolean;
+  enableEdit?: boolean;
+  enableDelete?: boolean;
   onDelete: (
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
@@ -38,26 +43,45 @@ export const List = (props: {
   ) => void;
 }) => {
   const navigate = useNavigate();
-  const [filterValue, setFilterValue] = React.useState("");
+  const [filter, setFilterValue] = useReducer(
+    (state: Record<string, string>, action: { key: string; value: string }) => {
+      return { ...state, [action.key]: action.value };
+    },
+    {}
+  );
+
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [sortDescriptor, setSortDescriptor] = React.useState<SortDescriptor>({
     column: props.defaultSortColumn,
-    direction: "ascending",
+    direction: props.defaultSortDirection ? props.defaultSortDirection : "ascending",
   });
+  const generalListFilter = "generalListFilter";
   const [page, setPage] = React.useState(1);
-  const hasSearchFilter = Boolean(filterValue);
+  const hasSearchFilter = Boolean(filter[generalListFilter]);
 
   const filteredItems = React.useMemo(() => {
     let filteredItems: Row[] = [...props.rows];
     if (hasSearchFilter) {
       filteredItems = filteredItems.filter((items) =>
-        items[props.defaultSortColumn]
+        items[props.idColumn ? props.idColumn : props.defaultSortColumn]
           .toLowerCase()
-          .includes(filterValue.toLowerCase())
+          .includes(filter[generalListFilter].toLowerCase())
       );
     }
+    filteredItems = filteredItems.filter((item) => {
+      return Object.entries(filter).every(([key, value]) => {
+      if (!value || key === generalListFilter) return true;
+      let regex: RegExp;
+      try {
+        regex = new RegExp(value, "i");
+        return regex.test(item[key as keyof Row]?.toString() || "");
+      } catch {
+        return (item[key as keyof Row]?.toString() || "").toLowerCase().includes(value.toLowerCase());
+      }
+      });
+    });
     return filteredItems;
-  }, [props, filterValue]);
+  }, [props, filter]);
 
   const pages = Math.ceil(filteredItems.length / rowsPerPage);
   const itemsPerPage = React.useMemo(() => {
@@ -97,15 +121,18 @@ export const List = (props: {
 
   const onSearchChange = React.useCallback((value?: string) => {
     if (value) {
-      setFilterValue(value);
+      setFilterValue({ key: generalListFilter, value: value });
       setPage(1);
     } else {
-      setFilterValue("");
+      setFilterValue({ key: generalListFilter, value: "" });
+      setPage(1);
     }
   }, []);
 
+  
+
   const onClear = React.useCallback(() => {
-    setFilterValue("");
+    setFilterValue({ key: generalListFilter, value: "" });
     setPage(1);
   }, []);
 
@@ -120,9 +147,9 @@ export const List = (props: {
           <Input
             isClearable
             className="w-full sm:max-w-[44%]"
-            placeholder={`Search by ${props.defaultSortColumn}...`}
+            placeholder={`Search by ${props.idColumn ? props.idColumn : props.defaultSortColumn}`}
             startContent={<SearchIcon />}
-            value={filterValue}
+            value={filter[generalListFilter]}
             onClear={() => onClear()}
             onValueChange={onSearchChange}
           />
@@ -144,13 +171,14 @@ export const List = (props: {
             >
               <option value="10">10</option>
               <option value="20">20</option>
+              <option value="20">50</option>
             </select>
           </label>
         </div>
       </div>
     );
   }, [
-    filterValue,
+    filter,
     onSearchChange,
     onRowsPerPageChange,
     props.rows.length,
@@ -191,66 +219,118 @@ export const List = (props: {
     );
   }, [itemsPerPage.length, page, pages, hasSearchFilter]);
 
-  const renderTableColumn = (column: Column) => {
+  const renderTableColumn = (column: Column) => {    
     return (
       <TableColumn
         key={column.key}
         allowsSorting={column.sorting}
         align={column.align}
       >
-        {column.name}
+        {column.filterable
+          ? (
+
+            <div style={{ display: "flex", alignItems: "center" }}>
+          <span>
+            {column.name}
+            </span>
+            <button
+              style={{
+            marginLeft: "5px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+              }}
+              onClick={() => {
+            const value = prompt(
+              `Enter filter value for ${column.key}`,
+              filter[column.key] || ""
+            );
+            if (value !== null) {
+              setFilterValue({ key: column.key, value: value });
+            }
+              }}
+            >
+                <span
+                role="img"
+                aria-label="filter"
+                style={{ color: filter[column.key] ? "red" : "inherit" }}
+                >
+                <FilterIcon />
+                </span>
+            </button>
+            </div>
+          )
+          : column.name}
       </TableColumn>
     );
   };
 
   const renderRowCells = (
     permId: any,
-    row: { [key: string]: any }
-  ) => {
-    return Object.entries(row).map(([key, value]) => (
-      // §TODO: sometimes doesn't catch the correct category? then value is undefined
-      (<TableCell key={`${permId}-${key}`}>{printText(value)}</TableCell>)
+    row: { [key: string]: any },
+    idColumn: string | undefined,
+    defaultSortColumn: string,
+    enableModification: boolean | undefined,
+    enableHistory: boolean | undefined,
+  ): JSX.Element[] => {
+    const cells = Object.entries(row).map(([key, value]) => (
+      // §TODO: Fix such that key matches the column name, not just same order as input
+      (<TableCell key={`${permId}-${key}`} >{printText(value)}</TableCell>)
     ));
-  }
 
-  const renderTableRow = (row: Row) => {
-    const { permId, ...newRow } = row;
-    return (
-      <TableRow key={permId.getPermId()}>
-        {...renderRowCells(permId, newRow)}
-        <TableCell style={{ width: props.enableHistory ? "220px" : "155px" }}>
-          {props.enableHistory && 
-            <Button
-              type="button"
-              color="primary"
-              variant="light"
-              size="sm"
-              onPress={() => props.onHistory && props.onHistory(newRow[props.defaultSortColumn])}
-            >
-              <HistoryIcon />
-            </Button>
-          }
+    cells.push(
+      <TableCell key={`${permId}-actions`} style={{ width: enableHistory ? "220px" : "155px" }}>
+        {enableHistory && 
+          <Button
+            type="button"
+            color="primary"
+            variant="light"
+            size="sm"
+            onPress={() => props.onHistory && props.onHistory(row[defaultSortColumn])}
+          >
+            <HistoryIcon />
+          </Button>
+        }
+        {enableModification !== undefined ? enableModification : true && 
           <Button
             type="button"
             color="success"
             variant="light"
             size="sm"
-            onPress={() => props.onEdit(permId, newRow[props.defaultSortColumn])}
+            onPress={() => props.onEdit(permId, row[idColumn ? idColumn : defaultSortColumn])}
           >
             <DriveFileRenameOutlineIcon />
           </Button>
+        }
+        {enableModification !== undefined ? enableModification : true &&
           <Button
             type="button"
             color="danger"
             variant="light"
             size="sm"
             onPress={() =>
-              props.onDelete(permId, (newRow as Record<string, string>)[props.defaultSortColumn])
+              props.onDelete(permId, (row as Record<string, string>)[idColumn ? idColumn : defaultSortColumn])
             }
           >
             <DeleteOutlineIcon />
           </Button>
-        </TableCell>
+        }
+      </TableCell>
+    );
+
+    return cells;
+  };
+
+  const renderTableRow = (row: Row) => {
+    const { permId, color, enableModification, ...newRow } = row;
+    return (
+      <TableRow
+        key={permId.getPermId()}
+        style={{
+          backgroundColor: color,
+        }}
+      >
+        {renderRowCells(permId, newRow, props.idColumn, props.defaultSortColumn, enableModification, props.enableHistory)}
       </TableRow>
     );
   };
@@ -280,6 +360,10 @@ export const List = (props: {
       }}
       sortDescriptor={sortDescriptor}
       onSortChange={setSortDescriptor}
+      style= {{
+        border: "1px solid #E0E0E0",
+        borderRadius: "8px",
+      }}
     >
       <TableHeader>
         {props.columns.map((column) => renderTableColumn(column))}

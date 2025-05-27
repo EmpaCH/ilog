@@ -1,26 +1,21 @@
 import { useContext } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createObject } from './objectAPI';
+import { useMutation } from '@tanstack/react-query';
+import { createLogbookEntry } from './LogbookEntryAPI';
 import { AuthContext } from '../../context/auth/authContext';
 import { useGetSpace } from "../space/useGetSpace";
 import { useGetProject } from "../project/useGetProject";
 import { useGetCollection } from "../collection/useGetCollection";
-import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetObjects';
-import { iLogID, labID, collectionID } from "../shared/common";
+import { iLogID, labID, logbookCollectionID } from "../shared/common";
 
-const CREATE_OBJECT_MUTATION_KEY = "CREATE_OBJECT_MUTATION_KEY";
-
-export const useCreateObject = () => {
+export const useCreateLogbookEntry = () => {
   const { apiFacade } = useContext(AuthContext);
-  const queryClient = useQueryClient();
 
   const space = useGetSpace(labID);
   const project = useGetProject(labID, iLogID);
-  const collection = useGetCollection(labID, iLogID, collectionID);
+  const collection = useGetCollection(labID, iLogID, logbookCollectionID);
 
   return useMutation({
-    mutationKey: [CREATE_OBJECT_MUTATION_KEY],
-    mutationFn: async ({
+    mutationFn: ({
       type,
       code,
       properties,
@@ -30,12 +25,11 @@ export const useCreateObject = () => {
       properties: object;
     }) => {
       if (!space.data || !project.data || !collection.data) {
-        throw new Error("Space, project or collection not initialized");
+        console.error('Error: Missing required data for space, project, or collection.');
+        return Promise.reject(new Error('Missing required space, project, or collection.'));
       }
-      if (!apiFacade) {
-        throw new Error("API facade not initialized");
-      }
-      return createObject(
+
+      return createLogbookEntry(
         apiFacade,
         type,
         code,
@@ -45,8 +39,5 @@ export const useCreateObject = () => {
         collection.data.getPermId(),
       );
     },
-    onSuccess:  () => {
-      queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
-    }
   });
 };

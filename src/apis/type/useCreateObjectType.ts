@@ -24,7 +24,10 @@ import {
 } from "./helpersTypeAPI";
 
 import openbis from "@openbis/openbis.esm";
-import { useGetPropertyAssignments } from "../propertyType/useGetPropertyAssignments";
+import { 
+  ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX,
+  useGetPropertyAssignments,
+} from "../propertyType/useGetPropertyAssignments";
 import {
   PropertyAssignment,
   convertPropertyTypeToCreation,
@@ -67,6 +70,7 @@ function filterUpdates(
  *  */
 export const useCreateObjectType = () => {
   const { apiFacade, isAuthenticated } = useContext(AuthContext);
+  
   const existingObjectTypesResult = useGetAllObjectTypes();
   const existingPropertyTypesResult = useGetPropertyTypes();
   const existingPropertyAssigmentsResult = useGetPropertyAssignments();
@@ -107,10 +111,12 @@ export const useCreateObjectType = () => {
   return useMutation({
     //Only update the object setting definition if the creation of the object type was successful
     onSuccess: async (data, variables) => {
+      // Invalidate all relevant caches to ensure fresh data on next fetch
       queryClient.invalidateQueries({
         queryKey: [
           ALL_OBJECT_TYPES_QUERY_PREFIX,
           ALL_PROPERTY_TYPES_QUERY_PREFIX,
+          ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX,
         ],
       });
       // console.log("Creating object type settings definition");
@@ -125,17 +131,21 @@ export const useCreateObjectType = () => {
     }: {
       definition: ObjectTypeDefinition;
     }) => {
-      // const { objectTypes, propertyTypes, propertyAssignments } =
-      //   await fetchData();
-      // console.log("Called");
+      
+      // Cache might be invalidated, so we need to refetch
+      const freshObjectTypesResult = await existingObjectTypesResult.refetch();
+      const freshPropertyTypesResult = await existingPropertyTypesResult.refetch();
+      const freshPropertyAssignmentsResult =
+        await existingPropertyAssigmentsResult.refetch();
+
       if (
-        existingObjectTypesResult.isSuccess &&
-        existingPropertyTypesResult.isSuccess &&
-        existingPropertyAssigmentsResult.isSuccess
+        freshObjectTypesResult.isSuccess &&
+        freshPropertyTypesResult.isSuccess &&
+        freshPropertyAssignmentsResult.isSuccess
       ) {
-        const objectTypes = existingObjectTypesResult.data;
-        const propertyTypes = existingPropertyTypesResult.data;
-        const propertyAssignments = existingPropertyAssigmentsResult.data;
+        const objectTypes = freshObjectTypesResult.data;
+        const propertyTypes = freshPropertyTypesResult.data;
+        const propertyAssignments = freshPropertyAssignmentsResult.data;
         console.log("objectTypes", objectTypes);
         const operations = convertObjectTypeDefinitionToOperations(
           definition,

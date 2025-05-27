@@ -2,7 +2,7 @@
 import { PropertyTypesSchema, ObjectTypeDefinition } from "../type/commonType";
 import { Vocabulary } from "../vocabulary/commonVocabulary";
 import { PropertyType } from "../propertyType/commonPropertyType";
-import { iLogID } from "./environment";
+import { iLogID, iLogLogbookID } from "./environment";
 
 // Base type settings
 export const iLogBaseTypesPropertyCode = "ILOG_TYPE_BASE";
@@ -128,6 +128,71 @@ export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   propertyTypes: INSTRUMENT_SCHEMA,
   baseType: "ILOG"
 };
+export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
+  code: "LOGBOOK_ENTRY",
+  generatedCodePrefix: "ENTRY",
+  description: "Ilog Logbook Entry",
+  propertyTypes: {
+    ["GeneralInfo"]: [
+      { code: "$NAME", type: "reference" },
+      { code: iLogLogbookID, type: "reference" },    
+      {
+        code: "VALID_FROM",
+        type: "local",
+        multivalued: false,
+        dataType: "VARCHAR",
+        label: "ValidFrom",
+        description: "ValidFrom",
+      },    
+      {
+        code: "DESCRIPTION",
+        type: "local",
+        multivalued: false,
+        dataType: "VARCHAR",
+        label: "Description",
+        description: "Description",
+      },
+      {
+        code: "RESPONSIBLE",
+        type: "local",
+        multivalued: true,
+        dataType: "VARCHAR",
+        label: "Responsible",
+        description: "Responsible",
+      },      
+      {
+        code: "INVOLVEDEQUIPMENT",
+        type: "local",
+        multivalued: true,
+        dataType: "VARCHAR",
+        label: "Involved Equipment",
+        description: "Involved Equipment",
+      },
+      {
+        code: "COMPONENT",
+        type: "local",
+        multivalued: true,
+        dataType: "VARCHAR",
+        label: "Component",
+        description: "Component (most directly involved)",
+      },
+    ]
+  } as PropertyTypesSchema,
+};
+
+// Define different logbook entry types: Maintenance, Errors and Problems, Calibration/Optimization, Cryogen Filling, Degasing, Cleaning, Bakeout, Comment, Other
+export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
+  maintenance: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "MAINTENANCE_LOGENTRY", generatedCodePrefix: "MAINTENANCELOG", description: "Maintenance Logbook Entry" },
+  errorsAndProblems: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "ERRORS_AND_PROBLEMS_LOGENTRY", generatedCodePrefix: "ERRORSANDPROBLEMSLOG", description: "Errors and Problems Logbook Entry" },
+  calibrationOptimization: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CALIBRATION_OPTIMIZATION_LOGENTRY", generatedCodePrefix: "CALIBRATIONOPTIMIZATIONLOG", description: "Calibration and Optimization Logbook Entry" },
+  cryogenFilling: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CRYOGEN_FILLING_LOGENTRY", generatedCodePrefix: "CRYOGENFILLINGLOG", description: "Cryogen Filling Logbook Entry" },
+  degasing: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "DEGASING_LOGENTRY", generatedCodePrefix: "DEGASINGLOG", description: "Degasing Logbook Entry" },
+  cleaning: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CLEANING_LOGENTRY", generatedCodePrefix: "CLEANINGLOG", description: "Cleaning Logbook Entry" },
+  bakeout: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "BAKEOUT_LOGENTRY", generatedCodePrefix: "BAKEOUTLOG", description: "Bakeout Logbook Entry" },
+  comment: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "COMMENT_LOGENTRY", generatedCodePrefix: "COMMENTLOG", description: "Comment Logbook Entry" },
+  other: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "OTHER_LOGENTRY", generatedCodePrefix: "OTHERLOG", description: "Other Logbook Entry" },
+}
+
 
 // Type definitions for iLog base types
 export type iLogBaseTypesType = (typeof iLogBaseTypes)[number];
