@@ -45,7 +45,7 @@ export const useCreateObject = () => {
         collection.data.getPermId(),
       );
     },
-    onSuccess:  () => {
+    onSuccess: () => {
       queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
     }
   });

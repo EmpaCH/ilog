@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useReducer, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Input,
@@ -8,6 +8,8 @@ import {
   Select,
   SelectItem,
   Spinner,
+  Autocomplete,
+  Chip,
 } from "@heroui/react";
 import {
   iLogBaseTypes,
@@ -20,6 +22,8 @@ import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
   convertOpenBISSampleTypeToObjectTypeDefinition,
+  findAncestors,
+  checkValidSubType,
 } from "../../apis/type/commonType";
 import { LocalPrimitivePropertyType } from "../../apis/propertyType/commonPropertyType";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
@@ -30,6 +34,7 @@ import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
+import { TypeInheritanceChain } from "./TypeInheritanceChain";
 
 // define whether this will be a Type Creator or Editor component
 const creatorModes = ["create", "edit"] as const;
@@ -53,7 +58,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   // Dispatch is used to update the state of the component
   const [state, dispatch] = useReducer(typeCreatorReducer, {
     schema: EMPTY_TYPE_DEFINITION,
-  }); 
+  });
 
   // Initialize the loading state and message state (initial represents whether the object and property types have been fetched)
   const [loading, setLoading] = useState(false);
@@ -71,24 +76,27 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const lockedGroups = Object.keys(objectBaseType.propertyTypes);
 
   // If the object and property types have been fetched, set the object type template and property types
-  if (allPropertyTypesResult.status == "success" && allObjectTypesResult.status == "success" && initial) {
-  // if (objectTypeResult.status == "success" && initial && allPropertyTypesResult.status == "success" && allPropertyTypesResult.data.length > 0) {
+  if (
+    allPropertyTypesResult.status == "success" &&
+    allObjectTypesResult.status == "success" &&
+    initial
+  ) {
     // Set the object type template
-    const openbisSampleType = allObjectTypesResult.data?.find(
-      (it) => {
-        return it.getCode().toUpperCase() === objectTypeCode.toUpperCase()
-      }
-    ) as openbis.SampleType;
-    const objectTypeTemplate: ObjectTypeDefinition = openbisSampleType ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType) : EMPTY_TYPE_DEFINITION;
+    const openbisSampleType = allObjectTypesResult.data?.find((it) => {
+      return it.getCode().toUpperCase() === objectTypeCode.toUpperCase();
+    }) as openbis.SampleType;
+    const objectTypeTemplate: ObjectTypeDefinition = openbisSampleType
+      ? convertOpenBISSampleTypeToObjectTypeDefinition(openbisSampleType)
+      : EMPTY_TYPE_DEFINITION;
 
     dispatch({
       type: "SET_OBJECT_TYPE_TEMPLATE",
-      payload: { objecttypetemplate: objectTypeTemplate}
-    })
+      payload: { objecttypetemplate: objectTypeTemplate },
+    });
 
     // Set the property types
     const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
-    // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
+      // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
       ([group, propertyTypesGroup]) => {
         return [
           group,
@@ -112,13 +120,36 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     setInitial(false);
   }
 
+  const objectTypes = allObjectTypesResult.isSuccess
+    ? allObjectTypesResult.data.map((type) =>
+        convertOpenBISSampleTypeToObjectTypeDefinition(type)
+      )
+    : [];
+
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     setShowMessage(false);
     setLoading(true);
+    const ancestors = findAncestors(state.schema, objectTypes);
+    const ancestorType = objectTypes.find((type) => type.code === ancestors[0]);
+    const isValidSubtype = checkValidSubType(ancestorType, state.schema);
+    const baseType = ancestors[0];
 
-    if (state.schema.baseType === "INSTRUMENT" && state.schema.propertyTypes.Components.length === 0) {
-      setMessage("An instrument must have at least one component.");
+    if (!isValidSubtype) {
+      setMessage(
+        `The base type ${baseType} is not a valid subtype of ${ancestorType?.code}.`
+      );
+      setMessageColor("error-message");
+      setShowMessage(true);
+      setLoading(false);
+      return;
+    }
+    if (
+      baseType === "INSTRUMENT" &&
+      state.schema.propertyTypes.Components &&
+      state.schema.propertyTypes.Components.length === 0
+    ) {
+      setMessage("An instrument or a type derived from INSTRUMENT must have at least one component.");
       setMessageColor("error-message");
       setShowMessage(true);
       setLoading(false);
@@ -127,39 +158,45 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
-      typeCreation.mutate({
-        definition: state.schema,
-      }, {
-        onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
-          setMessageColor("error-message");
-          setShowMessage(true);
-          setLoading(false);
+      typeCreation.mutate(
+        {
+          definition: state.schema,
         },
-        onSuccess: () => {
-          setMessage("Type updated successfully!");
-          setMessageColor("success-message");
-          setShowMessage(true);
-          handleClear(2000);
-        },
-      });
+        {
+          onError: (err) => {
+            setMessage(err.message.split(" (Context:")[0]);
+            setMessageColor("error-message");
+            setShowMessage(true);
+            setLoading(false);
+          },
+          onSuccess: () => {
+            setMessage("Type updated successfully!");
+            setMessageColor("success-message");
+            setShowMessage(true);
+            handleClear(2000);
+          },
+        }
+      );
     } else {
-      typeCreation.mutate({
-        definition: state.schema,
-      }, {
-        onError: (err) => {
-          setMessage(err.message.split(" (Context:")[0]);
-          setMessageColor("error-message");
-          setShowMessage(true);
-          setLoading(false);
+      typeCreation.mutate(
+        {
+          definition: state.schema,
         },
-        onSuccess: () => {
-          setMessage("Type created successfully!");
-          setMessageColor("success-message");
-          setShowMessage(true);
-          handleClear(2000);
-        },
-      });
+        {
+          onError: (err) => {
+            setMessage(err.message.split(" (Context:")[0]);
+            setMessageColor("error-message");
+            setShowMessage(true);
+            setLoading(false);
+          },
+          onSuccess: () => {
+            setMessage("Type created successfully!");
+            setMessageColor("success-message");
+            setShowMessage(true);
+            handleClear(2000);
+          },
+        }
+      );
     }
   };
 
@@ -197,17 +234,19 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   };
 
   const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
-    const selectedValue = iLogBaseTypes.includes(value.target.value as string as iLogBaseTypesType) ?
-      value.target.value as iLogBaseTypesType
-      : "EMPTY";
-    const selectedType = getDefaultPropertyTypeDefintion(selectedValue)
-    setObjectBaseType(selectedType);
-    dispatch({
-      type: "SET_BASE_TYPE",
-      payload: {
-        newBaseType: selectedValue as iLogBaseAllTypes,
-      },
-    });
+    const newTemplate = objectTypes.find((el) => el.code == value.target.value);
+
+    console.log("newTemplate", newTemplate);
+    if (newTemplate !== undefined) {
+      setObjectBaseType(newTemplate);
+      console.log("newTemplate", newTemplate);
+      dispatch({
+        type: "SET_BASE_TYPE",
+        payload: {
+          newBaseType: newTemplate,
+        },
+      });
+    }
   };
 
   const handlePropertyEditorEvents = (event: GroupedPropertyEditorsEvents) => {
@@ -280,7 +319,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       (form?.elements[index + 1] as HTMLElement)?.focus();
       event.preventDefault();
     }
-  }
+  };
 
   // If trying to edit an object, then show a spinner until the object is fetched
   if (initial && mode === "edit") {
@@ -293,13 +332,14 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       <form onSubmit={handleSubmit}>
         <Select
           isRequired
-          label="Is this type an instrument or a component?"
+          label="What is the base type of this type?"
           // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
+          selectedKeys={[state.schema.baseType]}
           onChange={handleSelectBaseType}
         >
-          {iLogBaseTypes.map((type) => (
-            <SelectItem key={type} value={type}>
-              {type}
+          {objectTypes.map((type) => (
+            <SelectItem key={type.code} value={type.code}>
+              {type.code}
             </SelectItem>
           ))}
         </Select>
@@ -316,25 +356,30 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           onBlur={(event) => {
             if (objectTypeCode !== (event.target as HTMLInputElement).value) {
               const existingType = allObjectTypesResult.data?.find(
-                (type) => type.getCode() === (event.target as HTMLInputElement).value
+                (type) =>
+                  type.getCode() === (event.target as HTMLInputElement).value
               );
-                if (existingType) {
-                  const confirmSwitch = window.confirm(
-                    "This type already exists. Do you want to switch to edit mode? Note: changes will remain, to get original use reset."
-                  );
-                  if (confirmSwitch) {
-                    navigate({ to: `/types/creator?mode=edit&objecttypecode=${(event.target as HTMLInputElement).value}` });
-                  } 
-                } else if (mode === "edit") {
-                  const confirmSwitch = window.confirm(
-                    "You cannot change the code of an Objecttype. Do you want to switch to create mode?"
-                  );
-                  if (confirmSwitch) {
-                    navigate({ to: `/types/creator?mode=create&objecttypecode=${(event.target as HTMLInputElement).value}` });
-                  } else {
-                    dispatch({ type: "SET_CODE", payload: objectTypeCode });
-                  }
+              if (existingType) {
+                const confirmSwitch = window.confirm(
+                  "This type already exists. Do you want to switch to edit mode? Note: changes will remain, to get original use reset."
+                );
+                if (confirmSwitch) {
+                  navigate({
+                    to: `/types/creator?mode=edit&objecttypecode=${(event.target as HTMLInputElement).value}`,
+                  });
                 }
+              } else if (mode === "edit") {
+                const confirmSwitch = window.confirm(
+                  "You cannot change the code of an Objecttype. Do you want to switch to create mode?"
+                );
+                if (confirmSwitch) {
+                  navigate({
+                    to: `/types/creator?mode=create&objecttypecode=${(event.target as HTMLInputElement).value}`,
+                  });
+                } else {
+                  dispatch({ type: "SET_CODE", payload: objectTypeCode });
+                }
+              }
             }
           }}
           autoComplete="off"
@@ -368,6 +413,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           }
         />
         <Divider className="my-4" />
+        <TypeInheritanceChain type={state.schema} allTypes={objectTypes} />
+        <Divider className="my-4" />
         <GroupedPropertyEditors
           schema={state.schema.propertyTypes}
           lockedPropertyCodes={lockedPropertyCodes}
@@ -396,9 +443,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             className="mx-2"
             onPress={() => {
               if (mode === "edit") {
-              window.location.reload();
+                window.location.reload();
               } else {
-              handleClear(0);
+                handleClear(0);
               }
             }}
           >

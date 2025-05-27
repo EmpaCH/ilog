@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createObjectType } from "./typeAPI";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import {
@@ -17,10 +16,6 @@ import {
 import {
   convertCreationsToOperations,
   convertObjectTypeDefinitionToOperations,
-  convertObjectTypeDefinitionToUpdateOperations,
-  convertPropertyTypesSchemaToUpdateOperations,
-  createObjectTypeSettingsDefinition,
-  flattenObjectSchema,
 } from "./helpersTypeAPI";
 
 import openbis from "@openbis/openbis.esm";
@@ -28,27 +23,22 @@ import {
   ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX,
   useGetPropertyAssignments,
 } from "../propertyType/useGetPropertyAssignments";
-import {
-  PropertyAssignment,
-  convertPropertyTypeToCreation,
-  convertPropertyTypeToUpdate,
-} from "../propertyType/commonPropertyType";
-import { useUpdateElnSettings } from "../eln/useUpdateElnSettings";
 import { useEnableObjectType } from "../eln/useEnableType";
 
-function filterUpdates(
-  updates: openbis.PropertyTypeUpdate[],
-  existingPropertyAssigments: PropertyAssignment[]
-) {
-  return updates.filter((update) => {
-    return existingPropertyAssigments.some((assignment) => {
-      return (
-        assignment.propertyTypeCode ===
-        (update.getTypeId() as openbis.PropertyTypePermId).getPermId()
-      );
-    });
-  });
-}
+// function filterUpdates(
+//   updates: openbis.PropertyTypeUpdate[],
+//   existingPropertyAssigments: PropertyAssignment[]
+// ) {
+//   return updates.filter((update) => {
+//     return existingPropertyAssigments.some((assignment) => {
+//       return (
+//         assignment.propertyTypeCode ===
+//         (update.getTypeId() as openbis.PropertyTypePermId).getPermId()
+//       );
+//     });
+//   });
+// }
+
 /**
  * This is a tricky function.
   Essentially, we want to run different operations depending on the case
@@ -109,19 +99,12 @@ export const useCreateObjectType = () => {
   // };
 
   return useMutation({
-    //Only update the object setting definition if the creation of the object type was successful
-    onSuccess: async (data, variables) => {
+    // Only update the object setting definition if the creation of the object type was successful
+    onSuccess: () => {
       // Invalidate all relevant caches to ensure fresh data on next fetch
-      queryClient.invalidateQueries({
-        queryKey: [
-          ALL_OBJECT_TYPES_QUERY_PREFIX,
-          ALL_PROPERTY_TYPES_QUERY_PREFIX,
-          ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX,
-        ],
-      });
-      // console.log("Creating object type settings definition");
-      // await enableType.mutateAsync({ type: variables.definition.code });
-      // console.log("Object type settings definition created");
+      queryClient.refetchQueries({ queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_TYPES_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX] });
     },
     onError: (error) => {
       console.error(error);
@@ -131,7 +114,6 @@ export const useCreateObjectType = () => {
     }: {
       definition: ObjectTypeDefinition;
     }) => {
-      
       // Cache might be invalidated, so we need to refetch
       const freshObjectTypesResult = await existingObjectTypesResult.refetch();
       const freshPropertyTypesResult = await existingPropertyTypesResult.refetch();
