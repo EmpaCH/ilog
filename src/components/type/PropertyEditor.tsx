@@ -7,7 +7,6 @@ import {
   PropertyType,
 } from "../../apis/propertyType/commonPropertyType";
 import {
-  Button,
   Card,
   CardBody,
   CardHeader,
@@ -18,12 +17,7 @@ import {
   Autocomplete,
   AutocompleteItem,
 } from "@heroui/react";
-
-import {
-  PropertyTypeEditorActions,
-  propertyTypeEditorReducer,
-} from "./PropertyTypeActions";
-import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
+import { propertyTypeEditorReducer } from "./PropertyTypeActions";
 import { useGetVocabularies } from "../../apis/vocabulary/useGetVocabularies";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 
@@ -73,10 +67,16 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
   onSelectionChange,
 }) => {
   return (
-    <Autocomplete label="Select object type" onSelectionChange={(val)=>onSelectionChange(val as string)}>
+    <Autocomplete
+      label="Select object type"
+      onSelectionChange={(val)=> onSelectionChange(val as string)}
+    >
       {objectTypes.map((objectType) => {
         return (
-          <AutocompleteItem key={objectType} value={objectType}>
+          <AutocompleteItem
+            key={objectType}
+            value={objectType}
+          >
             {objectType}
           </AutocompleteItem>
         );
