@@ -1,6 +1,8 @@
 import openbis from "@openbis/openbis.esm";
 import { useState, useEffect } from "react";
-import { E } from "vitest/dist/chunks/reporters.6vxQttCV.js";
+
+export const PROXIED_AFS_URL = "/afs/";
+export const PROXIED_AS_URL = "/openbis/";
 
 /**
  * A factory to create singleton instances of the openBIS API facade.
@@ -10,14 +12,20 @@ export class OpenBISApiFacade {
 
   private constructor() {}
 
-  public static getInstance(url: string): openbis.openbis {
-    console.log("Getting instance with URL:", url);
-    if (OpenBISApiFacade.instances.get(url) === undefined) {
-      console.log("Creating new instance with URL:", url);
-      OpenBISApiFacade.instances.set(url, new openbis.openbis(url));
+  public static getInstance(asUrl: string, afsUrl: string): openbis.openbis {
+    console.log("Getting instance with URL:", asUrl, " and AFS URL:", afsUrl);
+    if (asUrl === undefined || asUrl === null) {
+      throw new Error("asUrl cannot be null or undefined");
     }
-    console.log("Returning instance with URL:", url);
-    const current = OpenBISApiFacade.instances.get(url) as openbis.openbis;
+    if (afsUrl === undefined || afsUrl === null) {
+      throw new Error("afsUrl cannot be null or undefined");
+    }
+    if (OpenBISApiFacade.instances.get(asUrl + afsUrl) === undefined) {
+      console.log("Creating new instance with URL:", asUrl);
+      OpenBISApiFacade.instances.set(asUrl + afsUrl, new openbis.openbis(asUrl, afsUrl));
+    }
+    console.log("Returning instance with URL:", asUrl);
+    const current = OpenBISApiFacade.instances.get(asUrl + afsUrl) as openbis.openbis;
     return current;
   }
 }
@@ -25,17 +33,18 @@ export class OpenBISApiFacade {
 export const TOKEN_KEY = "token";
 export const USER_KEY = "user";
 
-export const openBISHookFactory = (url: string) => {
+export const openBISHookFactory = (asUrl: string, afsUrl: string) => {
   return () => {
     //const apiFacade = new openbis.openbis(url);
-    const apiFacade = OpenBISApiFacade.getInstance(url);
+    const apiFacade = OpenBISApiFacade.getInstance(asUrl, afsUrl);
+
     // @ts-ignore
     apiFacade._private.log = () => {};
     const id = new Date();
     const idLogger = (...msgs: any) => {
       console.log(`Facade created at ${id}, ${msgs}`);
     };
-    idLogger(`${id}, Creating hook with URL:`, url);
+    idLogger(`${id}, Creating hook with URL:`, asUrl);
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<string | null>(null);
@@ -147,10 +156,10 @@ export const openBISHookFactory = (url: string) => {
       login,
       logout,
       apiFacade,
-      url,
+      url: asUrl,
       id,
     };
   };
 };
 
-export const useOpenBIS = openBISHookFactory("/openbis/");
+export const useOpenBIS = openBISHookFactory(PROXIED_AS_URL, PROXIED_AFS_URL);

@@ -64,6 +64,11 @@ function AuthLayout() {
             <Link to="/logbook" className="[&.active]:font-bold">
               Logbook
             </Link>
+            {" | "}
+            <Link to="/datasets" className="[&.active]:font-bold">
+              Datasets
+            </Link>
+            {" | "}
           </div>
         </div>
         <div className="main-menu-container">

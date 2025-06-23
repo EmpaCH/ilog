@@ -21,6 +21,11 @@ export default defineConfig(({ command, mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        "/afs/": {
+          target: `${env.VITE_APP_DSS_URL}`,
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
   };
