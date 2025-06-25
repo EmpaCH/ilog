@@ -22,9 +22,10 @@ export default defineConfig(({ command, mode }) => {
           secure: false,
         },
         "/afs/": {
-          target: `${env.VITE_APP_DSS_URL}`,
+          target: `${env.VITE_APP_AFS_URL}`,
           changeOrigin: true,
           secure: false,
+          rewrite: (path) => path.replace(/^\/afs/, ""),
         },
       },
     },

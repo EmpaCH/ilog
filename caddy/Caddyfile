@@ -1,0 +1,30 @@
+{
+  auto_https off
+  admin off
+}
+
+:80 {
+  # Serve Vite dev server frontend
+  reverse_proxy / @vite {
+    to http://vite:5173
+  }
+
+  # Proxy backend openBIS AS/DSS traffic
+  reverse_proxy /openbis/* http://{$OPENBIS_HOST}:8080
+
+  # Optional: proxy AFS if needed
+  reverse_proxy /datastore_server/* http://{$OPENBIS_HOST}:8081
+handle_path /afs/* {
+    reverse_proxy http://{$OPENBIS_HOST}:8085
+  }
+
+  # Enable CORS for proxied routes (e.g., download-url workaround)
+  header /openbis/* {
+    Access-Control-Allow-Origin *
+    Access-Control-Allow-Methods "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers "*"
+  }
+
+  # Fallback
+  respond /404 "Not Found" 404
+}

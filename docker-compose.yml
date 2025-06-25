@@ -1,35 +1,80 @@
 version: "3.7"
 
+
+
 services:
+  # openbis:
+  #   container_name: openbis-ingress
+  #   image: openbis/openbis-local:latest
+  #   ports:
+  #     - 443:443 # main port
+  #   depends_on:
+  #     - app
+  #   environment:
+  #     - OPENBIS_HOST=host.docker.internal
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "8080:80"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    env_file: 
+      - .env
+    depends_on:
+      - openbis-app
+    networks:
+      - openbis-network
+
   db:
     container_name: openbis-db
     image: postgres:15
     environment:
-      - POSTGRES_PASSWORD=mysecretpassword
+      - POSTGRES_PASSWORD=${OPENBIS_DB_ADMIN_PASS}
       - PGDATA=/var/lib/postgresql/data
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - openbis-db-data:/var/lib/postgresql/data
+    env_file: 
+      - .env
     networks:
       - openbis-network
 
-  app:
-    container_name: openbis-app
-    image: openbis/openbis-app:6.6.0
+  openbis-app:
+    container_name: ${OPENBIS_APP_NAME}
+
+    build:
+      context: openbis
+      dockerfile: Dockerfile
     depends_on:
       - db
-    env_file:
-      - .env
     volumes:
       - openbis-app-data:/data
       - openbis-app-etc:/etc/openbis
       - openbis-app-logs:/var/log/openbis
-    ports:
-      - ${OPENBIS_DSS_PORT}:8081
-      - ${OPENBIS_AS_PORT}:8080
-      - 80:8080
+    # ports:
+    #   - ${OPENBIS_AS_PORT}:8080 # main port for AS
+    #   - ${OPENBIS_DSS_PORT}:8081 # main port for DSS
+    #   - ${OPENBIS_AFS_PORT}:8085 # main port for AFS
+    env_file: 
+      - .env
     networks:
       - openbis-network
+    
+  # ilog:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   volumes:
+  #     - .:/workspace:cached
+  #   depends_on:
+  #     - app
+  #   env_file: 
+  #     - .env
+  #   networks:
+  #     - openbis-network
 
 volumes:
   openbis-db-data:
