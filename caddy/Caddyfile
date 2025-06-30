@@ -4,6 +4,15 @@
 }
 
 :80 {
+
+  # Handle preflight CORS requests
+  @cors_preflight {
+    method OPTIONS
+  }
+  handle @cors_preflight {
+    respond "" 204
+  }
+
   # Serve Vite dev server frontend
   reverse_proxy / @vite {
     to http://vite:5173
@@ -14,12 +23,15 @@
 
   # Optional: proxy AFS if needed
   reverse_proxy /datastore_server/* http://{$OPENBIS_HOST}:8081
-handle_path /afs/* {
-    reverse_proxy http://{$OPENBIS_HOST}:8085
-  }
+
+  handle_path /afs/* {
+      reverse_proxy http://{$OPENBIS_HOST}:8085
+    }
+
+
 
   # Enable CORS for proxied routes (e.g., download-url workaround)
-  header /openbis/* {
+  header * {
     Access-Control-Allow-Origin *
     Access-Control-Allow-Methods "GET, POST, OPTIONS"
     Access-Control-Allow-Headers "*"

@@ -36,7 +36,7 @@ export const DataSetUploader = ({ onUpload }: DataSetListProps) => {
 };
 
 export const DataSetList = () => {
-  const { data: dataSets, isLoading, isError } = useGetDataSets();
+  const { data: dataSets, isLoading, isError, error } = useGetDataSets();
   const handler = useCreateDataSet("object", "code", "description", "type");
 
   const handleUpload = async (files: File[]) => {
@@ -51,7 +51,7 @@ export const DataSetList = () => {
     return <div>Error loading data sets</div>;
   }
   if (isLoading) {
-    return <div>Loading data sets...</div>;
+    return <div>Loading data sets... {error}</div>;
   }
 
   return (

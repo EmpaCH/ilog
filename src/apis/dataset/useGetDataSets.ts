@@ -15,6 +15,10 @@ export const useGetDataSets = () => {
         sc,
         new openbis.DataSetFetchOptions()
       );
+      console.log("Fetching datadsets");
+      // const afsFacade = apiFacade.getAfsServerFacade()
+      // const files = await afsFacade.list("admin", "a", true)
+      // console.log("Files in AFS:", files);
       return dataSets.getObjects();
     },
   });
