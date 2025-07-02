@@ -1,9 +1,16 @@
 {
   auto_https off
   admin off
+  
+	log {
+		format json
+		output stderr
+}
 }
 
 :80 {
+
+  log
 
   # Handle preflight CORS requests
   @cors_preflight {
@@ -16,15 +23,21 @@
   # Serve Vite dev server frontend
   reverse_proxy / @vite {
     to http://vite:5173
+    
   }
 
   # Proxy backend openBIS AS/DSS traffic
-  reverse_proxy /openbis/* http://{$OPENBIS_HOST}:8080
+  handle_path /openbis/* {
+    reverse_proxy http://{$OPENBIS_HOST}:8080
+  }
+
+  handle_path /datastore_server/* {
+    reverse_proxy http://{$OPENBIS_HOST}:8081
+  }
 
   # Optional: proxy AFS if needed
-  reverse_proxy /datastore_server/* http://{$OPENBIS_HOST}:8081
 
-  handle_path /afs/* {
+  handle_path /afs-server/* {
       reverse_proxy http://{$OPENBIS_HOST}:8085
     }
 

@@ -22,13 +22,19 @@ export default defineConfig(({ command, mode }) => {
           target: `${env.VITE_APP_OPENBIS_URL}`,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => {logger.info(path); return path}
+          rewrite: (path) => {logger.info(`AS ${path}`); return path}
         },
-        "/afs/": {
+        "/datastore_server/":{
+          target: `${env.VITE_APP_DSS_URL}`,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => {logger.info(`DSS ${path}`); return path}
+        },
+        "/afs-server/": {
           target: `${env.VITE_APP_AFS_URL}`,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => {logger.info(path); return path.replace(/^\/afs/, "")},
+          rewrite: (path) => {logger.info(`AS ${path}`); return path},
         },
       },
     },

@@ -1,7 +1,7 @@
 import openbis from "@openbis/openbis.esm";
 import { useState, useEffect } from "react";
 
-export const PROXIED_AFS_URL = "/afs/";
+export const PROXIED_AFS_URL = "/afs-server/";
 export const PROXIED_AS_URL = "/openbis/";
 
 /**
@@ -37,6 +37,7 @@ export const openBISHookFactory = (asUrl: string, afsUrl: string) => {
   return () => {
     //const apiFacade = new openbis.openbis(url);
     const apiFacade = OpenBISApiFacade.getInstance(asUrl, afsUrl);
+    console.log(apiFacade)
 
     // @ts-ignore
     apiFacade._private.log = () => {};

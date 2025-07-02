@@ -9,13 +9,12 @@ RUN rm -rf /home/openbis/servers/core-plugins/eln-lims/bin/blast \
     && rm -rf /home/openbis/servers/core-plugins/screening-optional \
     && rm -rf /home/openbis/servers/core-plugins/openbis-sync \
     && rm -rf /home/openbis/.cache 
+
 FROM eclipse-temurin:17-alpine AS runtime
 
-COPY --from=base /home/openbis /home/openbis
+COPY --from=base --chown=openbis:openbis /home/openbis /home/openbis
 
 RUN addgroup -g 1000 openbis && adduser -G openbis -u 1000 openbis -D
-
-COPY start_openbis.sh /home/openbis/start_openbis.sh
 
 
 # Define envs that will also be used at runtime
@@ -38,17 +37,11 @@ RUN mkdir -p ${OPENBIS_HOME}/data \
     && chown -R openbis:openbis ${OPENBIS_HOME}
 
 
-# 
-
-# Copy openBIS server code (assumes build context contains the unpacked servers)
-
-
 # Add psql
 RUN apk add --no-cache postgresql-client bash curl
 # Copy entrypoint script 
 COPY start_openbis.sh /home/openbis/start_openbis.sh
-RUN chmod +x /home/openbis/start_openbis.sh && \
-    chmod 755 -R /home/openbis/servers/
+RUN chmod +x /home/openbis/start_openbis.sh 
 
 #Use bash as default shell
 SHELL ["/bin/bash", "-c"]
