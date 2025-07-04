@@ -31,7 +31,7 @@ import {
   ReconstructedHistory,
   ObjectDefinition,
 } from "../../apis/object/commonObject";
-import { iLogID } from "../../apis/shared/environment";
+import { iLogID, labID } from "../../apis/shared/environment";
 import { iLogBaseTypesPropertyCode } from "../../apis/shared/types";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
 import {
@@ -48,6 +48,7 @@ import {
 } from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
+import { useCreateObjectInCollection } from "../../apis/object/useCreateObjectInCollection";
 
 // define whether this will be an Object Creator or Editor component
 const creatorModes = ["create", "edit"] as const;
@@ -63,7 +64,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
 }) => {
   const { apiFacade } = useContext(AuthContext);
   const objectResult = useGetObject(objectCode);
-  const objectCreation = useCreateObject();
+  const objectCreation = useCreateObjectInCollection(labID, iLogID, iLogID);
   const objectUpdate = useUpdateObject();
   const allPropertyTypesResult = useGetPropertyTypes();
   const navigate = useNavigate();
