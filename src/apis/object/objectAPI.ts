@@ -1,5 +1,6 @@
 import openbis from "@openbis/openbis.esm";
 import { iLogID, labID, collectionID } from "../shared/common";
+import { None } from "framer-motion";
 
 // TODO
 // 1.Look for templates in the settings
@@ -21,6 +22,13 @@ export async function getObjects(
   sc.withSpace().withCode().thatEquals(labID);
   sc.withProject().withCode().thatEquals(iLogID);
   sc.withExperiment().withCode().thatEquals(collectionID);
+  const fo = getDefaultObjectFecthOptions();
+
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects();
+}
+
+export function getDefaultObjectFecthOptions(){
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
   fo.withProperties();
@@ -33,9 +41,7 @@ export async function getObjects(
   ao.withEntityType();
   ao.withPropertyTypeUsing(po);
   fo.withType().withPropertyAssignmentsUsing(ao);
-
-  const result = await api.searchSamples(sc, fo);
-  return result.getObjects();
+  return fo
 }
 
 export async function getObject(
@@ -44,18 +50,7 @@ export async function getObject(
 ): Promise<openbis.Sample[]>{
   const sc = new openbis.SampleSearchCriteria();
   sc.withCode().thatEquals(code);
-  const fo = new openbis.SampleFetchOptions();
-  fo.withType();
-  fo.withProperties();
-  fo.withPropertiesHistory();
-
-  const ao = new openbis.PropertyAssignmentFetchOptions();
-  const po = new openbis.PropertyTypeFetchOptions();
-  po.withSampleType();
-  po.withVocabulary();
-  ao.withEntityType();
-  ao.withPropertyTypeUsing(po);
-  fo.withType().withPropertyAssignmentsUsing(ao);
+  const fo = getDefaultObjectFecthOptions();
 
   const result = await api.searchSamples(sc, fo);
   return result.getObjects();
@@ -70,15 +65,17 @@ export async function getObject(
 export async function createObject(
   api: openbis.OpenBISJavaScriptFacade,
   type: string,
-  code: string,
+  code: string | null = null,
   properties: object,
   spacePermId: openbis.SpacePermId,
   projectPermId: openbis.ProjectPermId,
-  collectionPermId: openbis.ExperimentPermId,
-): Promise<void> {
+  collectionPermId: openbis.ExperimentPermId
+): Promise<openbis.SamplePermId> {
   const newObj = new openbis.SampleCreation();
   newObj.setTypeId(new openbis.EntityTypePermId(type));
-  newObj.setCode(code);
+  if (code !== null) {
+    newObj.setCode(code);
+  }
   newObj.setProperty(iLogID, true);
   newObj.setExperimentId(collectionPermId);
   newObj.setProjectId(projectPermId);
@@ -86,7 +83,8 @@ export async function createObject(
   for (const [key, value] of Object.entries(properties)) {
     newObj.setProperty(key, value);
   }
-  await api.createSamples([newObj]);
+  const ids =  await api.createSamples([newObj]);
+  return ids[0]
 }
 
 /**
