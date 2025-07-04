@@ -8,7 +8,7 @@ HOSTNAME=${HOSTNAME:-localhost}
 AS_PORT=${AS_PORT:-8080}
 DSS_PORT=${DSS_PORT:-8081}
 RUN_AFS=${RUN_AFS:-""}
-DOWNLOAD_URL=${DOWNLOAD_URL:-"https://${OPENBIS_FQDN}:${AS_PORT}"}
+DOWNLOAD_URL=${DOWNLOAD_URL:-"https://${OPENBIS_FQDN}:${DSS_URL}"}
 ENABLED_PLUGINS=${ENABLED_PLUGINS:-"monitoring-support, dropbox-monitor, dataset-uploader, dataset-file-search, xls-import, openbis-sync, admin, eln-lims"}
 set_property() {
   local file="$1"

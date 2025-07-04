@@ -1,5 +1,5 @@
-ARG VERSION=6.7.0
-FROM openbis/openbis-app:${VERSION} AS base
+ARG OPENBIS_VERSION=6.7.0
+FROM openbis/openbis-app:${OPENBIS_VERSION} AS base
 
 RUN rm -rf /home/openbis/servers/core-plugins/eln-lims/bin/blast \
     && rm -rf /home/openbis/servers/openBIS-server/jetty/webapps/openbis/WEB-INF/deploy/ch.systemsx.cisd.openbis.OpenBIS/symbolMaps \

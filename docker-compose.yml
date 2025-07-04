@@ -48,6 +48,8 @@ services:
     build:
       context: openbis
       dockerfile: Dockerfile
+      args:
+        - OPENBIS_VERSION=6.6.0
     depends_on:
       - db
     volumes:
