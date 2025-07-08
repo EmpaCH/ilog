@@ -31,7 +31,7 @@ export const useDeleteAFSFile = () => {
     },
     onSuccess(_data, variables, _context) {
       queryClient.invalidateQueries({
-        queryKey: [GET_AFS_FILES_QUERY_PREFIX, variables.owner, variables.path],
+        queryKey: [GET_AFS_FILES_QUERY_PREFIX, variables.owner],
       });
     },
   });

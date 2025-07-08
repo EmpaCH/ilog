@@ -35,7 +35,7 @@ export const useCreateAFSFile = () => {
     },
     onSuccess(_data, variables, _context) {
       queryClient.invalidateQueries({
-        queryKey: [GET_AFS_FILES_QUERY_PREFIX, variables.owner, variables.path + File.name],
+        queryKey: [GET_AFS_FILES_QUERY_PREFIX, variables.owner],
       });
     },
   });

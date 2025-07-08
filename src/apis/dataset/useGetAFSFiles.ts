@@ -7,7 +7,7 @@ export const useGetAFSFiles = (owner: string, path: string, recursive: boolean) 
   const { apiFacade } = useContext(AuthContext);
 
   return useQuery({
-    queryKey: [GET_AFS_FILES_QUERY_PREFIX, owner, path],
+    queryKey: [GET_AFS_FILES_QUERY_PREFIX, owner],
     queryFn: async () => {
       const afsFacade = apiFacade.getAfsServerFacade();
       console.log("Fetching files");
