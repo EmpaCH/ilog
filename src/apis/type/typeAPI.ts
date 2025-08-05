@@ -70,6 +70,13 @@ export async function getObjectType(api: openbis.OpenBISJavaScriptFacade, permId
   return result.getObjects()[0];
 }
 
+export async function getLogbookEntryType(api: openbis.OpenBISJavaScriptFacade, permId: string): Promise<openbis.SampleType | undefined> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatEquals(permId);
+  const fo = createObjectTypeFetchOptions();
+  const result = await api.searchSampleTypes(sc, fo);
+  return result.getObjects()[0];
+}
 
 
 /**

@@ -25,6 +25,7 @@ export const List = (props: {
   rows: Row[];
   defaultSortColumn: string;
   idColumn?: string;
+  historyColumn?: string;
   defaultSortDirection?: "ascending" | "descending";
   navigatePath: string;
   enableHistory?: boolean;
@@ -269,6 +270,7 @@ export const List = (props: {
     permId: any,
     row: { [key: string]: any },
     idColumn: string | undefined,
+    historyColumn: string | undefined,
     defaultSortColumn: string,
     enableModification: boolean | undefined,
     enableHistory: boolean | undefined,
@@ -286,7 +288,7 @@ export const List = (props: {
             color="primary"
             variant="light"
             size="sm"
-            onPress={() => props.onHistory && props.onHistory(row[defaultSortColumn])}
+            onPress={() => props.onHistory && props.onHistory((row as Record<string, string>)[historyColumn ? historyColumn : defaultSortColumn])}
           >
             <HistoryIcon />
           </Button>
@@ -330,17 +332,26 @@ export const List = (props: {
           backgroundColor: color,
         }}
       >
-        {renderRowCells(permId, newRow, props.idColumn, props.defaultSortColumn, enableModification, props.enableHistory)}
+        {renderRowCells(permId, newRow, props.idColumn, props.historyColumn, props.defaultSortColumn, enableModification, props.enableHistory)}
       </TableRow>
     );
   };
 
-  const printText = (text: string | null) => {
+  const printText = (text: any) => {
     if (text == null) {
       return "";
     }
+    //If not a string, convert to string
+    if (typeof text !== "string") {
+      try {
+        text = text.toString();
+      } catch {
+        text = "N/A";
+      }
+    }
+    //Split by whitespace and limit to 20 words
     const words = text.split(/\s+/);
-    if (words[0].length > 0) {
+    if (words.length > 0) {
       return words.slice(0, 20).join(" ") + (words.length > 20 ? "..." : "");
     }
     return "";

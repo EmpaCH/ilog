@@ -10,6 +10,10 @@ import {
   useGetAllObjectTypes,
 } from "./useGetAllObjectTypes";
 import {
+  ALL_LOGBOOKENTRY_TYPES_QUERY_PREFIX,
+  useGetAllLogbookEntryTypes,
+} from "./useGetAllLogbookEntryTypes";
+import {
   ALL_PROPERTY_TYPES_QUERY_PREFIX,
   useGetPropertyTypes,
 } from "../propertyType/useGetPropertyTypes";
@@ -62,6 +66,7 @@ export const useCreateObjectType = () => {
   const { apiFacade, isAuthenticated } = useContext(AuthContext);
   
   const existingObjectTypesResult = useGetAllObjectTypes();
+  const existingLogbookEntryTypesResult = useGetAllLogbookEntryTypes();
   const existingPropertyTypesResult = useGetPropertyTypes();
   const existingPropertyAssigmentsResult = useGetPropertyAssignments();
   const queryClient = useQueryClient();
@@ -103,6 +108,7 @@ export const useCreateObjectType = () => {
     onSuccess: () => {
       // Invalidate all relevant caches to ensure fresh data on next fetch
       queryClient.refetchQueries({ queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [ALL_LOGBOOKENTRY_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX] });
     },
@@ -116,23 +122,27 @@ export const useCreateObjectType = () => {
     }) => {
       // Cache might be invalidated, so we need to refetch
       const freshObjectTypesResult = await existingObjectTypesResult.refetch();
+      const freshLogbookEntryTypesResult = await existingLogbookEntryTypesResult.refetch();
       const freshPropertyTypesResult = await existingPropertyTypesResult.refetch();
       const freshPropertyAssignmentsResult =
         await existingPropertyAssigmentsResult.refetch();
 
       if (
         freshObjectTypesResult.isSuccess &&
+        freshLogbookEntryTypesResult.isSuccess &&
         freshPropertyTypesResult.isSuccess &&
         freshPropertyAssignmentsResult.isSuccess
       ) {
         const objectTypes = freshObjectTypesResult.data;
+        const logbookEntryTypes = freshLogbookEntryTypesResult.data;
+        const allExistingObjectTypes = [...objectTypes, ...logbookEntryTypes];
         const propertyTypes = freshPropertyTypesResult.data;
         const propertyAssignments = freshPropertyAssignmentsResult.data;
         console.log("objectTypes", objectTypes);
         const operations = convertObjectTypeDefinitionToOperations(
           definition,
           propertyTypes,
-          objectTypes.map(convertOpenBISSampleTypeToObjectTypeDefinition),
+          allExistingObjectTypes.map(convertOpenBISSampleTypeToObjectTypeDefinition),
           propertyAssignments
         );
         const props = new openbis.SynchronousOperationExecutionOptions();

@@ -41,7 +41,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   });
 
   useMemo(() => {
-    if (getObjectsResult.status === "success") {
+    if (getObjectsResult.status === "success" && getObjectsResult.data) {
       setComponents(getObjectsResult.data);
       const componentTypes = getObjectsResult.data.map((component) => {
         return component.getType().getCode();
@@ -167,6 +167,16 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       </>
     );
   }, [selectedKeys, codeFilter, typeFilter, components]);
+
+  // Show loading state while data is being fetched
+  if (getObjectsResult.isLoading) {
+    return <div>Loading components...</div>;
+  }
+
+  // Show error state if query fails
+  if (getObjectsResult.isError) {
+    return <div>Error loading components: {getObjectsResult.error?.message}</div>;
+  }
 
   return (
     <>

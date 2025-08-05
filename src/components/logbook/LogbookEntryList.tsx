@@ -13,8 +13,7 @@ import {
 } from "./LogbookEntryLocalActions";
 import { useGetObjects } from "../../apis/object/useGetObjects";
 import { GroupedHistory, MultiObjectGroupedHistory, ObjectDefinition } from "../../apis/object/commonObject";
-import { convertOpenBISPropertyHistoryEntryListToObjectDefinition, reconstructHistory } from "../../apis/object/helpersObjectAPI";
-import { convertOpenBISSampleTypeToObjectTypeDefinition, ObjectTypeDefinition, PropertyTypesSchema } from "../../apis/type/commonType";
+import { reconstructHistory } from "../../apis/object/helpersObjectAPI";
 import { LOGBOOK_ENTRY_TYPES } from "../../apis/shared/types";
 import { parseZonedDateTime } from "@internationalized/date";
 
@@ -37,14 +36,14 @@ export const LogbookEntryList = () => {
 
   const logbookEntries = useMemo(() => {
     return res.data ? [...res.data] : [];
-  }, [res]);
+  }, [res.data]);
 
   // Get change events as from openbis changelog
   const allObjectsResult = useGetObjects();
   const [history, setHistory] = useState<MultiObjectGroupedHistory>({});
 
   useMemo(() => {
-    if (allObjectsResult.status === "success") {
+    if (allObjectsResult.status === "success" && allObjectsResult.data) {
       const allObjectsResultRes = allObjectsResult.data as openbis.Sample[];
 
       const allReconstructedHistory: MultiObjectGroupedHistory = {};
@@ -91,10 +90,19 @@ export const LogbookEntryList = () => {
     }
   }, [allObjectsResult.status, allObjectsResult.data]);
 
+  // Show loading state while data is being fetched
+  if (res.isLoading || allObjectsResult.isLoading) {
+    return <div>Loading logbook entries...</div>;
+  }
 
+  // Show error state if either query fails
+  if (res.isError) {
+    return <div>Error loading logbook entries: {res.error?.message}</div>;
+  }
 
-
-
+  if (allObjectsResult.isError) {
+    return <div>Error loading objects: {allObjectsResult.error?.message}</div>;
+  }
 
   const onDelete = async (
     permId: any,
@@ -112,13 +120,13 @@ export const LogbookEntryList = () => {
   };
 
   const onEdit = async (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    _permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => {
     const logbookEntry = logbookEntries.find((t) => t.getCode() === code);
     if (logbookEntry) {
       navigate({
-        to: `/logbook/creator?mode=edit&entrycode=${logbookEntry.getCode()}`,
+        to: `/logbook/creator?mode=edit&logbookEntryCode=${encodeURIComponent(logbookEntry.getCode())}`,
       });
     } else {
       handleMessage(`Logbook entry with code '${code}' not found.`, false, true);
@@ -128,14 +136,9 @@ export const LogbookEntryList = () => {
   const onHistory = async (
     code: string,
   ) => {
-    const logbookEntry = logbookEntries.find((t) => t.getCode() === code);
-    if (logbookEntry) {
-      navigate({
-        to: `/logbook/history?entrycode=${logbookEntry.getCode()}`,
-      });
-    } else {
-      handleMessage(`Logbook entry with code '${code}' not found.`, false, true);
-    }
+    navigate({
+      to: `/objects/history?objectcode=${encodeURIComponent(code)}`,
+    });
   };
 
   const handleMessage = (
@@ -213,37 +216,18 @@ export const LogbookEntryList = () => {
     },
   ];
 
-    // permId: openbis.SamplePermId;
-    // description: string;
-    // involvedEquip: string[];
-    // componentCode: string;
-    // name: string;
-    // type: string;
-    // validFrom: string;
-    // maintenance: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "MAINTENANCE_LOGENTRY", generatedCodePrefix: "MAINTENANCELOG", description: "Maintenance Logbook Entry" },
-    // errorsAndProblems: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "ERRORS_AND_PROBLEMS_LOGENTRY", generatedCodePrefix: "ERRORSANDPROBLEMSLOG", description: "Errors and Problems Logbook Entry" },
-    // calibrationOptimization: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CALIBRATION_OPTIMIZATION_LOGENTRY", generatedCodePrefix: "CALIBRATIONOPTIMIZATIONLOG", description: "Calibration and Optimization Logbook Entry" },
-    // cryogenFilling: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CRYOGEN_FILLING_LOGENTRY", generatedCodePrefix: "CRYOGENFILLINGLOG", description: "Cryogen Filling Logbook Entry" },
-    // degasing: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "DEGASING_LOGENTRY", generatedCodePrefix: "DEGASINGLOG", description: "Degasing Logbook Entry" },
-    // cleaning: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CLEANING_LOGENTRY", generatedCodePrefix: "CLEANINGLOG", description: "Cleaning Logbook Entry" },
-    // bakeout: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "BAKEOUT_LOGENTRY", generatedCodePrefix: "BAKEOUTLOG", description: "Bakeout Logbook Entry" },
-    // comment: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "COMMENT_LOGENTRY", generatedCodePrefix: "COMMENTLOG", description: "Comment Logbook Entry" },
-    // other: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "OTHER_LOGENTRY", generatedCodePrefix: "OTHERLOG", description: "Other Logbook Entry" },
-
-  const colorMapping: Record<string, string> = {
-    "CHANGE_PROPERTIES": "rgba(173, 216, 230, 0.5)", // light blue
-    "MAINTENANCE_LOGENTRY": "rgba(144, 238, 144, 0.5)", // light green
-    "ERRORS_AND_PROBLEMS_LOGENTRY": "rgba(255, 182, 193, 0.5)", // light red (pinkish)
-    "CALIBRATION_OPTIMIZATION_LOGENTRY": "rgba(255, 165, 0, 0.5)", // light orange
-    "CRYOGEN_FILLING_LOGBENTRY": "rgba(216, 191, 216, 0.5)", // light purple
-    "DEGASING_LOGENTRY": "rgba(255, 192, 203, 0.5)", // light pink
-    "CLEANING_LOGENTRY": "rgba(255, 255, 224, 0.5)", // light yellow
-    "BAKEOUT_LOGENTRY": "rgba(222, 184, 135, 0.5)", // light brown
-    "COMMENT_LOGENTRY": "rgba(211, 211, 211, 0.5)", // light gray
-    "OTHER_LOGENTRY": "rgba(211, 211, 211, 0.5)", // light gray
-  };
+  // Define color mapping for logbook entry types dependent on LOGBOOK_ENTRY_TYPES
+  const colorMapping: Record<string, string> = Object.fromEntries(
+    Object.entries(LOGBOOK_ENTRY_TYPES)
+      .filter(([_, entryType]) => entryType.code !== undefined)
+      .map(([_, entryType]) => [
+        entryType.code,
+        entryType.color || "rgba(211, 211, 211, 0.5)", // Default to light gray if no color is defined
+      ])
+  );
 
   const historyType = "CHANGE_PROPERTIES";
+  colorMapping[historyType] = "rgba(150, 150, 150, 0.5)"; // Default color for history entries
 
   const logbookRows: LogbookEntryRow[] = logbookEntries.map(
     (entry: openbis.Sample) => {
@@ -304,6 +288,8 @@ export const LogbookEntryList = () => {
         onDelete={onDelete}
         idColumn="name"
         onEdit={(permId, name) => onEdit(permId, name)}
+        historyColumn="componentCode"
+        enableHistory={true}
         onHistory={onHistory}
       />
       <MessageModal

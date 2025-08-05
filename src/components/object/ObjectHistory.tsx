@@ -28,7 +28,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
   const [history, setHistory] = useState<GroupedHistory>({});
 
   useMemo(() => {
-    if (allObjectsResult.status === "success") {
+    if (allObjectsResult.status === "success" && allObjectsResult.data) {
       const openbisSample = allObjectsResult.data?.find(
         (it) => it.getCode().toUpperCase() === objectCode.toUpperCase()
       ) as openbis.Sample;
@@ -70,6 +70,16 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
       `${displayNumber(parsedDate.hour)}:${displayNumber(parsedDate.minute)}`
     );
   };
+
+  // Show loading state while data is being fetched
+  if (allObjectsResult.isLoading) {
+    return <div>Loading object history...</div>;
+  }
+
+  // Show error state if query fails
+  if (allObjectsResult.isError) {
+    return <div>Error loading object history: {allObjectsResult.error?.message}</div>;
+  }
 
   return (
     <>

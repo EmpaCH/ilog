@@ -61,6 +61,7 @@ export interface ObjectTypeDefinition {
   description: string;
   propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema;
   baseType?: string;
+  color?: string; // Optional color for UI representation
 }
 
 export interface ResolvedPropertyTypeSchema {

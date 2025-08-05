@@ -1,0 +1,74 @@
+{
+    "logbookEntryTypes": [
+        {
+            "key": "maintenance",
+            "code": "MAINTENANCE_LOGENTRY",
+            "generatedCodePrefix": "MAINTENANCELOG",
+            "description": "Maintenance Logbook Entry",
+            "color": "rgba(144, 238, 144, 0.5)"
+        },
+        {
+            "key": "errorsAndProblems",
+            "code": "ERRORS_AND_PROBLEMS_LOGENTRY",
+            "generatedCodePrefix": "ERRORSANDPROBLEMSLOG",
+            "description": "Errors and Problems Logbook Entry",
+            "color": "rgba(255, 182, 193, 0.5)"
+        },
+        {
+            "key": "calibrationOptimization",
+            "code": "CALIBRATION_OPTIMIZATION_LOGENTRY",
+            "generatedCodePrefix": "CALIBRATIONOPTIMIZATIONLOG",
+            "description": "Calibration and Optimization Logbook Entry",
+            "color": "rgba(255, 165, 0, 0.5)"
+        },
+        {
+            "key": "cryogenFilling",
+            "code": "CRYOGEN_FILLING_LOGENTRY",
+            "generatedCodePrefix": "CRYOGENFILLINGLOG",
+            "description": "Cryogen Filling Logbook Entry",
+            "color": "rgba(216, 191, 216, 0.5)"
+        },
+        {
+            "key": "degasing",
+            "code": "DEGASING_LOGENTRY",
+            "generatedCodePrefix": "DEGASINGLOG",
+            "description": "Degasing Logbook Entry",
+            "color": "rgba(255, 192, 203, 0.5)"
+        },
+        {
+            "key": "cleaning",
+            "code": "CLEANING_LOGENTRY",
+            "generatedCodePrefix": "CLEANINGLOG",
+            "description": "Cleaning Logbook Entry",
+            "color": "rgba(255, 255, 224, 0.5)"
+        },
+        {
+            "key": "bakeout",
+            "code": "BAKEOUT_LOGENTRY",
+            "generatedCodePrefix": "BAKEOUTLOG",
+            "description": "Bakeout Logbook Entry",
+            "color": "rgba(222, 184, 135, 0.5)"
+        },
+        {
+            "key": "comment",
+            "code": "COMMENT_LOGENTRY",
+            "generatedCodePrefix": "COMMENTLOG",
+            "description": "Comment Logbook Entry",
+            "color": "rgba(211, 211, 211, 0.5)"
+        },
+        {
+            "key": "comment2",
+            "code": "COMMENT_LOGENTRY2",
+            "generatedCodePrefix": "COMMENTLOG2",
+            "description": "Comment Logbook Entry2",
+            "color": "rgba(211, 211, 211, 0.5)"
+        },
+        {
+            "key": "other",
+            "code": "OTHER_LOGENTRY",
+            "generatedCodePrefix": "OTHERLOG",
+            "description": "Other Logbook Entry",
+            "color": "rgba(211, 211, 211, 0.5)"
+        }
+    ]
+}
