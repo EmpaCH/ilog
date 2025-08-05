@@ -28,9 +28,10 @@ export const TypeInheritanceChain: React.FC<TypeInheritanceChainProps> = ({
         <Breadcrumbs>
           {ancestors
             .filter((el) => el !== undefined)
-            .map((ancestor) => (
+            .map((ancestor, index) => (
               <BreadcrumbItem
-                href={`/types/creator?mode=edit&objecttypecode=${ancestor}`}
+                key={`${ancestor}-${index}`} // Combine value + index for uniqueness
+                href={`/types/creator?mode=edit&objecttypecode=${encodeURIComponent(ancestor)}`} // URL encode the ancestor
               >
                 {ancestor}
               </BreadcrumbItem>

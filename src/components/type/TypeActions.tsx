@@ -63,8 +63,11 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
         break;
       case "SET_BASE_TYPE":
         draft.schema.baseType = action.payload.newBaseType.code;
+        const base_property_types: PropertyTypesSchema = action.payload.newBaseType.propertyTypes as PropertyTypesSchema;
         // extend current propertyTypes with base types
-        draft.schema.propertyTypes = action.payload.newBaseType.propertyTypes;
+        draft.schema.propertyTypes = mergePropertyTypes(
+          [draft.schema.propertyTypes as PropertyTypesSchema, base_property_types]
+        );
         break;
       case "SET_OBJECT_TYPE_TEMPLATE":
         draft.schema = action.payload.objecttypetemplate;
@@ -169,8 +172,8 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
           );
         break;
       case "SET_BASE_TYPE":
-        draft.schema.baseType = action.payload.baseType;
-        draft.schema.propertyTypes = action.payload.schema;
+        draft.schema.baseType = action.payload.newBaseType.code;
+        draft.schema.propertyTypes = action.payload.newBaseType.propertyTypes as PropertyTypesSchema;
         break;
     }
   }

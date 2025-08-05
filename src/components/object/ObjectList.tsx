@@ -22,7 +22,7 @@ export const ObjectList = () => {
   );
 
   useMemo(() => {
-    if (allObjectsResult.status == "success") {
+    if (allObjectsResult.status == "success" && allObjectsResult.data) {
       setObjects(allObjectsResult.data);
     }
   }, [allObjectsResult.status, allObjectsResult.data]);
@@ -42,13 +42,13 @@ export const ObjectList = () => {
   };
 
   const onEdit = async (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    _permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => {
     const object = objects.find((t) => t.getCode() === code);
     if (object) {
       navigate({
-        to: `/objects/creator?mode=edit&objectcode=${object.getCode()}`,
+        to: `/objects/creator?mode=edit&objectcode=${encodeURIComponent(object.getCode())}`,
       });
     } else {
       handleMessage(`Object with code '${code}' not found.`, false, true);
@@ -61,7 +61,7 @@ export const ObjectList = () => {
     const object = objects.find((t) => t.getCode() === code);
     if (object) {
       navigate({
-        to: `/objects/history?objectcode=${object.getCode()}`,
+        to: `/objects/history?objectcode=${encodeURIComponent(object.getCode())}`,
       });
     } else {
       handleMessage(`Object with code '${code}' not found.`, false, true);
@@ -102,6 +102,16 @@ export const ObjectList = () => {
       align: "end",
     },
   ];
+
+  // Show loading state while data is being fetched
+  if (allObjectsResult.isLoading) {
+    return <div>Loading objects...</div>;
+  }
+
+  // Show error state if query fails
+  if (allObjectsResult.isError) {
+    return <div>Error loading objects: {allObjectsResult.error?.message}</div>;
+  }
 
   const rows: ObjectRow[] = objects.map(
     (obj: openbis.Sample) => {

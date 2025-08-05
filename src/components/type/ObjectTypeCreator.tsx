@@ -94,6 +94,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       payload: { objecttypetemplate: objectTypeTemplate },
     });
 
+
     // Set the property types
     const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
       // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
@@ -108,6 +109,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         ];
       }
     );
+    
+    const baseTypeTemplate = allObjectTypesResult.data?.find((el) => el.getCode().toUpperCase() === objectTypeTemplate.baseType) as openbis.SampleType;
+    setObjectBaseType(baseTypeTemplate ? convertOpenBISSampleTypeToObjectTypeDefinition(baseTypeTemplate) : EMPTY_TYPE_DEFINITION);
 
     dispatch({
       type: "SET_ALL_PROPERTYTYPES",
@@ -125,6 +129,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         convertOpenBISSampleTypeToObjectTypeDefinition(type)
       )
     : [];
+
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -173,7 +178,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             setMessage("Type updated successfully!");
             setMessageColor("success-message");
             setShowMessage(true);
-            handleClear(2000);
+            setLoading(false);
           },
         }
       );
@@ -193,7 +198,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             setMessage("Type created successfully!");
             setMessageColor("success-message");
             setShowMessage(true);
-            handleClear(2000);
+            navigate({
+              to: `/types/creator?mode=edit&objecttypecode=${encodeURIComponent(state.schema.code)}`,
+            });
+            setLoading(false);
           },
         }
       );
@@ -365,7 +373,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
                 );
                 if (confirmSwitch) {
                   navigate({
-                    to: `/types/creator?mode=edit&objecttypecode=${(event.target as HTMLInputElement).value}`,
+                    to: `/types/creator?mode=edit&objecttypecode=${encodeURIComponent((event.target as HTMLInputElement).value)}`,
                   });
                 }
               } else if (mode === "edit") {
@@ -374,7 +382,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
                 );
                 if (confirmSwitch) {
                   navigate({
-                    to: `/types/creator?mode=create&objecttypecode=${(event.target as HTMLInputElement).value}`,
+                    to: `/types/creator?mode=create&objecttypecode=${encodeURIComponent((event.target as HTMLInputElement).value)}`,
                   });
                 } else {
                   dispatch({ type: "SET_CODE", payload: objectTypeCode });

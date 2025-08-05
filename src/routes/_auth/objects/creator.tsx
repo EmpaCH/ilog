@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_auth/objects/creator')({
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const mode = searchParams.get('mode') as 'create' | 'edit' || 'create';
-    const objectCode = searchParams.get('objectcode');
+    const objectCode = decodeURIComponent(searchParams.get('objectcode') || '');
 
     return ObjectCreator({
       objectCode: objectCode || '',

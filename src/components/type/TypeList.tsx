@@ -47,7 +47,7 @@ export const TypeList = () => {
     const type = types.find((t) => t.getCode() === code);
     if (type) {
       navigate({
-        to: `/types/creator?mode=edit&objecttypecode=${type.getCode()}`,
+        to: `/types/creator?mode=edit&objecttypecode=${encodeURIComponent(type.getCode())}`,
       });
     } else {
       setDeletionMessage(`Type with code "${code}" not found.`);
