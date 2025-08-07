@@ -18,12 +18,15 @@ import { Route as AuthImport } from './routes/_auth'
 import { Route as AuthUserinfoImport } from './routes/_auth/user_info'
 import { Route as AuthTrashcanImport } from './routes/_auth/trashcan'
 import { Route as AuthHomeImport } from './routes/_auth/home'
-import { Route as AuthAnnotationsImport } from './routes/_auth/annotations'
 import { Route as AuthTypesIndexImport } from './routes/_auth/types/index'
 import { Route as AuthObjectsIndexImport } from './routes/_auth/objects/index'
+import { Route as AuthLogbookIndexImport } from './routes/_auth/logbook/index'
+import { Route as AuthTypesHistoryImport } from './routes/_auth/types/history'
 import { Route as AuthTypesCreatorImport } from './routes/_auth/types/creator'
 import { Route as AuthObjectsHistoryImport } from './routes/_auth/objects/history'
 import { Route as AuthObjectsCreatorImport } from './routes/_auth/objects/creator'
+import { Route as AuthLogbookHistoryImport } from './routes/_auth/logbook/history'
+import { Route as AuthLogbookCreatorImport } from './routes/_auth/logbook/creator'
 
 // Create Virtual Routes
 
@@ -61,11 +64,6 @@ const AuthHomeRoute = AuthHomeImport.update({
   getParentRoute: () => AuthRoute,
 } as any)
 
-const AuthAnnotationsRoute = AuthAnnotationsImport.update({
-  path: '/annotations',
-  getParentRoute: () => AuthRoute,
-} as any)
-
 const AuthTypesIndexRoute = AuthTypesIndexImport.update({
   path: '/types/',
   getParentRoute: () => AuthRoute,
@@ -73,6 +71,16 @@ const AuthTypesIndexRoute = AuthTypesIndexImport.update({
 
 const AuthObjectsIndexRoute = AuthObjectsIndexImport.update({
   path: '/objects/',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthLogbookIndexRoute = AuthLogbookIndexImport.update({
+  path: '/logbook/',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthTypesHistoryRoute = AuthTypesHistoryImport.update({
+  path: '/types/history',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -88,6 +96,16 @@ const AuthObjectsHistoryRoute = AuthObjectsHistoryImport.update({
 
 const AuthObjectsCreatorRoute = AuthObjectsCreatorImport.update({
   path: '/objects/creator',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthLogbookHistoryRoute = AuthLogbookHistoryImport.update({
+  path: '/logbook/history',
+  getParentRoute: () => AuthRoute,
+} as any)
+
+const AuthLogbookCreatorRoute = AuthLogbookCreatorImport.update({
+  path: '/logbook/creator',
   getParentRoute: () => AuthRoute,
 } as any)
 
@@ -116,13 +134,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginImport
       parentRoute: typeof rootRoute
     }
-    '/_auth/annotations': {
-      id: '/_auth/annotations'
-      path: '/annotations'
-      fullPath: '/annotations'
-      preLoaderRoute: typeof AuthAnnotationsImport
-      parentRoute: typeof AuthImport
-    }
     '/_auth/home': {
       id: '/_auth/home'
       path: '/home'
@@ -142,6 +153,20 @@ declare module '@tanstack/react-router' {
       path: '/user_info'
       fullPath: '/user_info'
       preLoaderRoute: typeof AuthUserinfoImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/logbook/creator': {
+      id: '/_auth/logbook/creator'
+      path: '/logbook/creator'
+      fullPath: '/logbook/creator'
+      preLoaderRoute: typeof AuthLogbookCreatorImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/logbook/history': {
+      id: '/_auth/logbook/history'
+      path: '/logbook/history'
+      fullPath: '/logbook/history'
+      preLoaderRoute: typeof AuthLogbookHistoryImport
       parentRoute: typeof AuthImport
     }
     '/_auth/objects/creator': {
@@ -165,6 +190,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthTypesCreatorImport
       parentRoute: typeof AuthImport
     }
+    '/_auth/types/history': {
+      id: '/_auth/types/history'
+      path: '/types/history'
+      fullPath: '/types/history'
+      preLoaderRoute: typeof AuthTypesHistoryImport
+      parentRoute: typeof AuthImport
+    }
+    '/_auth/logbook/': {
+      id: '/_auth/logbook/'
+      path: '/logbook'
+      fullPath: '/logbook'
+      preLoaderRoute: typeof AuthLogbookIndexImport
+      parentRoute: typeof AuthImport
+    }
     '/_auth/objects/': {
       id: '/_auth/objects/'
       path: '/objects'
@@ -184,21 +223,163 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
-export const routeTree = rootRoute.addChildren({
-  IndexLazyRoute,
-  AuthRoute: AuthRoute.addChildren({
-    AuthAnnotationsRoute,
-    AuthHomeRoute,
-    AuthTrashcanRoute,
-    AuthUserinfoRoute,
-    AuthObjectsCreatorRoute,
-    AuthObjectsHistoryRoute,
-    AuthTypesCreatorRoute,
-    AuthObjectsIndexRoute,
-    AuthTypesIndexRoute,
-  }),
-  LoginRoute,
-})
+interface AuthRouteChildren {
+  AuthHomeRoute: typeof AuthHomeRoute
+  AuthTrashcanRoute: typeof AuthTrashcanRoute
+  AuthUserinfoRoute: typeof AuthUserinfoRoute
+  AuthLogbookCreatorRoute: typeof AuthLogbookCreatorRoute
+  AuthLogbookHistoryRoute: typeof AuthLogbookHistoryRoute
+  AuthObjectsCreatorRoute: typeof AuthObjectsCreatorRoute
+  AuthObjectsHistoryRoute: typeof AuthObjectsHistoryRoute
+  AuthTypesCreatorRoute: typeof AuthTypesCreatorRoute
+  AuthTypesHistoryRoute: typeof AuthTypesHistoryRoute
+  AuthLogbookIndexRoute: typeof AuthLogbookIndexRoute
+  AuthObjectsIndexRoute: typeof AuthObjectsIndexRoute
+  AuthTypesIndexRoute: typeof AuthTypesIndexRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthHomeRoute: AuthHomeRoute,
+  AuthTrashcanRoute: AuthTrashcanRoute,
+  AuthUserinfoRoute: AuthUserinfoRoute,
+  AuthLogbookCreatorRoute: AuthLogbookCreatorRoute,
+  AuthLogbookHistoryRoute: AuthLogbookHistoryRoute,
+  AuthObjectsCreatorRoute: AuthObjectsCreatorRoute,
+  AuthObjectsHistoryRoute: AuthObjectsHistoryRoute,
+  AuthTypesCreatorRoute: AuthTypesCreatorRoute,
+  AuthTypesHistoryRoute: AuthTypesHistoryRoute,
+  AuthLogbookIndexRoute: AuthLogbookIndexRoute,
+  AuthObjectsIndexRoute: AuthObjectsIndexRoute,
+  AuthTypesIndexRoute: AuthTypesIndexRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
+export interface FileRoutesByFullPath {
+  '/': typeof IndexLazyRoute
+  '': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/home': typeof AuthHomeRoute
+  '/trashcan': typeof AuthTrashcanRoute
+  '/user_info': typeof AuthUserinfoRoute
+  '/logbook/creator': typeof AuthLogbookCreatorRoute
+  '/logbook/history': typeof AuthLogbookHistoryRoute
+  '/objects/creator': typeof AuthObjectsCreatorRoute
+  '/objects/history': typeof AuthObjectsHistoryRoute
+  '/types/creator': typeof AuthTypesCreatorRoute
+  '/types/history': typeof AuthTypesHistoryRoute
+  '/logbook': typeof AuthLogbookIndexRoute
+  '/objects': typeof AuthObjectsIndexRoute
+  '/types': typeof AuthTypesIndexRoute
+}
+
+export interface FileRoutesByTo {
+  '/': typeof IndexLazyRoute
+  '': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/home': typeof AuthHomeRoute
+  '/trashcan': typeof AuthTrashcanRoute
+  '/user_info': typeof AuthUserinfoRoute
+  '/logbook/creator': typeof AuthLogbookCreatorRoute
+  '/logbook/history': typeof AuthLogbookHistoryRoute
+  '/objects/creator': typeof AuthObjectsCreatorRoute
+  '/objects/history': typeof AuthObjectsHistoryRoute
+  '/types/creator': typeof AuthTypesCreatorRoute
+  '/types/history': typeof AuthTypesHistoryRoute
+  '/logbook': typeof AuthLogbookIndexRoute
+  '/objects': typeof AuthObjectsIndexRoute
+  '/types': typeof AuthTypesIndexRoute
+}
+
+export interface FileRoutesById {
+  __root__: typeof rootRoute
+  '/': typeof IndexLazyRoute
+  '/_auth': typeof AuthRouteWithChildren
+  '/login': typeof LoginRoute
+  '/_auth/home': typeof AuthHomeRoute
+  '/_auth/trashcan': typeof AuthTrashcanRoute
+  '/_auth/user_info': typeof AuthUserinfoRoute
+  '/_auth/logbook/creator': typeof AuthLogbookCreatorRoute
+  '/_auth/logbook/history': typeof AuthLogbookHistoryRoute
+  '/_auth/objects/creator': typeof AuthObjectsCreatorRoute
+  '/_auth/objects/history': typeof AuthObjectsHistoryRoute
+  '/_auth/types/creator': typeof AuthTypesCreatorRoute
+  '/_auth/types/history': typeof AuthTypesHistoryRoute
+  '/_auth/logbook/': typeof AuthLogbookIndexRoute
+  '/_auth/objects/': typeof AuthObjectsIndexRoute
+  '/_auth/types/': typeof AuthTypesIndexRoute
+}
+
+export interface FileRouteTypes {
+  fileRoutesByFullPath: FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | ''
+    | '/login'
+    | '/home'
+    | '/trashcan'
+    | '/user_info'
+    | '/logbook/creator'
+    | '/logbook/history'
+    | '/objects/creator'
+    | '/objects/history'
+    | '/types/creator'
+    | '/types/history'
+    | '/logbook'
+    | '/objects'
+    | '/types'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | ''
+    | '/login'
+    | '/home'
+    | '/trashcan'
+    | '/user_info'
+    | '/logbook/creator'
+    | '/logbook/history'
+    | '/objects/creator'
+    | '/objects/history'
+    | '/types/creator'
+    | '/types/history'
+    | '/logbook'
+    | '/objects'
+    | '/types'
+  id:
+    | '__root__'
+    | '/'
+    | '/_auth'
+    | '/login'
+    | '/_auth/home'
+    | '/_auth/trashcan'
+    | '/_auth/user_info'
+    | '/_auth/logbook/creator'
+    | '/_auth/logbook/history'
+    | '/_auth/objects/creator'
+    | '/_auth/objects/history'
+    | '/_auth/types/creator'
+    | '/_auth/types/history'
+    | '/_auth/logbook/'
+    | '/_auth/objects/'
+    | '/_auth/types/'
+  fileRoutesById: FileRoutesById
+}
+
+export interface RootRouteChildren {
+  IndexLazyRoute: typeof IndexLazyRoute
+  AuthRoute: typeof AuthRouteWithChildren
+  LoginRoute: typeof LoginRoute
+}
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexLazyRoute: IndexLazyRoute,
+  AuthRoute: AuthRouteWithChildren,
+  LoginRoute: LoginRoute,
+}
+
+export const routeTree = rootRoute
+  ._addFileChildren(rootRouteChildren)
+  ._addFileTypes<FileRouteTypes>()
 
 /* prettier-ignore-end */
 
@@ -219,23 +400,22 @@ export const routeTree = rootRoute.addChildren({
     "/_auth": {
       "filePath": "_auth.tsx",
       "children": [
-        "/_auth/annotations",
         "/_auth/home",
         "/_auth/trashcan",
         "/_auth/user_info",
+        "/_auth/logbook/creator",
+        "/_auth/logbook/history",
         "/_auth/objects/creator",
         "/_auth/objects/history",
         "/_auth/types/creator",
+        "/_auth/types/history",
+        "/_auth/logbook/",
         "/_auth/objects/",
         "/_auth/types/"
       ]
     },
     "/login": {
       "filePath": "login.tsx"
-    },
-    "/_auth/annotations": {
-      "filePath": "_auth/annotations.tsx",
-      "parent": "/_auth"
     },
     "/_auth/home": {
       "filePath": "_auth/home.tsx",
@@ -249,6 +429,14 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "_auth/user_info.tsx",
       "parent": "/_auth"
     },
+    "/_auth/logbook/creator": {
+      "filePath": "_auth/logbook/creator.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/logbook/history": {
+      "filePath": "_auth/logbook/history.tsx",
+      "parent": "/_auth"
+    },
     "/_auth/objects/creator": {
       "filePath": "_auth/objects/creator.tsx",
       "parent": "/_auth"
@@ -259,6 +447,14 @@ export const routeTree = rootRoute.addChildren({
     },
     "/_auth/types/creator": {
       "filePath": "_auth/types/creator.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/types/history": {
+      "filePath": "_auth/types/history.tsx",
+      "parent": "/_auth"
+    },
+    "/_auth/logbook/": {
+      "filePath": "_auth/logbook/index.tsx",
       "parent": "/_auth"
     },
     "/_auth/objects/": {

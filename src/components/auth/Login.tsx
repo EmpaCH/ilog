@@ -1,5 +1,5 @@
-import { useContext, useState, useEffect } from 'react';
-import { Link, useRouter, useNavigate, Navigate } from '@tanstack/react-router';
+import { useContext, useState } from 'react';
+import { Link, useRouter } from '@tanstack/react-router';
 import { Button, Input, Divider } from "@heroui/react";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -7,9 +7,8 @@ import { AuthContext } from '../../context/auth/authContext';
 import '../../assets/styles/Login.css';
 
 function Login() {
-  const { login, isAuthenticated } = useContext(AuthContext);
+  const { login, isLoading } = useContext(AuthContext);
   const router = useRouter();
-  const navigate = useNavigate();
 
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -17,13 +16,10 @@ function Login() {
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
-  // useEffect(() => { 
-  //   if (isAuthenticated) {
-  //     router.invalidate().finally(() => {
-  //       navigate({ to: '/home' })
-  //     })
-  //   }
-  // }, []);
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,23 +30,18 @@ function Login() {
     };
 
     login(formValues.username.value, formValues.password.value)
-    .then(() => {
-      router.invalidate().finally(() => {
-        navigate({ to: '/home' })
-      })
-    })
-    .catch(() => {
-      setShowError(true);
-      setErrorMessage('Login failed');
+    .then(async (res) => {
+      if (res) {
+        console.log('Login successful.');
+        // Small delay to ensure auth state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await router.invalidate();
+      } else {
+        setShowError(true);
+        setErrorMessage('Login failed. Please check your credentials.');
+      }
     });
   };
-
-  if(isAuthenticated) {
-    console.log('User is logged in, redirecting to /home');
-    return <Navigate to="/home" router={router}/>;
-  }else{
-    console.log('User is not logged in');
-  }
 
   return (
     <div className="main-div">

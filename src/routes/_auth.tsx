@@ -1,38 +1,50 @@
 import {
   createFileRoute,
   Link,
-  Navigate,
   Outlet,
+  useNavigate,
   useRouter,
+  redirect,
 } from "@tanstack/react-router";
-import { useContext, useMemo } from "react";
+import { useContext } from "react";
 import { AuthContext } from "../context/auth/authContext";
-import { INIT_ILOG_KEY, useInitIlog } from "../apis/shared/useInitIlog";
 import { Button } from "@heroui/react";
-import { InitComponent } from "../components/auth/Init";
-import { useGetInit } from "../apis/shared/useGetInit";
 
 export const Route = createFileRoute("/_auth")({
+  beforeLoad: ({ context, location }) => {
+    if (!context.auth.isAuthenticated) {
+      // Store the redirect path in sessionStorage
+      const currentPath = location.pathname + (location.searchStr || '');
+      if (currentPath !== "/login" && currentPath !== "/" && currentPath !== "") {
+        sessionStorage.setItem('redirectAfterLogin', currentPath);
+      }
+      console.log("User is not authenticated, redirecting to /login, storing path:", sessionStorage.getItem('redirectAfterLogin'));
+      throw redirect({ to: "/login" });
+    }
+  },
   component: AuthLayout,
 });
 
 function AuthLayout() {
   const router = useRouter();
-  const navigate = Route.useNavigate();
-  const { logout, isAuthenticated } = useContext(AuthContext);
-  const { status, data } = useGetInit();
+  const navigate = useNavigate();
+  const { logout, isLoading } = useContext(AuthContext);
 
-  if (!isAuthenticated) {
-    return <Navigate router={router} to="/" />;
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      logout().then(() => {
-        router.invalidate().finally(() => {
-          navigate({ to: "/" });
-        });
-      });
+      try {
+        await logout();
+        await router.invalidate();
+        sessionStorage.removeItem('redirectAfterLogin');
+        navigate({ to: "/" });
+      } catch (error) {
+        console.error('Logout failed:', error);
+      }
     }
   };
 
@@ -81,7 +93,6 @@ function AuthLayout() {
       </div>
       <div className="main-div">
         <Outlet />
-        <InitComponent show={status !== "success"} />
       </div>
     </>
   );
