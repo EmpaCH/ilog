@@ -1,6 +1,5 @@
 import openbis from "@openbis/openbis.esm";
 import { useState, useEffect } from "react";
-import { E } from "vitest/dist/chunks/reporters.6vxQttCV.js";
 
 /**
  * A factory to create singleton instances of the openBIS API facade.
@@ -33,20 +32,20 @@ export const openBISHookFactory = (url: string) => {
     apiFacade._private.log = () => {};
     const id = new Date();
     const idLogger = (...msgs: any) => {
-      console.log(`Facade created at ${id}, ${msgs}`);
+      console.log(`Facade created, ${msgs}`);
     };
-    idLogger(`${id}, Creating hook with URL:`, url);
+    idLogger(`Creating hook with URL: ${url}`);
 
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<string | null>(null);
     const [token, setToken] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true); // Add loading state
 
     // // Check for token and user in localStorage on initialization
     useEffect(() => {
       const storedToken = localStorage.getItem(TOKEN_KEY);
       const storedUser = localStorage.getItem(USER_KEY);
-      idLogger("Stored token:", storedToken);
-      idLogger("Now proceeding to verify token");
+      idLogger(`Stored token: ${storedToken}`);
       const checkStoredToken = async () => {
         if (storedToken !== null && storedUser !== null) {
           const result = await verifyToken(storedToken, storedUser);
@@ -61,6 +60,7 @@ export const openBISHookFactory = (url: string) => {
           idLogger("No token stored");
           //removeLoginInfo();
         }
+        setIsLoading(false); // Set loading to false after check
       };
       checkStoredToken();
       //   const result = await verifyToken(storedToken, storedUser).then((res) => {
@@ -79,7 +79,7 @@ export const openBISHookFactory = (url: string) => {
     }, []);
 
     // Function to verify token validity
-    const verifyToken = async (token: string, user: string) => {
+    const verifyToken = async (token: string, _user: string) => {
       try {
         apiFacade.setSessionToken(token);
         await apiFacade.getServerInformation();
@@ -125,10 +125,10 @@ export const openBISHookFactory = (url: string) => {
       setUser(user);
       setToken(token);
       apiFacade.setSessionToken(token);
-      idLogger("Setting token:", token);
+      idLogger(`Setting token: ${token}`);
       localStorage.setItem(USER_KEY, user);
       localStorage.setItem(TOKEN_KEY, token);
-      idLogger("Stored token:", localStorage.getItem(TOKEN_KEY));
+      idLogger(`Stored token: ${localStorage.getItem(TOKEN_KEY)}`);
     }
 
     // Helper function to remove user/token info on logout
@@ -136,6 +136,7 @@ export const openBISHookFactory = (url: string) => {
       setIsAuthenticated(false);
       setUser(null);
       setToken(null);
+      setIsLoading(false); // Set loading to false when removing login info
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
     }
@@ -149,6 +150,7 @@ export const openBISHookFactory = (url: string) => {
       apiFacade,
       url,
       id,
+      isLoading, // Return loading state
     };
   };
 };

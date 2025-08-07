@@ -94,14 +94,14 @@ export const useInitIlog = () => {
   const [message, setMessage] = useState<ILogProgress>({} as ILogProgress);
   const queryClient = useQueryClient();
   const mut = useMutation({
-    mutationKey: [INIT_ILOG_KEY],
+    // mutationKey: [INIT_ILOG_KEY],
     mutationFn: async () => {
 
-      if (InitAlreadyDone.isSuccess && !InitAlreadyDone.data.init ) {
+      if (!InitAlreadyDone.isSuccess || !InitAlreadyDone.data.init ) {
         //By using await and mutateAsync,  we force the order of execution
 
-        await spaceCreation.mutateAsync();
         emitMessage("Initializing inventory space...", spaceCreation.status);
+        await spaceCreation.mutateAsync();
         if (elnSettings.isSuccess) {
           const newSettings = elnSettings.data;
           console.log("newSettings", newSettings);
@@ -154,10 +154,9 @@ export const useInitIlog = () => {
           "Initializing component and instrument types...",
           iLogVariantPropertyTypeCreation.status
         );
-        
+
         for (const [objectTypeDefinition, requestResult] of objectTypeChecks) {
-          if (requestResult.data === undefined) {
-            
+          if (await requestResult.refetch().then(res => res.data) === undefined) {
             await createObjects.mutateAsync({ definition: objectTypeDefinition });
             emitMessage(`${objectTypeDefinition.code} type initialized.`, createObjects.status);
           }
