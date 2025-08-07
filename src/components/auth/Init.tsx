@@ -20,7 +20,7 @@ export function InitComponent({ show }: { show: boolean }) {
   const [initDone, setInitDone] = useState(false);
   const [progressList, setProgressList] = useState<ILogProgress[]>([]);
   const initStatus = useGetInit();
-  const [showModal, setShowModal] = useState(true);
+  const [showModal, setShowModal] = useState(show ?? false);
   useEffect(() => {
     setProgressList((old) => [...old, init.message]);
   }, [init.message]);
@@ -36,7 +36,7 @@ export function InitComponent({ show }: { show: boolean }) {
 
   return (
     <>
-      <Modal isOpen={show || showModal}>
+      <Modal isOpen={showModal} onClose={handleClose}>
         <ModalContent>
           <ModalHeader className="flex flex-col gap-1">
             Initializing iLog

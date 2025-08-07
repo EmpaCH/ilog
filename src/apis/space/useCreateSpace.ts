@@ -18,7 +18,11 @@ export const useCreateSpace = (code: string, description: string) => {
           !existingSpacesResult.data.some((space) => space.getCode() === code)
         ) {
           await apiFacade.createSpaces([creation]);
-        }
+        } 
+      } else if (existingSpacesResult.isLoading) {
+        console.warn("Spaces are still loading, mutation will not run.");
+      } else {
+        throw new Error("Failed to load existing spaces.");
       }
     },
     onSuccess: () => {

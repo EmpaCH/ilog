@@ -4,7 +4,7 @@ import { useGetObject } from "../object/useGetObject";
 import { useGetProject } from "../project/useGetProject";
 import { useGetSpace } from "../space/useGetSpace";
 import { useGetObjectType } from "../type/useGetObjectType";
-import { iLogID, labID, iLogLogbookID, collectionID, logbookCollectionID } from "./environment";
+import { iLogID, labID, collectionID, logbookCollectionID } from "./environment";
 import {
   COMPONENT_TYPE_DEFINITION,
   INSTRUMENT_TYPE_DEFINITION,
@@ -26,23 +26,40 @@ export const useGetInit = () => {
   }));
 
   const typeChecks = [
-    ...typeDefinitions.map((typeDef) => ({
-      key: typeDef.key,
-      data: useGetObjectType(typeDef.code).data,
-    })),
-    ...logbookEntryTypeDefinitions.map((typeDef) => ({
-      key: typeDef.key,
-      data: useGetObjectType(typeDef.code).data,
-    })),
+    ...typeDefinitions.map((typeDef) => {
+      const result = useGetObjectType(typeDef.code);
+      return {
+        key: typeDef.key,
+        data: result.data,
+        isLoading: result.isLoading,
+        isError: result.isError,
+      };
+    }),
+    ...logbookEntryTypeDefinitions.map((typeDef) => {
+      const result = useGetObjectType(typeDef.code);
+      return {
+        key: typeDef.key,
+        data: result.data,
+        isLoading: result.isLoading,
+        isError: result.isError,
+      };
+    }),
   ];
 
+  const spaceResult = useGetSpace(labID);
+  const projectResult = useGetProject(labID, iLogID);
+  const collectionEquipmentResult = useGetCollection(labID, iLogID, collectionID);
+  const collectionLogbookResult = useGetCollection(labID, iLogID, logbookCollectionID);
+  const vocabularyResult = useGetObject(iLogBaseTypesVocabularyID);
 
-
-  const spaceExists = useGetSpace(labID).data;
-  const projectExists = useGetProject(labID, iLogID).data;
-  const collectionEquipmentExist = useGetCollection(labID, iLogID, collectionID).data;
-  const collectionLogbookExist = useGetCollection(labID, iLogID, logbookCollectionID).data;
-  const vocabularyExists = useGetObject(iLogBaseTypesVocabularyID).data;
+  // Check if any dependency is still loading
+  const isLoading = 
+    typeChecks.some(check => check.isLoading) ||
+    spaceResult.isLoading ||
+    projectResult.isLoading ||
+    collectionEquipmentResult.isLoading ||
+    collectionLogbookResult.isLoading ||
+    vocabularyResult.isLoading;
 
   return useQuery({
     queryKey: ["INIT_ILOG"],
@@ -52,31 +69,38 @@ export const useGetInit = () => {
       const typeCheckResults = typeChecks.every((typeCheck) => typeCheck.data !== undefined);
       const isDone =
         typeCheckResults &&
-        spaceExists !== undefined &&
-        projectExists !== undefined &&
-        collectionEquipmentExist !== undefined &&
-        collectionLogbookExist !== undefined &&
-        vocabularyExists !== undefined;
+        spaceResult.data != null &&
+        projectResult.data != null &&
+        collectionEquipmentResult.data != null &&
+        collectionLogbookResult.data != null &&
+        vocabularyResult.data != null;
 
       console.log(
         "iLog is initialized:",
         isDone,
         ...typeChecks.map((typeCheck) => ({ [typeCheck.key]: typeCheck.data })),
-        { spaceExists, projectExists, collectionEquipmentExist, collectionLogbookExist, vocabularyExists }
+        { 
+          spaceExists: spaceResult.data !== null, 
+          projectExists: projectResult.data !== null, 
+          collectionEquipmentExist: collectionEquipmentResult.data !== null, 
+          collectionLogbookExist: collectionLogbookResult.data !== null, 
+          vocabularyExists: vocabularyResult.data !== null 
+        }
       );
 
       return {
         init: isDone,
         ...typeChecks.reduce((acc, typeCheck) => {
-          acc[typeCheck.key] = typeCheck.data !== undefined;
+          acc[typeCheck.key] = typeCheck.data !== null;
           return acc;
         }, {} as Record<string, boolean>),
-        spaceExists: spaceExists !== undefined,
-        projectExists: projectExists !== undefined,
-        collectionExist: collectionEquipmentExist !== undefined,
-        collectionLogbookExist: collectionLogbookExist !== undefined,
-        vocabularyExists: vocabularyExists !== undefined,
+        spaceExists: spaceResult.data !== null,
+        projectExists: projectResult.data !== null,
+        collectionExist: collectionEquipmentResult.data !== null,
+        collectionLogbookExist: collectionLogbookResult.data !== null,
+        vocabularyExists: vocabularyResult.data !== null,
       };
     },
+    enabled: !isLoading, // Only run query when all dependencies are loaded
   });
 };

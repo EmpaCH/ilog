@@ -1,6 +1,5 @@
 import openbis from '@openbis/openbis.esm';
 import { createContext } from 'react';
-import { OpenBISApiFacade } from '../../hooks/auth/useAuth';
 
 export interface AuthContextType {
   login: (username: string, password: string) => Promise<string | null>;
@@ -11,7 +10,8 @@ export interface AuthContextType {
   apiFacade: openbis.OpenBISJavaScriptFacade;
   id: string;
   token: string | null; 
+  isLoading: boolean; // Add loading state
 }
 
-export const AuthContext = createContext<AuthContextType>(null);
+export const AuthContext = createContext<AuthContextType>(null!);
 
