@@ -17,7 +17,7 @@ spec:
         - name: ilog
           image: gitlab-registry.empa.ch/openbis-tools/ilog:master
           ports:
-            - containerPort: 80
+            - containerPort: 443
           resources:
             requests:
               memory: "128Mi"
@@ -39,7 +39,7 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 80
+      targetPort: 443
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
