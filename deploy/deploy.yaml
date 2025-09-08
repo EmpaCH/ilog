@@ -19,7 +19,7 @@ spec:
           ports:
             - containerPort: 80
           imagePullSecrets:
-            - name: ilog
+            - name: ilog-registry
 ---
 apiVersion: v1
 kind: Service
