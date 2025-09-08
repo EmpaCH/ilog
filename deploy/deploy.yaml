@@ -16,6 +16,7 @@ spec:
       containers:
         - name: ilog
           image: gitlab-registry.empa.ch/openbis-tools/ilog:master
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           resources:
