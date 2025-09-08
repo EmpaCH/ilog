@@ -1,32 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: whoami
+  name: ilog
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: whoami
+      app: ilog
   template:
     metadata:
       labels:
-        app: whoami
+        app: ilog
     spec:
       containers:
-        - name: whoami
-          image: traefik/whoami
+        - name: ilog
+          image: gitlab-registry.empa.ch/openbis-tools/ilog
           ports:
             - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: whoami
+  name: ilog
   namespace: default
 spec:
   selector:
-    app: whoami
+    app: ilog
   ports:
     - protocol: TCP
       port: 80
@@ -35,7 +35,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: whoami
+  name: ilog
   namespace: default
   annotations:
     spec.ingressClassName: traefik
@@ -47,6 +47,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: whoami
+                name: ilog
                 port:
                   number: 80
