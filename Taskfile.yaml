@@ -19,3 +19,8 @@ tasks:
     desc: Run the tests
     deps:
       - start_openbis
+
+
+  build_docker:
+    cmds:
+      - docker buildx build . --network=host -t openbis-tools/ilog

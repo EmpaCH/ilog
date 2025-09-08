@@ -1,0 +1,14 @@
+{
+    debug
+}
+
+https://localhost {
+	root /var/www/html
+	file_server
+
+}
+
+
+https://localhost/openbis/* {
+    reverse_proxy https://openbis-empa-lab205.ethz.ch
+}
