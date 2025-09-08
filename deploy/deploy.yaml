@@ -17,7 +17,7 @@ spec:
         - name: ilog
           image: gitlab-registry.empa.ch/openbis-tools/ilog:master
           ports:
-            - containerPort: 443
+            - containerPort: 80
           resources:
             requests:
               memory: "128Mi"
@@ -39,7 +39,7 @@ spec:
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 443
+      targetPort: 80
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -50,7 +50,8 @@ metadata:
     spec.ingressClassName: traefik
 spec:
   rules:
-    - http:
+    - host: emp-appsrv-dev.empa.emp-eaw.ch
+      http:
         paths:
           - path: /ilog
             pathType: Prefix
