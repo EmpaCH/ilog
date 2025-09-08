@@ -11,7 +11,7 @@ build_image:
   script:
     - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .
   only:
-    - main
+    - master
   tags:
     - dind
 
@@ -21,7 +21,7 @@ push_image:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
   only:
-    - main
+    - master
   dependencies:
     - build_image
   tags:
