@@ -1,14 +1,16 @@
 {
     debug
+    	log default {
+		output stdout
+		format json
+        }
 }
 
-http://localhost {
-	root /var/www/html
-	file_server
+:80 {
+    root * /srv
+    file_server
 
-}
-
-
-http://localhost/openbis/* {
-    reverse_proxy https://openbis-empa-lab205.ethz.ch
+    handle_path /openbis/* {
+        reverse_proxy http://backend:8080
+    }
 }
