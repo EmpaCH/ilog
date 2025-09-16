@@ -1,0 +1,16 @@
+{
+    debug
+    	log default {
+		output stdout
+		format json
+        }
+}
+
+:80 {
+    root * /srv
+    file_server
+
+    handle_path /openbis/* {
+        reverse_proxy http://backend:8080
+    }
+}
