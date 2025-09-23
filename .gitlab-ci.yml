@@ -21,11 +21,10 @@ build_image:
     - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG .
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
     - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-  only:
-    - master
   tags:
     - dind
   rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
     - changes: 
       - Dockerfile
       - Caddyfile
