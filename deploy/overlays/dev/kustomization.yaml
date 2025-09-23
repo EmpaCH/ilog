@@ -9,4 +9,4 @@ resources:
 images:
 - name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
-  newTag: e36f9ee57d6c90465a47cf1c94b5926314307064
+  newTag: c5df57cc498c5acc63b18a615a2048455d3ac580
