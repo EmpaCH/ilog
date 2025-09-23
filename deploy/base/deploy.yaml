@@ -26,6 +26,9 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
+          environment:
+            - name: OPENBIS_URL
+              value: https://openbis-empa-lab205.ethz.ch
       imagePullSecrets:
         - name: ilog-docker-registry
 ---

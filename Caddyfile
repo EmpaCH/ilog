@@ -11,6 +11,6 @@
     file_server
 
     handle_path /openbis/* {
-        reverse_proxy http://backend:8080
+        reverse_proxy http://${OPENBIS_URL}:8080
     }
 }
