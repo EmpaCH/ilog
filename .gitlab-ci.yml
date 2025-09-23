@@ -46,7 +46,7 @@ deploy:
   image: alpine:3.20
   script:
     - echo "Pinning dev image to $DOCKER_IMAGE_SHA_TAG"
-    - cd k8s/overlays/dev
+    - cd deploy/overlays/dev
     # Left side must match the *canonical image name* as it appears in manifests
     - kustomize edit set image gitlab-registry.empa.ch/openbis-tools/ilog=$DOCKER_IMAGE_SHA_TAG
     - git config --global user.email "ci-bot@gitlab.empa.ch"
