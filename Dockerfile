@@ -21,6 +21,7 @@ FROM env AS build
 RUN npm run build --verbose
 
 FROM caddy AS serve
+ENV OPENBIS_URL=
 
 COPY --from=build /app/dist /var/www/html
 COPY Caddyfile /etc/caddy/
