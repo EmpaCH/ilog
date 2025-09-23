@@ -28,7 +28,7 @@ build_image:
 deploy:
   before_script:
     - apk add --no-cache git curl ca-certificates
-    - curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz \
+    - curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz \
         | tar xz
     - mv kustomize /usr/local/bin/
     - kustomize version && git --version
