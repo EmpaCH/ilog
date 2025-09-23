@@ -25,13 +25,13 @@ build_image:
     - dind
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
-    - changes: 
-      - Dockerfile
-      - Caddyfile
-      - src/**/*
-      - package.json
-      - "*.js"
-      - "*.ts"
+      changes: 
+        - Dockerfile
+        - Caddyfile
+        - src/**/*
+        - package.json
+        - "*.js"
+        - "*.ts"
 
 
 
