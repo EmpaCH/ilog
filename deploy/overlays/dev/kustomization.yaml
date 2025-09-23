@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namePrefix: dev-
+namespace: default
+resources:
+  - ../../base
+
+# Prefer the images transformer so CI can "edit set image" here
+images:
+  - name: gitlab-registry.empa.ch/openbis-tools/ilog:master
+    newName: gitlab-registry.empa.ch/openbis-tools/ilog:master
+    newTag: latest
