@@ -31,8 +31,8 @@ build_image:
       - Caddyfile
       - src/**/*
       - package.json
-      - *.js
-      - *.ts
+      - "*.js"
+      - "*.ts"
 
 
 
