@@ -27,7 +27,7 @@ spec:
               memory: "256Mi"
               cpu: "500m"
       imagePullSecrets:
-        - name: ilog-registry
+        - name: ilog-docker-registry
 ---
 apiVersion: v1
 kind: Service
