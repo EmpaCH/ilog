@@ -21,6 +21,7 @@ metadata:
   namespace: default
   annotations:
     spec.ingressClassName: traefik
+    traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
       - host: ilog.empa.ch
