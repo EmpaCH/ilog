@@ -23,7 +23,7 @@ metadata:
     spec.ingressClassName: traefik
 spec:
   rules:
-      - host: test.ilog.empa.ch
+      - host: ilog.empa.ch
         http:
           paths:
             - backend:
@@ -31,9 +31,9 @@ spec:
                   name: ilog
                   port:
                     number: 80
-              path: /
+              path: /dev
               pathType: Prefix
   tls:
       - hosts:
-          - test.ilog.empa.ch
+          - ilog.empa.ch
         secretName: default-tls
