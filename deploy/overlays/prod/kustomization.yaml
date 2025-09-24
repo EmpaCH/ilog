@@ -5,8 +5,8 @@ namespace: default
 resources:
 - ../../base
 
-patchesStrategicMerge:
-  - env-patch.yaml
+patches:
+  - path: env-patch.yaml
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
