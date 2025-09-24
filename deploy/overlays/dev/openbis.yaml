@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openbis-db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openbis-db
+  template:
+    metadata:
+      labels:
+        app: openbis-db
+    spec:
+
+      containers:
+        - name: openbis-db
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+              ephemeral-storage: "1Gi"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+              ephemeral-storage: "2Gi"
+          image: postgres:15
+          env:
+            - name: POSTGRES_PASSWORD
+              value: "mysecretpassword"
+            - name: PGDATA
+              value: "/var/lib/postgresql/data"
+            - name: POSTGRES_HOST_AUTH_METHOD
+              value: "trust"
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-data
+          emptyDir: {} # Use PersistentVolumeClaim for real data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbis-db
+  namespace: default
+spec:
+  selector:
+    app: openbis-db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openbis-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openbis-app
+  template:
+    metadata:
+      labels:
+        app: openbis-app
+    spec:
+      containers:
+        - name: openbis-app
+          resources:
+            requests:
+              memory: "4Gi"
+              cpu: "100m"
+              ephemeral-storage: "10Gi"
+            limits:
+              memory: "4Gi"
+              cpu: "500m"
+              ephemeral-storage: "20Gi"
+          image: openbis/openbis-app:6.6.0
+          env:
+            - name: OPENBIS_ADMIN_PASS
+              value: "mysecretpassword"
+            - name: OPENBIS_DB_ADMIN_PASS
+              value: "mysecretpassword"
+            - name: OPENBIS_DB_ADMIN_USER
+              value: "postgres"
+            - name: OPENBIS_DB_APP_PASS
+              value: "mysecretpassword"
+            - name: OPENBIS_DB_APP_USER
+              value: "openbis"
+            - name: OPENBIS_DB_HOST
+              value: openbis-db
+            - name: OPENBIS_FQDN
+              value: "local.openbis.ch"
+            - name: file-server.repository-path
+              value: ""
+            - name: OPENBIS_DSS_PORT
+              value: "8081"
+            - name: OPENBIS_AS_PORT
+              value: "8080"
+          volumeMounts:
+            - name: app-data
+              mountPath: /data
+            - name: app-etc
+              mountPath: /etc/openbis
+            - name: app-logs
+              mountPath: /var/log/openbis
+      volumes:
+        - name: app-data
+          emptyDir: {}
+        - name: app-etc
+          emptyDir: {}
+        - name: app-logs
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openbis-app
+  namespace: default
+spec:
+  selector:
+    app: openbis-app
+  ports:
+    - protocol: TCP
+      name: as
+      port: 8080
+      targetPort: 8080
+    - protocol: TCP
+      name: dss
+      port: 8081
+      targetPort: 8081

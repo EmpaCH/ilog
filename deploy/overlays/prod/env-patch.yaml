@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ilog
+spec:
+  selector:
+    matchLabels:
+      app: ilog
+  template:
+    spec:
+      containers:
+        - name: ilog
+          env:
+            - name: OPENBIS_URL
+              value: https://openbis-empa-lab205.ethz.ch
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ilog
+  namespace: default
+  annotations:
+    spec.ingressClassName: traefik
+spec:
+  rules:
+      - host: ilog.empa.ch
+        http:
+          paths:
+            - backend:
+                service:
+                  name: ilog
+                  port:
+                    number: 80
+              path: /
+              pathType: Prefix
+  tls:
+      - hosts:
+          - ilog.empa.ch
+        secretName: default-tls
