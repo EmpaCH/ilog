@@ -12,4 +12,4 @@ patches:
 images:
 - name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
-  newTag: 9a05b2eed3e4c3515a4469b93f216c3f70f404fe
+  newTag: b28a4f72236f5923bc63a38af311cb1565f66c52
