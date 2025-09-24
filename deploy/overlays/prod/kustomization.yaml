@@ -3,13 +3,13 @@ kind: Kustomization
 namePrefix: prod-
 namespace: default
 resources:
-  - ../../base
+- ../../base
 
 patchesStrategicMerge:
-  - env-patch.yaml
+- env-patch.yaml
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
 - name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
-  newTag: 175620d30befe455172c6305b020b2a65dd9fe4d
+  newTag: 57512693e03d925158ecde6e140b605dc8931317
