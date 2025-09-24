@@ -6,10 +6,10 @@ resources:
 - ../../base
 
 patches:
-  - path: env-patch.yaml
+- path: env-patch.yaml
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
 - name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
-  newTag: 57512693e03d925158ecde6e140b605dc8931317
+  newTag: 8863ebd0da6d3ba1572b92cd884f2d95d2d39617
