@@ -24,7 +24,7 @@ metadata:
     traefik.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-      - host: ilog.empa.ch
+      - host: ilog-dev.empa.ch
         http:
           paths:
             - backend:
@@ -32,9 +32,9 @@ spec:
                   name: ilog
                   port:
                     number: 80
-              path: /dev
+              path: /
               pathType: Prefix
   tls:
       - hosts:
-          - ilog.empa.ch
+          - ilog-dev.empa.ch
         secretName: default-tls

@@ -32,7 +32,7 @@ spec:
                   name: ilog
                   port:
                     number: 80
-              path: /prod
+              path: /
               pathType: Prefix
   tls:
       - hosts:
