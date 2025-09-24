@@ -3,7 +3,7 @@ kind: Kustomization
 namePrefix: dev-
 namespace: default
 resources:
-- ../../base
+  - ../../base
 
 patchesStrategicMerge:
   - env-patch.yaml
