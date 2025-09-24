@@ -12,7 +12,7 @@ spec:
         - name: ilog
           env:
             - name: OPENBIS_URL
-              value: https://openbis-empa-test.ethz.ch
+              value: https://openbis-empa-dev.ethz.ch
 --- 
 apiVersion: networking.k8s.io/v1
 kind: Ingress
