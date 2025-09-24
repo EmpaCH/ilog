@@ -31,6 +31,7 @@ spec:
               value: https://openbis-empa-lab205.ethz.ch
       imagePullSecrets:
         - name: ilog-docker-registry
+
 ---
 apiVersion: v1
 kind: Service
