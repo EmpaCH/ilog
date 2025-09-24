@@ -3,7 +3,7 @@ kind: Kustomization
 namePrefix: dev-
 namespace: default
 resources:
-- ../../base
+  - ../../base
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
