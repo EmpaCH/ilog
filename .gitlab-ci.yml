@@ -40,7 +40,7 @@ build_image:
 
 
 
-deploy:
+deploy_dev:
   before_script:
     - apk add --no-cache git curl ca-certificates
     - curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz | tar xz
@@ -49,8 +49,29 @@ deploy:
   stage: deploy
   image: alpine:3.20
   script:
-    - echo "Pinning dev image to $DOCKER_IMAGE_SHA_TAG"
+    - echo "Pinning dev image to $DOCKER_IMAGE_BRANCH_TAG"
     - cd deploy/overlays/dev
+    # Left side must match the *canonical image name* as it appears in manifests
+    - kustomize edit set image gitlab-registry.empa.ch/openbis-tools/ilog=$DOCKER_IMAGE_BRANCH_TAG
+    - git config --global user.email "ci-bot@gitlab.empa.ch"
+    - git config --global user.name "CI Bot"
+    - git add kustomization.yaml
+    - git commit -m "Pin ilog to to $DOCKER_IMAGE_BRANCH_TAG [ci skip]" 
+    - git push https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_REF_NAME
+  rules:
+    - if: '$CI_COMMIT_BRANCH != "master"'
+
+deploy_prod:
+  before_script:
+    - apk add --no-cache git curl ca-certificates
+    - curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz | tar xz
+    - mv kustomize /usr/local/bin/
+    - kustomize version && git --version
+  stage: deploy
+  image: alpine:3.20
+  script:
+    - echo "Pinning prod image to $DOCKER_IMAGE_SHA_TAG"
+    - cd deploy/overlays/prod
     # Left side must match the *canonical image name* as it appears in manifests
     - kustomize edit set image gitlab-registry.empa.ch/openbis-tools/ilog=$DOCKER_IMAGE_SHA_TAG
     - git config --global user.email "ci-bot@gitlab.empa.ch"
