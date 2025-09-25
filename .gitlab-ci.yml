@@ -48,7 +48,7 @@ build_image:
   script:
     - echo "Pinning image to $DOCKER_IMAGE_SHA_TAG in $OVERLAY_PATH"
     - cd $OVERLAY_PATH
-    - kustomize edit set image $CI_REGISTRY_IMAGE=$DOCKER_IMAGE_SHA_TAG
+    - kustomize edit set image $IMAGE_PATH=$DOCKER_IMAGE_SHA_TAG
     - git config --global user.email "ci-bot@gitlab.empa.ch"
     - git config --global user.name "CI Bot"
     - git add kustomization.yaml
@@ -61,9 +61,13 @@ deploy_dev:
   extends: .deploy_template
   variables:
     OVERLAY_PATH: deploy/overlays/dev
-    IMAGE_PATH: gitlab-registry.empa.ch/openbis-tools/ilog
-  rules:
-    - if: '$CI_COMMIT_BRANCH != "master"'
+    IMAGE_PATH: $CI_REGISTRY_IMAGE
+
+# deploy_test:
+#   extends: .deploy_template
+#   variables:
+#     OVERLAY_PATH: deploy/overlays/dev
+#     IMAGE_PATH: $CI_REGISTRY_IMAGE
 
 # deploy_prod:
 #   extends: .deploy_template
