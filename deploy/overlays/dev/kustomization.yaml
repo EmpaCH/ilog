@@ -3,13 +3,13 @@ kind: Kustomization
 nameSuffix: -dev
 namespace: default
 resources:
-  - ../../base
+- ../../base
 
-patches: 
-  - path: env-patch.yaml
+patches:
+- path: env-patch.yaml
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
 - name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
-  newTag: 5b4c3cae9445a13e4ea29150ee231a17b19eb9a3
+  newTag: 621610db288747e1b9d87ee330bf171b87148ee4
