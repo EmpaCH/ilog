@@ -1,12 +1,26 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-nameSuffix: -prod
-namespace: default
+namespace: ilog-prod
 resources:
-- ../../base
+  - ../../base
+  - ./sealed-secrets.yaml
 
 patches:
-- path: env-patch.yaml
+  - target:
+      kind: Ingress
+      name: ilog
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: ilog.empa.ch
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: ilog.empa.ch
+
+configMapGenerator:
+  - name: ilog-env
+    literals:
+      - OPENBIS_URL=https://openbis-lab205.ethz.ch
 
 # Prefer the images transformer so CI can "edit set image" here
 images:

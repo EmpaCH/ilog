@@ -1,8 +1,8 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: ilog
-  namespace: default
+  namespace: ilog
 spec:
   replicas: 1
   selector:
@@ -27,46 +27,7 @@ spec:
               memory: "256Mi"
               cpu: "500m"
           env:
-            - name: OPENBIS_URL
-              value: https://openbis-empa-lab205.ethz.ch
+            - envFrom:
+              name: ilog-env
       imagePullSecrets:
-        - name: ilog-docker-registry
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ilog
-  namespace: default
-spec:
-  selector:
-    app: ilog
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 80
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: ilog
-  namespace: default
-  annotations:
-    spec.ingressClassName: traefik
-    traefik.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-      - host: ilog.empa.ch
-        http:
-          paths:
-            - backend:
-                service:
-                  name: ilog
-                  port:
-                    number: 80
-              path: /
-              pathType: Prefix
-  tls:
-      - hosts:
-          - ilog.empa.ch
-        secretName: default-tls
+        - name: gitlab-registry-credentials
