@@ -3,6 +3,7 @@
     	log default {
 		output stdout
 		format json
+        level DEBUG
         }
 }
 
