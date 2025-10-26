@@ -2,26 +2,26 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: ilog-dev
 resources:
-  - ../../base
-  - ./sealed-secrets.yaml
+- ../../base
+- ./sealed-secrets.yaml
 
 patches:
-  - target:
-      kind: Ingress
-      name: ilog
-    patch: |
-      - op: replace
-        path: /spec/rules/0/host
-        value: ilog-dev.empa.ch
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: ilog-dev.empa.ch
+- patch: |
+    - op: replace
+      path: /spec/rules/0/host
+      value: ilog-dev.empa.ch
+    - op: replace
+      path: /spec/tls/0/hosts/0
+      value: ilog-dev.empa.ch
+  target:
+    kind: Ingress
+    name: ilog
 
 configMapGenerator:
-  - name: ilog-env
-    behavior: replace
-    literals:
-      - OPENBIS_URL=https://openbis-lab-000.ethz.ch
+- behavior: replace
+  literals:
+  - OPENBIS_URL=https://openbis-lab-000.ethz.ch
+  name: ilog-env
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
