@@ -22,20 +22,18 @@ build_image:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
     - docker push $DOCKER_IMAGE_SHA_TAG
     - touch image_built.flag
+  rules:
+    - changes:
+      - Dockerfile
+      - Caddyfile
+      - src/**/*
+      - package.json
+      - vite.config.ts
+      - postcss.config.js
+      - tsconfig.app.json
   tags:
     - dind
-  # artifacts:
-  #   paths:
-  #     - image_built.flag
-  # rules:
-  #   - if: '$CI_COMMIT_BRANCH == "master"'
-  #     changes: 
-  #       - Dockerfile
-  #       - Caddyfile
-  #       - src/**/*
-  #       - package.json
-  #       - "*.js"
-  #       - "*.ts"
+
 
 .deploy_template:
   stage: deploy
@@ -63,16 +61,5 @@ deploy_dev:
     OVERLAY_PATH: deploy/overlays/dev
     IMAGE_PATH: $CI_REGISTRY_IMAGE
 
-# deploy_test:
-#   extends: .deploy_template
-#   variables:
-#     OVERLAY_PATH: deploy/overlays/dev
-#     IMAGE_PATH: $CI_REGISTRY_IMAGE
 
-# deploy_prod:
-#   extends: .deploy_template
-#   variables:
-#     OVERLAY_PATH: deploy/overlays/prod
-#   rules:
-#     - if: '$CI_COMMIT_BRANCH == "master"'
 
