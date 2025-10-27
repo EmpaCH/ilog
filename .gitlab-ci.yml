@@ -12,16 +12,7 @@ stages:
   - push
   - deploy
 
-build_image:
-  stage: build
-  image: docker:latest
-  services:
-  - docker:dind
-  script:
-    - docker build -t $DOCKER_IMAGE_SHA_TAG .
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
-    - docker push $DOCKER_IMAGE_SHA_TAG
-    - touch image_built.flag
+.rules_common:
   rules:
     - changes:
       - Dockerfile
@@ -31,6 +22,18 @@ build_image:
       - vite.config.ts
       - postcss.config.js
       - tsconfig.app.json
+
+build_image:
+  extends: .rules_common
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $DOCKER_IMAGE_SHA_TAG .
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
+    - docker push $DOCKER_IMAGE_SHA_TAG
+    - touch image_built.flag
   tags:
     - dind
 
@@ -56,12 +59,14 @@ build_image:
 
 
 deploy_dev:
-  extends: .deploy_template
+  extends:
+    - .deploy_template
+    - .rules_common
   variables:
     OVERLAY_PATH: deploy/overlays/dev
     IMAGE_PATH: $CI_REGISTRY_IMAGE
   needs:
-    - job: build-image
+    - job: build_image
       optional: true
 
 
