@@ -27,4 +27,4 @@ configMapGenerator:
 images:
 - name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
-  newTag: 005ed9ee92c2a3fb3fa008cf84fe28928404d590
+  newTag: 020d3c41543f3aa154b2eca0a286ce7a798418a8
