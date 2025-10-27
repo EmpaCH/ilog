@@ -29,5 +29,3 @@ spec:
           env:
             - envFrom:
               name: ilog-env
-      imagePullSecrets:
-        - name: gitlab-registry-credentials
