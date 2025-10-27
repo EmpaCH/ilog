@@ -1,7 +1,6 @@
 import openbis from "@openbis/openbis.esm";
 import * as common from "./common";
 import { initProperties } from "./initElnSettings";
-import { createObjectType } from "../type/typeAPI";
 import { createPropertyType } from "../propertyType/propertyTypeAPI";
 import { createVocabulary, getVocabulary } from "../vocabulary/vocabularyAPI";
 import { useCreateObjectType } from "../type/useCreateObjectType";
@@ -171,12 +170,12 @@ export async function createProject(
  * @param projectId - The ID of the project where the collection will be created.
  * @returns The created or existing collection.
  */
-export async function createCollection(
+export async function createComponentCollection(
   api: openbis.OpenBISJavaScriptFacade,
   projectId: openbis.IProjectId,
 ): Promise<openbis.Experiment> {
   const sc = new openbis.ExperimentSearchCriteria();
-  sc.withCode().thatEquals(common.collectionID);
+  sc.withCode().thatEquals(common.componentCollectionID);
   sc.withProject().withCode().thatEquals(common.iLogID);
   sc.withProject().withSpace().withCode().thatEquals(common.labID);
   const fo = new openbis.ExperimentFetchOptions();
@@ -185,7 +184,7 @@ export async function createCollection(
   if (result.getTotalCount() == 0) {
     const newCollection = new openbis.ExperimentCreation();
     newCollection.setTypeId(new openbis.EntityTypePermId("COLLECTION"));
-    newCollection.setCode(common.collectionID);
+    newCollection.setCode(common.componentCollectionID);
     newCollection.setProjectId(projectId);
     const newExp = await api.createExperiments([newCollection]);
     const sc = new openbis.ExperimentSearchCriteria();
@@ -194,12 +193,42 @@ export async function createCollection(
     console.log("Collection initialized.");
     return result.getObjects()[0];
   }
-  console.log(`Collection ${common.collectionID} already exists in project ${common.iLogID} for lab ${common.labID}.`);
+  console.log(`Collection ${common.componentCollectionID} already exists in project ${common.iLogID} for lab ${common.labID}.`);
   return result.getObjects()[0];
 }
 
-
-
+/**
+ * Creates the collection within the specified project if it does not already exist.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param projectId - The ID of the project where the collection will be created.
+ * @returns The created or existing collection.
+ */
+export async function createInstrumentCollection(
+  api: openbis.OpenBISJavaScriptFacade,
+  projectId: openbis.IProjectId,
+): Promise<openbis.Experiment> {
+  const sc = new openbis.ExperimentSearchCriteria();
+  sc.withCode().thatEquals(common.instrumentCollectionID);
+  sc.withProject().withCode().thatEquals(common.iLogID);
+  sc.withProject().withSpace().withCode().thatEquals(common.labID);
+  const fo = new openbis.ExperimentFetchOptions();
+  fo.withProject().withSpace();
+  const result = await api.searchExperiments(sc, fo);
+  if (result.getTotalCount() == 0) {
+    const newCollection = new openbis.ExperimentCreation();
+    newCollection.setTypeId(new openbis.EntityTypePermId("COLLECTION"));
+    newCollection.setCode(common.instrumentCollectionID);
+    newCollection.setProjectId(projectId);
+    const newExp = await api.createExperiments([newCollection]);
+    const sc = new openbis.ExperimentSearchCriteria();
+    sc.withPermId().thatEquals(newExp[0].getPermId());
+    const result = await api.searchExperiments(sc, fo);
+    console.log("Collection initialized.");
+    return result.getObjects()[0];
+  }
+  console.log(`Collection ${common.instrumentCollectionID} already exists in project ${common.iLogID} for lab ${common.labID}.`);
+  return result.getObjects()[0];
+}
 
 /**
  * Initializes the iLog environment by creating necessary property types, vocabularies, spaces, projects, and collections.
@@ -213,14 +242,14 @@ export async function initIlog(
   await createElnSettingsProperties(api);
   const spaceId = await createSpace(api);
   const projectId = await createProject(api, spaceId);
-  const collection = await createCollection(api, projectId);
+  const componentCollection = await createComponentCollection(api, projectId);
+  const instrumentCollection = await createInstrumentCollection(api, projectId);
   await createIlogBaseTypeProperty(api);
   const creation = useCreateObjectType();
   creation.mutate({ definition: common.COMPONENT_TYPE_DEFINITION });
   creation.mutate({ definition: common.INSTRUMENT_TYPE_DEFINITION });
   creation.mutate({ definition: common.LOGBOOK_ENTRY_TYPE_DEFINITION });
 
-
-  common.env.setEnv(collection, collection.getProject(), collection.getProject().getSpace());
+  common.env.setEnv(componentCollection, instrumentCollection, instrumentCollection.getProject(), instrumentCollection.getProject().getSpace());
   console.log("App environment initialized.");
 }

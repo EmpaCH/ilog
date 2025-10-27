@@ -63,7 +63,8 @@ export const List = (props: {
     let filteredItems: Row[] = [...props.rows];
     if (hasSearchFilter) {
       filteredItems = filteredItems.filter((items) =>
-        items[props.idColumn ? props.idColumn : props.defaultSortColumn]
+        items["name"]
+          ?.toString()
           .toLowerCase()
           .includes(filter[generalListFilter].toLowerCase())
       );
@@ -129,14 +130,12 @@ export const List = (props: {
     }
   }, []);
 
-  
-
   const onClear = React.useCallback(() => {
     setFilterValue({ key: generalListFilter, value: "" });
     setPage(1);
   }, []);
 
-  const toCreator = () => {
+  const onBack = () => {
     navigate({ to: props.navigatePath });
   };
 
@@ -147,14 +146,14 @@ export const List = (props: {
           <Input
             isClearable
             className="w-full sm:max-w-[44%]"
-            placeholder={`Search by ${props.idColumn ? props.idColumn : props.defaultSortColumn}`}
+            placeholder="Search by name"
             startContent={<SearchIcon />}
             value={filter[generalListFilter]}
             onClear={() => onClear()}
             onValueChange={onSearchChange}
           />
           <div className="flex gap-3">
-            <Button color="primary" onPress={() => toCreator()}>
+            <Button color="primary" onPress={() => onBack()}>
               Add New
             </Button>
           </div>
@@ -286,7 +285,7 @@ export const List = (props: {
             color="primary"
             variant="light"
             size="sm"
-            onPress={() => props.onHistory && props.onHistory(row[defaultSortColumn])}
+            onPress={() => props.onHistory && props.onHistory(row[idColumn ? idColumn : defaultSortColumn])}
           >
             <HistoryIcon />
           </Button>

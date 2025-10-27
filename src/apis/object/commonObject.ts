@@ -4,8 +4,8 @@ import { PropertyTypesSchema } from "../../apis/type/commonType";
 
 export interface ObjectDefinition {
   id: openbis.SampleIdentifier | null;
+  collection: string;
   type: string;
-  code: string;
   validFrom: ZonedDateTime;
   propertiesSchema: PropertyTypesSchema;
   propertyValues: {

@@ -13,7 +13,7 @@ RUN npm install --verbose
 
 COPY src /app/src
 COPY public /app/public 
-ENV VITE_APP_OPENBIS_URL=
+ENV OPENBIS_URL=
 CMD ["npm", "run", "dev"]
 
 FROM env AS build

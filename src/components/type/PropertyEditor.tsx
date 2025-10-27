@@ -59,16 +59,19 @@ const DataTypeSelect = ({
 
 type ObjectTypeAutoCompleteProps = {
   objectTypes: string[];
+  selectedKey?: string;
   onSelectionChange: (val: string) => void;
 };
 
 const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
   objectTypes,
+  selectedKey,
   onSelectionChange,
 }) => {
   return (
     <Autocomplete
       label="Select object type"
+      selectedKey={selectedKey}
       onSelectionChange={(val)=> onSelectionChange(val as string)}
     >
       {objectTypes.map((objectType) => {
@@ -184,7 +187,7 @@ export const PropertyEditor = ({
             <Autocomplete
               disabled={locked}
               label="Vocabulary ID"
-              selectedKey={state.vocabulary}
+              selectedKey={(state as any).vocabulary}
               onSelectionChange={(value) =>
                 dispatch({
                   type: "SET_VOCABULARY",
@@ -209,20 +212,20 @@ export const PropertyEditor = ({
               objectTypes={
                 allObjectTypes.data?.map((type) => type.getCode()) ?? []
               }
+              selectedKey={(state as any).objectType || (state as any).sampleType}
               onSelectionChange={(value) =>
                 dispatch({ type: "SET_OBJECT_TYPE", payload: value })
               }
             />
           ) : null}
           <Checkbox
-            defaultChecked={state.multivalued}
-            checked={state.multivalued}
-            onChange={(value) =>
+            isSelected={state.multivalued}
+            onValueChange={(value) => {
               dispatch({
                 type: "SET_MULTIVALUED",
-                payload: value.target.checked,
+                payload: value,
               })
-            }
+            }}
           >
             Multivalued
           </Checkbox>

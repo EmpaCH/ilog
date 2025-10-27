@@ -141,38 +141,38 @@ function filterPropertyTypeSchema(
  */
 export function convertObjectTypeDefinitionToOperations(
   objectDefinition: ObjectTypeDefinition,
-  existingPropertyTypes: LocalPropertyType[],
-  existingObjectTypes: ObjectTypeDefinition[],
-  existingPropertyAssignments: PropertyAssignment[]
+  existingPropertyTypes?: LocalPropertyType[],
+  existingObjectTypes?: ObjectTypeDefinition[],
+  existingPropertyAssignments?: PropertyAssignment[],
 ): StructuredCreations {
   //const propertyTypes = flattenObjectSchema(objectDefinition.propertyTypes);
   // Filter the property types that do not exist
   const schemaToCreate = filterPropertyTypeSchema(
-    objectDefinition.propertyTypes,
+    objectDefinition.propertyTypes as PropertyTypesSchema,
     (type) => {
-      return !existingPropertyTypes.some(
+      return !(existingPropertyTypes?.some(
         (existingType) => existingType.code === type.code
-      );
+      ) ?? false);
     }
   );
   // Extract the property types to update
   // We want to update only the property types that are assigned to the object
   // but not to other objects
   const schemaToUpdate = filterPropertyTypeSchema(
-    objectDefinition.propertyTypes,
+    objectDefinition.propertyTypes as PropertyTypesSchema,
     (type) => {
-      const isAssignedToCurrentObject = existingPropertyAssignments.some(
+      const isAssignedToCurrentObject = existingPropertyAssignments?.some(
         (assignment) =>
           assignment.propertyTypeCode === type.code &&
           assignment.objectTypeCode === objectDefinition.code
-      );
+      ) ?? false;
   
       // Check if the property type is assigned to any other object type
-      const isAssignedToOtherObjects = existingPropertyAssignments.some(
+      const isAssignedToOtherObjects = existingPropertyAssignments?.some(
         (assignment) =>
           assignment.propertyTypeCode === type.code &&
           assignment.objectTypeCode !== objectDefinition.code
-      );
+      ) ?? false;
       return isAssignedToCurrentObject && !isAssignedToOtherObjects;
   }
   );
@@ -186,13 +186,13 @@ export function convertObjectTypeDefinitionToOperations(
   );
   // Prepare all assignments of property types
   const assignmentCreations = convertPropertyTypesSchemaToAssignmentCreations(
-    objectDefinition.propertyTypes
+    objectDefinition.propertyTypes as PropertyTypesSchema
   );
   // Create the object type
   let sampleTypeCreation = null;
   let sampleTypeUpdate = null;
   if (
-    !existingObjectTypes.some((type) => type.code === objectDefinition.code)
+    !(existingObjectTypes?.some((type) => type.code === objectDefinition.code) ?? false)
   ) {
     sampleTypeCreation = new openbis.SampleTypeCreation();
     sampleTypeCreation.setCode(objectDefinition.code.toUpperCase());
@@ -205,7 +205,17 @@ export function convertObjectTypeDefinitionToOperations(
     sampleTypeCreation.setPropertyAssignments(assignmentCreations);
     sampleTypeCreation.setDescription(objectDefinition.description);
     sampleTypeCreation.setListable(true);
-    sampleTypeCreation.setMetaData({type: objectDefinition.code, baseType: objectDefinition.baseType})
+    let metadata: { type: string; collectionType: string; baseType?: string } = {
+      type: objectDefinition.code,
+      collectionType: objectDefinition.collectionType,
+    }
+    if (objectDefinition.baseType) {
+      metadata = {
+        ...metadata,
+        baseType: objectDefinition.baseType,
+      };
+    }
+    sampleTypeCreation.setMetaData(metadata);
   } else {
     sampleTypeUpdate = new openbis.SampleTypeUpdate();
     sampleTypeUpdate.setTypeId(new openbis.EntityTypePermId(objectDefinition.code.toUpperCase()));
@@ -333,7 +343,7 @@ export function convertObjectTypeDefinitionToUpdateOperations(
   const assignmentUpdates = new openbis.PropertyAssignmentListUpdateValue();
   assignmentUpdates.set(
     convertPropertyTypesSchemaToAssignmentCreations(
-      objectDefinition.propertyTypes
+      objectDefinition.propertyTypes as PropertyTypesSchema
     )
   );
   update.setPropertyAssignmentActions(assignmentUpdates.getActions());

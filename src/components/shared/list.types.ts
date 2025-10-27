@@ -10,14 +10,15 @@ export interface Column {
 
 export interface TypeRow {
   permId: openbis.EntityTypePermId;
+  name: string;
   code: string;
-  prefix: string;
-  description: string;
+  collectionType: string;
 };
 
 export interface ObjectRow {
   permId: openbis.SamplePermId;
   name: string;
+  code: string;
   type: string;
 };
 
@@ -31,7 +32,6 @@ export interface LogbookEntryRow {
   name: string;
   responsible: string;
   description: string;
-  involvedEquipment: string[];
   componentCode: string;
   type: string;
   validFrom: string;

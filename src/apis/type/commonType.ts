@@ -61,6 +61,7 @@ export interface ObjectTypeDefinition {
   description: string;
   propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema;
   baseType?: string;
+  collectionType: string;
 }
 
 export interface ResolvedPropertyTypeSchema {
@@ -248,7 +249,7 @@ export function convertOpenBISPropertyType(
     return {
       ...common,
       type: "local",
-      objectType: propertyType.getSampleType().getCode(),
+      objectType: propertyType.getSampleType() ? propertyType.getSampleType().getCode() : "any", // TODO: We need to fetch the actual object type here
     } as LocalObjectPropertyType;
   } else {
     return {
@@ -402,7 +403,8 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
 
   const sections = propertyAssignments
     .map((assignment) => {
-      return assignment.getSection();
+      const section = assignment.getSection();
+      return (section && section.trim()) || 'PROPERTIES';
     })
     .filter((section, index, self) => {
       return self.indexOf(section) === index;
@@ -411,7 +413,9 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
   sections.forEach((section) => {
     const propertyTypesBySection = propertyAssignments
       .filter((assignment) => {
-        return assignment.getSection() === section;
+        const assignmentSection = assignment.getSection();
+        const normalizedSection = (assignmentSection && assignmentSection.trim()) || 'PROPERTIES';
+        return normalizedSection === section;
       })
       .map((assignment) => {
         return assignment.getPropertyType();
@@ -441,5 +445,6 @@ export function convertOpenBISSampleTypeToObjectTypeDefinition(
       sampleType.getPropertyAssignments()
     ),
     baseType: sampleType.getMetaData()["baseType"],
+    collectionType: sampleType.getMetaData()["collectionType"],
   };
 }

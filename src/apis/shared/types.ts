@@ -2,7 +2,13 @@
 import { PropertyTypesSchema, ObjectTypeDefinition } from "../type/commonType";
 import { Vocabulary } from "../vocabulary/commonVocabulary";
 import { PropertyType } from "../propertyType/commonPropertyType";
-import { iLogID, iLogLogbookID } from "./environment";
+import {
+  iLogID,
+  iLogLogbookID,
+  componentCollectionID,
+  instrumentCollectionID,
+  logbookCollectionID,
+} from "./environment";
 
 // Base type settings
 export const iLogBaseTypesPropertyCode = "ILOG_TYPE_BASE";
@@ -15,7 +21,6 @@ export const iLogManufacturerGroup = "Manufacturer";
 // Schema definitions for iLog base types
 export const iLogBaseSchema: PropertyTypesSchema = {
   [iLogGeneralInfoGroup]: [
-    { code: "$NAME", type: "reference" },
     { code: iLogID, type: "reference" },
     { code: iLogBaseTypesPropertyCode, type: "reference" },
     {
@@ -27,6 +32,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       description: "ValidFrom",
       metadata: null,
     },
+    { code: "NAME", type: "reference" },
     {
       code: "DESCRIPTION",
       type: "local",
@@ -36,65 +42,65 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       description: "Description",
       metadata: null,
     },
-    {
-      code: "RESPONSIBLE",
-      type: "local",
-      multivalued: true,
-      dataType: "VARCHAR",
-      label: "Responsible",
-      description: "Responsible",
-      metadata: null,
-    },
-    {
-      code: "SERIALNUMBER",
-      label: "Serial number",
-      description: "Serial number",
-      dataType: "VARCHAR",
-      type: "local",
-      multivalued: false,
-      metadata: null,
-    },
-    {
-      code: "EMPAID",
-      dataType: "VARCHAR",
-      label: "Empa ID",
-      description: "Empa ID",
-      type: "local",
-      multivalued: false,
-      metadata: null,
-    },
+    // {
+    //   code: "RESPONSIBLE",
+    //   type: "local",
+    //   multivalued: true,
+    //   dataType: "VARCHAR",
+    //   label: "Responsible",
+    //   description: "Responsible",
+    //   metadata: null,
+    // },
+    // {
+    //   code: "SERIALNUMBER",
+    //   label: "Serial number",
+    //   description: "Serial number",
+    //   dataType: "VARCHAR",
+    //   type: "local",
+    //   multivalued: false,
+    //   metadata: null,
+    // },
+    // {
+    //   code: "EMPAID",
+    //   dataType: "VARCHAR",
+    //   label: "Empa ID",
+    //   description: "Empa ID",
+    //   type: "local",
+    //   multivalued: false,
+    //   metadata: null,
+    // },
   ],
-  [iLogLocationGroup]: [
-    {
-      code: "LOCATION",
-      dataType: "VARCHAR",
-      label: "Location",
-      description: "Location",
-      type: "local",
-      multivalued: false,
-      metadata: null,
-    },
-  ],
-  [iLogManufacturerGroup]: [
-    {
-      code: "MANUFACTURER",
-      label: "Manufacturer",
-      description: "Manufacturer",
-      dataType: "VARCHAR",
-      type: "local",
-      multivalued: false,
-      metadata: null,
-    },
-    {
-      code: "MANUFACTURERID",
-      label: "Manufacturer ID",
-      description: "Manufacturer ID",
-      dataType: "VARCHAR",
-      type: "local",
-      multivalued: false,
-      metadata: null,
-    },
-  ],
+  // [iLogLocationGroup]: [
+  //   {
+  //     code: "LOCATION",
+  //     dataType: "VARCHAR",
+  //     label: "Location",
+  //     description: "Location",
+  //     type: "local",
+  //     multivalued: false,
+  //     metadata: null,
+  //   },
+  // ],
+  // [iLogManufacturerGroup]: [
+  //   {
+  //     code: "MANUFACTURER",
+  //     label: "Manufacturer",
+  //     description: "Manufacturer",
+  //     dataType: "VARCHAR",
+  //     type: "local",
+  //     multivalued: false,
+  //     metadata: null,
+  //   },
+  //   {
+  //     code: "MANUFACTURERID",
+  //     label: "Manufacturer ID",
+  //     description: "Manufacturer ID",
+  //     dataType: "VARCHAR",
+  //     type: "local",
+  //     multivalued: false,
+  //     metadata: null,
+  //   },
+  // ],
 };
 
 // Empty schema and type definition
@@ -104,6 +110,7 @@ export const EMPTY_TYPE_DEFINITION: ObjectTypeDefinition = {
   generatedCodePrefix: "",
   description: "",
   propertyTypes: EMPTY_SCHEMA,
+  collectionType: "",
 };
 
 // Component schema and type definition
@@ -113,28 +120,31 @@ export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   generatedCodePrefix: "COMPONENT",
   description: "Component",
   propertyTypes: COMPONENT_SCHEMA,
-  baseType: "ILOG"
+  baseType: "ILOG",
+  collectionType: componentCollectionID,
 };
 
 // Instrument schema and type definition
 export const INSTRUMENT_SCHEMA: PropertyTypesSchema = {
   ...iLogBaseSchema,
-  ["Components"]: [ ],
+  ["Components"]: [],
 };
 export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "INSTRUMENT",
   generatedCodePrefix: "INSTRUMENT",
   description: "Instrument",
   propertyTypes: INSTRUMENT_SCHEMA,
-  baseType: "ILOG"
+  baseType: "ILOG",
+  collectionType: instrumentCollectionID,
 };
 export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "LOGBOOK_ENTRY",
   generatedCodePrefix: "ENTRY",
   description: "Ilog Logbook Entry",
+  collectionType: logbookCollectionID,
   propertyTypes: {
     ["GeneralInfo"]: [
-      { code: "$NAME", type: "reference" },
+      { code: "NAME", type: "reference" },
       { code: iLogLogbookID, type: "reference" },    
       {
         code: "VALID_FROM",
@@ -160,14 +170,6 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         label: "Responsible",
         description: "Responsible",
       },      
-      {
-        code: "INVOLVEDEQUIPMENT",
-        type: "local",
-        multivalued: true,
-        dataType: "VARCHAR",
-        label: "Involved Equipment",
-        description: "Involved Equipment",
-      },
       {
         code: "COMPONENT",
         type: "local",

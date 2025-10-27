@@ -13,7 +13,7 @@ OPENBIS_FQDN=
 file-server.repository-path=
 OPENBIS_DSS_PORT=
 OPENBIS_AS_PORT=
-VITE_APP_OPENBIS_URL=
+OPENBIS_URL=
 ```
 
 ## Execution

@@ -8,16 +8,18 @@ import {
   Select,
   SelectItem,
   Spinner,
-  Autocomplete,
-  Chip,
+  RadioGroup,
+  Radio,
 } from "@heroui/react";
 import {
-  iLogBaseTypes,
-  iLogBaseAllTypes,
-  iLogBaseTypesType,
   EMPTY_TYPE_DEFINITION,
-  getDefaultPropertyTypeDefintion,
+  COMPONENT_SCHEMA,
+  INSTRUMENT_SCHEMA,
 } from "../../apis/shared/common";
+import {
+  componentCollectionID,
+  instrumentCollectionID,
+} from "../../apis/shared/environment";
 import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
@@ -31,6 +33,7 @@ import { typeCreatorReducer } from "./TypeActions";
 import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
 import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
+import { useUpdateObjectType } from "../../apis/type/useUpdateObjectType";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
@@ -50,6 +53,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 }) => {
   // Initialize the useCreateObjectType hook and fetch object and property types
   const typeCreation = useCreateObjectType();
+  const typeUpdate = useUpdateObjectType();
   const allPropertyTypesResult = useGetPropertyTypes();
   // const objectTypeResult = useGetObjectType(objectTypeCode);
   const allObjectTypesResult = useGetAllObjectTypes();
@@ -75,6 +79,25 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   const lockedGroups = Object.keys(objectBaseType.propertyTypes);
 
+  const objectTypes = allObjectTypesResult.isSuccess
+    ? allObjectTypesResult.data.map((type) =>
+        convertOpenBISSampleTypeToObjectTypeDefinition(type)
+      )
+    : [];
+
+  const filterObjectTypesByCollection = (collection: string) => {
+    // This function is kept for the radio button onChange handler
+    // The actual filtering is now done by getCurrentFilteredTypes()
+  };
+
+  // Get the current filtered types based on the selected collection type
+  const getCurrentFilteredTypes = () => {
+    if (!state.schema.collectionType) return [];
+    return objectTypes.filter((oj) => {
+      return oj.collectionType && oj.collectionType === state.schema.collectionType;
+    });
+  };
+
   // If the object and property types have been fetched, set the object type template and property types
   if (
     allPropertyTypesResult.status == "success" &&
@@ -96,14 +119,34 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
     // Set the property types
     const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
-      // const resolvedTypes = Object.entries(state.schema.propertyTypes).map(
       ([group, propertyTypesGroup]) => {
         return [
           group,
-          propertyTypesGroup.flatMap((propertyType) => {
-            return allPropertyTypesResult.data.filter(
+          propertyTypesGroup.map((propertyType: any) => {
+            const apiPropertyType = allPropertyTypesResult.data.find(
               (it) => it.code === propertyType.code
             );
+
+            if (!apiPropertyType) {
+              return propertyType;
+            }
+
+            const mergedPropertyType: any = {
+              ...apiPropertyType,
+              multivalued: propertyType.multivalued !== undefined ? Boolean(propertyType.multivalued) : Boolean(apiPropertyType.multivalued),
+              description: propertyType.description || apiPropertyType.description,
+              label: propertyType.label || apiPropertyType.label,
+            };
+
+            if ((propertyType as any).vocabulary || (apiPropertyType as any).vocabulary) {
+              mergedPropertyType.vocabulary = (propertyType as any).vocabulary || (apiPropertyType as any).vocabulary;
+            }
+
+            if ((propertyType as any).sampleType || (apiPropertyType as any).sampleType) {
+              mergedPropertyType.sampleType = (propertyType as any).sampleType || (apiPropertyType as any).sampleType;
+            }
+
+            return mergedPropertyType;
           }),
         ];
       }
@@ -116,15 +159,13 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       },
     });
 
+    if (objectTypeTemplate.collectionType) {
+      filterObjectTypesByCollection(objectTypeTemplate.collectionType);
+    }
+
     // Set the initial state to false
     setInitial(false);
   }
-
-  const objectTypes = allObjectTypesResult.isSuccess
-    ? allObjectTypesResult.data.map((type) =>
-        convertOpenBISSampleTypeToObjectTypeDefinition(type)
-      )
-    : [];
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -132,18 +173,20 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     setLoading(true);
     const ancestors = findAncestors(state.schema, objectTypes);
     const ancestorType = objectTypes.find((type) => type.code === ancestors[0]);
-    const isValidSubtype = checkValidSubType(ancestorType, state.schema);
+    if (ancestorType) {
+      const isValidSubtype = checkValidSubType(ancestorType, state.schema);
+      if (!isValidSubtype) {
+        setMessage(
+          `The base type is not a valid subtype of ${ancestorType?.code}.`
+        );
+        setMessageColor("error-message");
+        setShowMessage(true);
+        setLoading(false);
+        return;
+      }
+    }
     const baseType = ancestors[0];
 
-    if (!isValidSubtype) {
-      setMessage(
-        `The base type ${baseType} is not a valid subtype of ${ancestorType?.code}.`
-      );
-      setMessageColor("error-message");
-      setShowMessage(true);
-      setLoading(false);
-      return;
-    }
     if (
       baseType === "INSTRUMENT" &&
       state.schema.propertyTypes.Components &&
@@ -158,7 +201,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
     if (mode === "edit") {
       console.log("Updating type with schema:", state.schema);
-      typeCreation.mutate(
+      typeUpdate.mutate(
         {
           definition: state.schema,
         },
@@ -221,7 +264,11 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   const handleClear = (ms: number) => {
     if (mode === "edit") {
-      window.location.reload();
+      setLoading(false);
+      setTimeout(() => {
+        setMessage("");
+        setShowMessage(false);
+      }, ms);
     } else {
       dispatch({ type: "CLEAR", payload: {} });
       setObjectBaseType(EMPTY_TYPE_DEFINITION);
@@ -233,13 +280,19 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     }
   };
 
-  const handleSelectBaseType = (value: ChangeEvent<HTMLSelectElement>) => {
-    const newTemplate = objectTypes.find((el) => el.code == value.target.value);
+  const handleSelectBaseType = (value: PropertyTypesSchema) => {
+    dispatch({
+      type: "SET_ALL_PROPERTYTYPES",
+      payload: {
+        schema: value,
+      },
+    });
+  };
 
-    console.log("newTemplate", newTemplate);
+  const handleSelectParentType = (value: ChangeEvent<HTMLSelectElement>) => {
+    const newTemplate = objectTypes.find((el) => el.code == value.target.value);
     if (newTemplate !== undefined) {
       setObjectBaseType(newTemplate);
-      console.log("newTemplate", newTemplate);
       dispatch({
         type: "SET_BASE_TYPE",
         payload: {
@@ -330,19 +383,39 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     <div className="md-size-div">
       <h2>{mode === "edit" ? "Edit Type" : "Create Type"}</h2>
       <form onSubmit={handleSubmit}>
-        <Select
+        <RadioGroup
           isRequired
-          label="What is the base type of this type?"
-          // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
-          selectedKeys={[state.schema.baseType]}
-          onChange={handleSelectBaseType}
+          isDisabled={mode === "edit"}
+          label="What is the base type of this object type?"
+          orientation="horizontal"
+          style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
+          value={state.schema.collectionType}
+          onValueChange={(value) => {
+            dispatch({ type: "SET_COLLECTION_TYPE", payload: value });
+            handleSelectBaseType(value === instrumentCollectionID ? INSTRUMENT_SCHEMA : COMPONENT_SCHEMA);
+            filterObjectTypesByCollection(value);
+          }}
         >
-          {objectTypes.map((type) => (
+          <Radio value={instrumentCollectionID}>Instrument</Radio>
+          <Radio value={componentCollectionID}>Component</Radio>
+        </RadioGroup>
+
+        <Select
+          label="Does it have a parent?"
+          // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
+          selectedKeys={state.schema.baseType ? [state.schema.baseType] : []}
+          onChange={handleSelectParentType}
+        >
+          {getCurrentFilteredTypes().map((type) => (
             <SelectItem key={type.code} value={type.code}>
               {type.code}
             </SelectItem>
           ))}
         </Select>
+
+        <TypeInheritanceChain type={state.schema} allTypes={objectTypes} />
+        <Divider className="my-4" />
+
         <Input
           isRequired
           id="code"
@@ -413,8 +486,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           }
         />
         <Divider className="my-4" />
-        <TypeInheritanceChain type={state.schema} allTypes={objectTypes} />
-        <Divider className="my-4" />
+
         <GroupedPropertyEditors
           schema={state.schema.propertyTypes}
           lockedPropertyCodes={lockedPropertyCodes}
@@ -455,7 +527,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             type="submit"
             color="primary"
             className="mx-2"
-            isDisabled={typeCreation.isPending}
+            isDisabled={mode === "edit" ? typeUpdate.isPending : typeCreation.isPending}
             isLoading={loading}
           >
             {mode === "edit" ? "Update" : "Create"}

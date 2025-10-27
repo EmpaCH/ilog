@@ -8,7 +8,6 @@ export type LogbookEntryActions =
   | { type: "CLEAR" }
   | { type: "RESET"; payload: LogbookEntryDefinition }
   | { type: "SET_TYPE"; payload: string }
-  | { type: "SET_CODE"; payload: string }
   | { type: "SET_VALID_FROM"; payload: ZonedDateTime }
   | { type: "SET_PROPERTIES_SCHEMA"; payload: PropertyTypesSchema }
   | { type: "SET_PROPERTY_VALUES"; payload: any };
@@ -24,8 +23,6 @@ export const logbookEntryReducer = produce(
         return action.payload;
       case "SET_TYPE":
         return { ...state, type: action.payload };
-      case "SET_CODE":
-        return { ...state, code: action.payload };
       case "SET_VALID_FROM":
         return { ...state, validFrom: action.payload };
       case "SET_PROPERTIES_SCHEMA":

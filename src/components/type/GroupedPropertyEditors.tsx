@@ -161,7 +161,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           ).length > 1;
           return (
         <Tab
-          key={propertyGroup}
+          key={`tab-${propertyGroup}-${index}`}
           label={
             <div
           contentEditable={!lockedGroups.includes(propertyGroup)}
@@ -209,6 +209,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           );
         })}
         <Tab
+          key="add-group-tab"
           label="+ Add Group"
           onClick={() => {
             const newGroup = `group${state.groupCount + 1}`;
@@ -226,18 +227,17 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         <div
           role="tabpanel"
           hidden={selectedTab !== index}
-          key={propertyGroup}
+          key={`tabpanel-${propertyGroup}-${index}`}
           id={`tabpanel-${index}`}
           aria-labelledby={`tab-${index}`}
         >
           {selectedTab === index && (
             <>
               <Accordion selectionMode="multiple">
-                {properties.map((property) => (
+                {properties.map((property, propertyIndex) => (
                   <AccordionItem
-                    key={state.accordionItemKeyMapping[property.code]}
+                    key={state.accordionItemKeyMapping[property.code] || `${propertyGroup}-${property.code}-${propertyIndex}`}
                     title={property.code}
-                    // style={{ backgroundColor: "lightgrey" }}
                     startContent={
                         lockedPropertyCodes.includes(property.code) ? (
                           <Icon

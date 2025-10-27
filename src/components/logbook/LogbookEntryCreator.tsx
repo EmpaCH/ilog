@@ -8,7 +8,6 @@ import {
   Checkbox,
   Divider,
   DatePicker,
-  Input,
   TimeInput,
 } from "@heroui/react";
 import { AuthContext } from "../../context/auth/authContext";
@@ -42,9 +41,7 @@ import {
 import {
   now,
   getLocalTimeZone,
-  parseZonedDateTime,
   ZonedDateTime,
-  Time,
 } from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
@@ -71,10 +68,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   let [openbisSample, setOpenbisSample] = useState<openbis.Sample | undefined>(undefined);
   let [reconstructedHistory, setReconstructedHistory] = useState<ReconstructedHistory>({});
   let [logbookEntryTemplate, setLogbookEntryTemplate] = useState<LogbookEntryDefinition>(createEmptyLogbookEntryDefinition());
-
   let [isValidFromSelected, setIsValidFromSelected] = useState(false);
-  let [minValidFrom, setMinValidFrom] = useState<ZonedDateTime | undefined>(undefined);
-  let [maxValidFrom, setMaxValidFrom] = useState<ZonedDateTime | undefined>(now(getLocalTimeZone()));
 
   const [state, dispatch] = useReducer(logbookEntryReducer, logbookEntryTemplate);
   const [localState, localDispatch] = useReducer(logbookEntryCreatorLocalReducer,
@@ -100,7 +94,6 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   useEffect(() => {
     if (!isValidFromSelected) {
       const interval = setInterval(() => {
-        setMaxValidFrom(now(getLocalTimeZone()));
         dispatch({ type: "SET_VALID_FROM", payload: now(getLocalTimeZone()) })
       }, 1000);
       return () => clearInterval(interval);
@@ -130,7 +123,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
       if (mode === "create") {
         const propertyValues = Object.entries(logbookEntryTypeTemplate.propertyTypes).reduce(
           (acc, [group, propertyTypesGroup]) => {
-            propertyTypesGroup.forEach((property) => {
+            propertyTypesGroup.forEach((property: { code: string | number; }) => {
               acc[property.code] = undefined;
             });
             return acc;
@@ -157,7 +150,6 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
         const latestSampleState = latestKey ? reconstructedHistory[latestKey] : [];
         const logbookEntryTemplate = convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(openbisSample, latestSampleState)
         setLogbookEntryTemplate(logbookEntryTemplate);
-        setMinValidFrom(parseZonedDateTime(Object.keys(reconstructedHistory)[0]));
         dispatch({ type: "RESET", payload: logbookEntryTemplate });
         createLogbookEntrySchemaBasedOnType(logbookEntryTemplate.type);
       }
@@ -208,7 +200,6 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
     } else {
       logbookEntryCreation.mutate({
         type: state.type,
-        code: state.code,
         properties: {
           ...state.propertyValues,
           VALID_FROM: state.validFrom.toString(),
@@ -327,18 +318,6 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
         >
           {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
         </Autocomplete>
-        <Input
-          isRequired
-          isDisabled={mode === "edit"}
-          id="code"
-          label="Code"
-          type="text"
-          className="form-field"
-          value={state.code}
-          onValueChange={(value) =>
-            dispatch({ type: "SET_CODE", payload: value })
-          }
-        />
         <Divider className="my-4" />
         {state.type !== "" ? (
           <LogbookEntryPropertyEditor

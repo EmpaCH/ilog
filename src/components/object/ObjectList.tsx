@@ -90,6 +90,12 @@ export const ObjectList = () => {
       align: "start",
     },
     {
+      key: "code",
+      name: "Code",
+      sorting: true,
+      align: "start",
+    },
+    {
       key: "type",
       name: "Type",
       sorting: false,
@@ -107,7 +113,8 @@ export const ObjectList = () => {
     (obj: openbis.Sample) => {
       return {
         permId: obj.getPermId(),
-        name: obj.getCode(),
+        name: obj.getProperty("NAME") || obj.getCode(),
+        code: obj.getCode(),
         type: obj.getType().getCode(),
       }
     }
@@ -120,6 +127,7 @@ export const ObjectList = () => {
         columns={columns}
         rows={rows}
         defaultSortColumn="name"
+        idColumn="code"
         navigatePath="/objects/creator"
         enableHistory={true}
         onDelete={onDelete}

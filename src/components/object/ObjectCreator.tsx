@@ -8,8 +8,9 @@ import {
   Checkbox,
   Divider,
   DatePicker,
-  Input,
   TimeInput,
+  Radio,
+  RadioGroup,
 } from "@heroui/react";
 import { AuthContext } from "../../context/auth/authContext";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
@@ -31,7 +32,11 @@ import {
   ReconstructedHistory,
   ObjectDefinition,
 } from "../../apis/object/commonObject";
-import { iLogID } from "../../apis/shared/environment";
+import {
+  iLogID,
+  componentCollectionID,
+  instrumentCollectionID,
+} from "../../apis/shared/environment";
 import { iLogBaseTypesPropertyCode } from "../../apis/shared/types";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
 import {
@@ -44,7 +49,6 @@ import {
   getLocalTimeZone,
   parseZonedDateTime,
   ZonedDateTime,
-  Time,
 } from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
@@ -82,7 +86,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   );
 
   const objectTypes = useQuery({
-    queryKey: ["getSampleTypes"],
+    queryKey: ["getSampleTypes", localState.searchTerm, state.collection],
     queryFn: async () => {
       const types = await getObjectTypes(apiFacade, localState.searchTerm);
       return types.map(type => ({
@@ -91,11 +95,25 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         sampleType: type,
       }));
     },
+    staleTime: 5000,
   });
 
-  useEffect(() => {
-    objectTypes.refetch();
-  }, [localState.searchTerm]);
+  const objectTypesFilteredByCollection = useMemo(() => {
+    if (!objectTypes.data || !state.collection) return [];
+    
+    return objectTypes.data.filter((oj) => {
+      const metadata = oj.sampleType.getMetaData();
+      const collectionType = metadata["collectionType"];
+
+      if (state.collection === instrumentCollectionID) {
+        return collectionType === "INSTRUMENT_COLLECTION";
+      } else if (state.collection === componentCollectionID) {
+        return collectionType === "COMPONENT_COLLECTION";
+      }
+
+      return false;
+    });
+  }, [objectTypes.data, state.collection]);
 
   useEffect(() => {
     if (!isValidFromSelected) {
@@ -207,8 +225,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       });
     } else {
       objectCreation.mutate({
+        collection: state.collection,
         type: state.type,
-        code: state.code,
         properties: {
           ...state.propertyValues,
           VALID_FROM: state.validFrom.toString(),
@@ -310,6 +328,20 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           </Button> 
         </div>
         <Divider className="my-4" />
+        <RadioGroup
+          isRequired
+          isDisabled={mode === "edit"}
+          label="What is the base type of this object?"
+          orientation="horizontal"
+          style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
+          value={state.collection}
+          onValueChange={(value) => {
+            dispatch({ type: "SET_COLLECTION", payload: value })
+          }}
+        >
+          <Radio value={instrumentCollectionID}>Instrument</Radio>
+          <Radio value={componentCollectionID}>Component</Radio>
+        </RadioGroup>
         <Autocomplete
           isRequired
           isDisabled={mode === "edit"}
@@ -318,7 +350,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           placeholder="Type to search..."
           className="form-field"
           defaultItems={[]}
-          items={objectTypes.data}
+          items={objectTypesFilteredByCollection}
           onInputChange={(value) => {
             localDispatch({ type: "SET_SEARCH_TERM", payload: value });
           }}
@@ -331,18 +363,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         >
           {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
         </Autocomplete>
-        <Input
-          isRequired
-          isDisabled={mode === "edit"}
-          id="code"
-          label="Code"
-          type="text"
-          className="form-field"
-          value={state.code}
-          onValueChange={(value) =>
-            dispatch({ type: "SET_CODE", payload: value })
-          }
-        />
         <Divider className="my-4" />
         {state.type !== "" ? (
           <ObjectPropertyEditor

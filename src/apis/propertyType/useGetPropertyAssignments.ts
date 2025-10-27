@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { getPropertyAssignments, getPropertyTypes } from "./propertyTypeAPI";
+import { getPropertyAssignments } from "./propertyTypeAPI";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 

@@ -17,11 +17,9 @@ export const useCreateLogbookEntry = () => {
   return useMutation({
     mutationFn: ({
       type,
-      code,
       properties,
     }: {
       type: string;
-      code: string;
       properties: object;
     }) => {
       if (!space.data || !project.data || !collection.data) {
@@ -32,7 +30,6 @@ export const useCreateLogbookEntry = () => {
       return createLogbookEntry(
         apiFacade,
         type,
-        code,
         properties,
         space.data.getPermId(),
         project.data.getPermId(),

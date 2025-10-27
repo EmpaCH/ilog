@@ -1,5 +1,7 @@
+
 import openbis from "@openbis/openbis.esm";
 import { useState, useEffect } from "react";
+
 
 /**
  * A factory to create singleton instances of the openBIS API facade.
@@ -21,12 +23,14 @@ export class OpenBISApiFacade {
   }
 }
 
+
 export const TOKEN_KEY = "token";
 export const USER_KEY = "user";
 
+
 export const openBISHookFactory = (url: string) => {
   return () => {
-    //const apiFacade = new openbis.openbis(url);
+    // const apiFacade = new openbis.openbis(url);
     const apiFacade = OpenBISApiFacade.getInstance(url);
     // @ts-ignore
     apiFacade._private.log = () => {};
@@ -40,8 +44,9 @@ export const openBISHookFactory = (url: string) => {
     const [user, setUser] = useState<string | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true); // Add loading state
+    const [loginResult, setLoginResult] = useState<string | null>(null);
 
-    // // Check for token and user in localStorage on initialization
+    // Check for token and user in localStorage on initialization
     useEffect(() => {
       const storedToken = localStorage.getItem(TOKEN_KEY);
       const storedUser = localStorage.getItem(USER_KEY);
@@ -58,24 +63,10 @@ export const openBISHookFactory = (url: string) => {
           }
         } else {
           idLogger("No token stored");
-          //removeLoginInfo();
         }
         setIsLoading(false); // Set loading to false after check
       };
       checkStoredToken();
-      //   const result = await verifyToken(storedToken, storedUser).then((res) => {
-      //     idLogger("Token verified");
-      //     if (res) {
-      //       idLogger("Token is valid");
-      //       setLoginInfo(storedUser, storedToken);
-      //     } else {
-      //       removeLoginInfo();
-      //     }
-      //   });
-      // } else {
-      //   idLogger("No token stored");
-      //   removeLoginInfo();
-      // }}
     }, []);
 
     // Function to verify token validity
@@ -89,28 +80,70 @@ export const openBISHookFactory = (url: string) => {
       }
     };
 
+    function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Login timed out")), ms)
+      );
+      return Promise.race([promise, timeout]);
+    }
+
     // Login function
-    const login = async (
+    const login = (
       username: string,
-      password: string
-    ): Promise<string | null> => {
+      password: string,
+      onSuccess?: () => void,
+      onError?: (error: string) => void
+    ): void => {
       idLogger("Logging in...");
-      try {
-        //apiFacade.setSessionToken(null);
+      // Handle the async operation internally
+      withTimeout(apiFacade.login(username, password), 20000)
+        .then((sessionToken) => {
+          idLogger("Login successful");
+          if (sessionToken === undefined) {
+            setLoginResult(null);
+            onError?.("Login failed - no session token");
+            return;
+          }
+          setLoginInfo(username, sessionToken);
+          setLoginResult(sessionToken);
+          onSuccess?.();
+          return sessionToken;
+        })
+        .catch((e) => {
+          idLogger("Login failed", e);
+          removeLoginInfo();
+          setLoginResult(null);
+          onError?.("Login failed");
+        });
+    };
 
-        const sessionToken = await apiFacade.login(username, password); // Assuming login returns a token
-        idLogger("Login successful");
-        if (sessionToken === undefined) {
-          return null;
-        }
-        setLoginInfo(username, sessionToken);
-
-        return sessionToken;
-      } catch (e) {
-        idLogger("Login failed");
-        removeLoginInfo();
-        return null;
-      }
+    // Login with personal access token function
+    const loginWithToken = (
+      personalAccessToken: string,
+      onSuccess?: () => void,
+      onError?: (error: string) => void
+    ): void => {
+      idLogger("Logging in with token...");
+      // Set the token and verify it works
+      apiFacade.setSessionToken(personalAccessToken);
+      // Handle the async operation internally
+      withTimeout(apiFacade.getServerInformation(), 20000)
+        .then(() => {
+          // For token-based login, we'll use a default username since
+          // we don't have the actual username from the token
+          const username = "token-user";
+          idLogger("Token login successful");
+          setLoginInfo(username, personalAccessToken);
+          setLoginResult(personalAccessToken);
+          onSuccess?.();
+          return;
+        })
+        .catch((e) => {
+          idLogger("Token login failed", e);
+          removeLoginInfo();
+          setLoginResult(null);
+          onError?.("Token login failed");
+        });
     };
 
     // Logout function
@@ -119,7 +152,7 @@ export const openBISHookFactory = (url: string) => {
       removeLoginInfo();
     };
 
-    // Helper function to set user/token info on successfull login
+    // Helper function to set user/token info on successful login
     function setLoginInfo(user: string, token: string) {
       setIsAuthenticated(true);
       setUser(user);
@@ -136,6 +169,7 @@ export const openBISHookFactory = (url: string) => {
       setIsAuthenticated(false);
       setUser(null);
       setToken(null);
+      setLoginResult(null);
       setIsLoading(false); // Set loading to false when removing login info
       localStorage.removeItem(TOKEN_KEY);
       localStorage.removeItem(USER_KEY);
@@ -146,13 +180,16 @@ export const openBISHookFactory = (url: string) => {
       user,
       token,
       login,
+      loginWithToken,
       logout,
       apiFacade,
       url,
       id,
       isLoading, // Return loading state
+      loginResult,
     };
   };
 };
+
 
 export const useOpenBIS = openBISHookFactory("/openbis/");

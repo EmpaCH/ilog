@@ -48,6 +48,15 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
     setSelectedTab(newValue);
   };
 
+  const handleValueChange = React.useCallback((propertyCode: string, value: any) => {
+    dispatch?.({
+      type: "SET_PROPERTY_VALUES",
+      payload: {
+        [propertyCode]: value,
+      },
+    });
+  }, [dispatch]);
+
   return (
     <>
       <Tabs value={selectedTab} onChange={handleTabChange}>
@@ -77,14 +86,7 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
                         propertyValue={state.propertyValues[property.code]}
                         propertyDefinition={property as LocalPropertyTypeVariants}
                         mode={mode}
-                        onValueChange={(value) => {
-                          dispatch?.({
-                            type: "SET_PROPERTY_VALUES",
-                            payload: {
-                              [property.code]: value,
-                            },
-                          });
-                        }}
+                        onValueChange={(value) => handleValueChange(property.code, value)}
                       />
                     </AccordionItem>
                   ) : null;

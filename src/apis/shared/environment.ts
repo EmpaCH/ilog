@@ -3,35 +3,40 @@ import openbis from "@openbis/openbis.esm";
 // Environment creation settings
 export const iLogID = "ILOG";
 export const iLogLogbookID = "ILOG_LOGBOOK";
-export const labID = "205";
-export const collectionID = "EQUIPMENT";
+export const labID = "LAB205_EQUIPMENT";
+export const componentCollectionID = "COMPONENT_COLLECTION";
+export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
 export const logbookCollectionID = "LOGBOOK";
 
-// Space (lab) > Project (iLog) > Collection (i.e. Equipment)
+// Space (lab) > Project (iLog) > Collection (i.e. Components, Instruments)
 class Env {
-  collection: openbis.Experiment | null;
+  componentCollection: openbis.Experiment | null;
+  instrumentCollection: openbis.Experiment | null;
   project: openbis.Project | null;
   space: openbis.Space | null;
 
   constructor(collection = null, project = null, space = null) {
-    this.collection = collection;
+    this.componentCollection = collection;
+    this.instrumentCollection = collection;
     this.project = project;
     this.space = space;
   }
 
   setEnv(
-    collection: openbis.Experiment,
+    componentCollection: openbis.Experiment,
+    instrumentCollection: openbis.Experiment,
     project: openbis.Project,
     space: openbis.Space
   ) {
-    this.collection = collection;
+    this.componentCollection = componentCollection;
+    this.instrumentCollection = instrumentCollection;
     this.project = project;
     this.space = space;
   }
 
   isDefined(): boolean {
     return (
-      this.collection != null && this.project != null && this.space != null
+      this.componentCollection != null && this.instrumentCollection != null && this.project != null && this.space != null
     );
   }
 }
