@@ -1,9 +1,4 @@
 import { PropertyType } from "../../apis/propertyType/commonPropertyType";
-import {
-  getDefaultPropertyTypeDefintion,
-  iLogBaseAllTypes,
-  mergePropertyTypes,
-} from "../../apis/shared/common";
 import { PropertyTypesSchema, ObjectTypeDefinition } from "../../apis/type/commonType";
 import { produce } from "immer";
 
@@ -11,6 +6,7 @@ export type TypeCreatorActions =
   | { type: "SET_PREFIX"; payload: string }
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
+  | { type: "SET_COLLECTION_TYPE"; payload: string }
   | { type: "SET_BASE_TYPE"; payload: { newBaseType: ObjectTypeDefinition } }
   | {
       type: "SET_NEW_PROPERTY";
@@ -60,6 +56,9 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
         break;
       case "SET_DESCRIPTION":
         draft.schema.description = action.payload;
+        break;
+      case "SET_COLLECTION_TYPE":
+        draft.schema.collectionType = action.payload;
         break;
       case "SET_BASE_TYPE":
         draft.schema.baseType = action.payload.newBaseType.code;

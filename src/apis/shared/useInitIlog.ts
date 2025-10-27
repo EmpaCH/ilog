@@ -1,12 +1,11 @@
 import {
-  UseMutationResult,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useCreateIlogTypeProperty, useCreateIlogLogbookProperty } from "./useCreateIlogTypeProperty";
 import { useCreateSpace } from "../space/useCreateSpace";
 import { useCreateProject } from "../project/useCreateProject";
-import { labID, iLogID, collectionID } from "./environment";
+import { labID, iLogID, componentCollectionID, instrumentCollectionID } from "./environment";
 import { useCreateCollection } from "../collection/useCreateCollection";
 import { useGetElnSettings } from "../eln/useGetElnSettings";
 import { useUpdateElnSettings } from "../eln/useUpdateElnSettings";
@@ -23,10 +22,7 @@ import { useCreateObjectType } from "../type/useCreateObjectType";
 import { useCreateVocabulary } from "../vocabulary/useCreateVocabulary";
 import { useCreatePropertyType } from "../propertyType/useCreatePropertyType";
 import { useState } from "react";
-import {
-  ALL_OBJECT_TYPES_QUERY_PREFIX,
-  useGetAllObjectTypes,
-} from "../type/useGetAllObjectTypes";
+import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "../type/useGetAllObjectTypes";
 import { useGetObjectType } from "../type/useGetObjectType";
 import { useGetInit } from "./useGetInit";
 
@@ -51,10 +47,17 @@ export const useInitIlog = () => {
   const spaceCreation = useCreateSpace(labID, "ilog Space");
   const elnSettings = useGetElnSettings();
   const projectCreation = useCreateProject(labID, iLogID, "iLog Project");
-  const collectionEquipmentCreation = useCreateCollection(
+  const collectionComponentCreation = useCreateCollection(
     labID,
     iLogID,
-    collectionID,
+    componentCollectionID,
+    "COLLECTION",
+    "COLLECTION"
+  );
+  const collectionInstrumentCreation = useCreateCollection(
+    labID,
+    iLogID,
+    instrumentCollectionID,
     "COLLECTION",
     "COLLECTION"
   );
@@ -115,8 +118,10 @@ export const useInitIlog = () => {
         emitMessage("Initializing project...", projectCreation.status);
         await projectCreation.mutateAsync();
 
-        emitMessage("Initializing equipment collection...", collectionEquipmentCreation.status);
-        await collectionEquipmentCreation.mutateAsync();
+        emitMessage("Initializing component collection...", collectionComponentCreation.status);
+        await collectionComponentCreation.mutateAsync();
+        emitMessage("Initializing instrument collection...", collectionInstrumentCreation.status);
+        await collectionInstrumentCreation.mutateAsync();
         emitMessage("Initializing logbook collection...", collectionLogbookCreation.status);
         await collectionLogbookCreation.mutateAsync();
         console.log("Inventory space, project and collection initialized.");

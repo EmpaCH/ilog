@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
-import { getPropertyAssignments } from "../propertyType/propertyTypeAPI";
 import { getObjectTypes } from "./typeAPI";
 
 export const ALL_OBJECT_TYPES_QUERY_PREFIX = "GET_ALL_OBJECT_TYPES";

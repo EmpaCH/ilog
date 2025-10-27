@@ -19,7 +19,7 @@ export const useDeleteObjectType = () => {
       await apiFacade.deleteSampleTypes([new openbis.EntityTypePermId(typeId)], stdo);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries([ALL_OBJECT_TYPES_QUERY_PREFIX]);
+      queryClient.invalidateQueries({ queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX] });
     }
-  })
+  });
 };

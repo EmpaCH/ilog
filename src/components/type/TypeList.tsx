@@ -1,13 +1,10 @@
-import { useContext, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useContext, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { AuthContext } from "../../context/auth/authContext";
-import { getObjectTypes, deleteObjectType } from "../../apis/type/typeAPI";
 import openbis from "@openbis/openbis.esm";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
 import { Column, TypeRow } from "../shared/list.types";
-import { iLogBaseTypesPropertyCode } from "../../apis/shared/common";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 import { useDeleteObjectType } from "../../apis/type/useDeleteObjectType";
 
@@ -61,27 +58,21 @@ export const TypeList = () => {
 
   const columns: Column[] = [
     {
+      key: "name",
+      name: "Name",
+      sorting: true,
+      align: "start",
+    },
+    {
       key: "code",
       name: "Code",
       sorting: true,
       align: "start",
     },
     {
-      key: "prefix",
-      name: "Prefix",
-      sorting: false,
-      align: "start",
-    },
-    {
-      key: "description",
-      name: "Description",
-      sorting: false,
-      align: "start",
-    },
-    {
-      key: "category",
-      name: "Category",
-      sorting: false,
+      key: "collectionType",
+      name: "Collection Type",
+      sorting: true,
       align: "start",
     },
     {
@@ -93,20 +84,13 @@ export const TypeList = () => {
   ];
 
   const rows: TypeRow[] = types.map((type: openbis.SampleType) => {
-    const categoryAssignment = type
-      .getPropertyAssignments()
-      .find(
-        (assignment) =>
-          assignment.getPropertyType().getCode() === iLogBaseTypesPropertyCode
-      );
-
+    const metadata = type.getMetaData();
+    
     return {
       permId: type.getPermId(),
+      name: type.getDescription() || type.getCode(), // Use description as name, fallback to code
       code: type.getCode(),
-      prefix: type.getGeneratedCodePrefix(),
-      description: type.getDescription(),
-      category: categoryAssignment?.getPropertyType().getCode(),
-      // TODO: use "category" to show whether the item it an Instrument or Component
+      collectionType: metadata["collectionType"] || "Unknown",
     };
   });
 

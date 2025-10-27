@@ -2,6 +2,7 @@ import React from "react";
 import { Accordion, AccordionItem, Input } from "@heroui/react";
 import { Tabs, Tab } from "@mui/material";
 import { LogbookEntryState, LogbookEntryActions } from "./LogbookEntryActions";
+import { ComponentListPropertyEditor } from "../object/ComponentListPropertyEditor";
 
 // The props that are received by the component
 // define whether this will be a Logbook Entry Creator or Editor component
@@ -10,7 +11,7 @@ type CreatorMode = (typeof creatorModes)[number];
 interface LogbookEntryPropertyEditorsProps {
   mode: CreatorMode;
   state: LogbookEntryState;
-  dispatch?: React.Dispatch<LogbookEntryActions>;
+  dispatch: React.Dispatch<LogbookEntryActions>;
   hiddenPropertyCodes?: string[];
 }
 
@@ -68,19 +69,25 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
                     title={property.code}
                     aria-label={property.code}
                   >
-                    <Input
-                      disabled={mode === "view"}
-                      id={property.code}
-                      placeholder={property.description}
-                      value={state.propertyValues[property.code]}
-                      onValueChange={(value) =>
-                        {dispatch &&
-                          dispatch({ type: "SET_PROPERTY_VALUES", payload: {
-                            [property.code]: value
-                          }})
+                    {property.code === "COMPONENT" ?
+                      <ComponentListPropertyEditor
+                        dispatch={dispatch}
+                      /> :
+                      <Input
+                        disabled={mode === "view"}
+                        id={property.code}
+                        placeholder={property.description}
+                        value={state.propertyValues[property.code]}
+                        onValueChange={(value) =>
+                          dispatch
+                          // {dispatch &&
+                          //   dispatch({ type: "SET_PROPERTY_VALUES", payload: {
+                          //     [property.code]: value
+                          //   }})
+                          // }
                         }
-                      }
-                    />
+                      />
+                    }
                   </AccordionItem>
                 ) : null;
               })}

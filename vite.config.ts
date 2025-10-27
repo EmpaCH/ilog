@@ -12,14 +12,14 @@ export default defineConfig(({ command, mode }) => {
       testTransformMode: "web",
       printConsoleTrace: false,
       environment: "happy-dom",
-      testUrl: `${env.VITE_APP_OPENBIS_URL}`,
+      testUrl: `${env.OPENBIS_URL}`,
     },
     plugins: [react(), TanStackRouterVite()],
     server: {
       cors: true,
       proxy: {
         "/openbis/": {
-          target: `${env.VITE_APP_OPENBIS_URL}`,
+          target: `${env.OPENBIS_URL}`,
           changeOrigin: true,
           secure: false,
         },

@@ -23,21 +23,6 @@ import {
   ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX,
   useGetPropertyAssignments,
 } from "../propertyType/useGetPropertyAssignments";
-import { useEnableObjectType } from "../eln/useEnableType";
-
-// function filterUpdates(
-//   updates: openbis.PropertyTypeUpdate[],
-//   existingPropertyAssigments: PropertyAssignment[]
-// ) {
-//   return updates.filter((update) => {
-//     return existingPropertyAssigments.some((assignment) => {
-//       return (
-//         assignment.propertyTypeCode ===
-//         (update.getTypeId() as openbis.PropertyTypePermId).getPermId()
-//       );
-//     });
-//   });
-// }
 
 /**
  * This is a tricky function.
@@ -59,44 +44,12 @@ import { useEnableObjectType } from "../eln/useEnableType";
 
  *  */
 export const useCreateObjectType = () => {
-  const { apiFacade, isAuthenticated } = useContext(AuthContext);
+  const { apiFacade } = useContext(AuthContext);
   
   const existingObjectTypesResult = useGetAllObjectTypes();
   const existingPropertyTypesResult = useGetPropertyTypes();
   const existingPropertyAssigmentsResult = useGetPropertyAssignments();
   const queryClient = useQueryClient();
-  const enableType = useEnableObjectType();
-
-  // const fetchData = async () => {
-  //   console.log(`Preparing to create object type, api is ${isAuthenticated}`);
-  //   const [objectTypes, propertyTypes, propertyAssignments] = await Promise.all(
-  //     [
-  //       existingObjectTypesResult.refetch(),
-  //       existingPropertyTypesResult.refetch(),
-  //       existingPropertyAssigmentsResult.refetch(),
-  //     ]
-  //   );
-
-  //   if (
-  //     objectTypes.isSuccess &&
-  //     propertyTypes.isSuccess &&
-  //     propertyAssignments.isSuccess
-  //   ) {
-  //     return {
-  //       objectTypes: objectTypes.data,
-  //       propertyTypes: propertyTypes.data,
-  //       propertyAssignments: propertyAssignments.data,
-  //     };
-  //   } else {
-  //     const errors = [
-  //       objectTypes.error,
-  //       propertyTypes.error,
-  //       propertyAssignments.error,
-  //     ];
-  //     console.error(errors);
-  //     throw new AggregateError(errors);
-  //   }
-  // };
 
   return useMutation({
     // Only update the object setting definition if the creation of the object type was successful

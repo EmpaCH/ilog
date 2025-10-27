@@ -80,7 +80,7 @@ export function reconstructHistory(
       acc[key] = [];
     }
     acc[key] = history.filter(
-      propEntry => propEntry.getValidFrom() === entry.getValidFrom()
+      propEntry => propEntry.getValidFrom().toString() === entry.getValidFrom().toString()
     );
     return acc;
   }, {});

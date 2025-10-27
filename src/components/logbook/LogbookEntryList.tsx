@@ -13,10 +13,9 @@ import {
 } from "./LogbookEntryLocalActions";
 import { useGetObjects } from "../../apis/object/useGetObjects";
 import { GroupedHistory, MultiObjectGroupedHistory, ObjectDefinition } from "../../apis/object/commonObject";
-import { convertOpenBISPropertyHistoryEntryListToObjectDefinition, reconstructHistory } from "../../apis/object/helpersObjectAPI";
-import { convertOpenBISSampleTypeToObjectTypeDefinition, ObjectTypeDefinition, PropertyTypesSchema } from "../../apis/type/commonType";
-import { LOGBOOK_ENTRY_TYPES } from "../../apis/shared/types";
+import { reconstructHistory } from "../../apis/object/helpersObjectAPI";
 import { parseZonedDateTime } from "@internationalized/date";
+import { useGetLogbookEntryByPermId } from "../../apis/logbook/useGetLogbookEntryByPermId";
 
 
 export const LogbookEntryList = () => {
@@ -63,7 +62,6 @@ export const LogbookEntryList = () => {
             propertyValues: {
               ...entry.getProperties(),
               DESCRIPTION: ["Description of automatic change"],
-              INVOLVEDEQUIPMENT: ["inst1, inst2"],
               RESPONSIBLE: ["Automatic"],
             } as any,
             validFrom: parseZonedDateTime(timestamp),
@@ -91,11 +89,6 @@ export const LogbookEntryList = () => {
     }
   }, [allObjectsResult.status, allObjectsResult.data]);
 
-
-
-
-
-
   const onDelete = async (
     permId: any,
     code: string,
@@ -112,16 +105,22 @@ export const LogbookEntryList = () => {
   };
 
   const onEdit = async (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    permId: openbis.SamplePermId,
     code: string,
   ) => {
-    const logbookEntry = logbookEntries.find((t) => t.getCode() === code);
-    if (logbookEntry) {
-      navigate({
-        to: `/logbook/creator?mode=edit&entrycode=${logbookEntry.getCode()}`,
-      });
+    const logbookEntryResult = await useGetLogbookEntryByPermId(permId.getPermId());
+    if (logbookEntryResult.status == "success") {
+      code = logbookEntryResult.data[0].getCode();
+      const logbookEntry = logbookEntries.find((t) => t.getCode() === code);
+      if (logbookEntry) {
+        navigate({
+          to: `/logbook/creator?mode=edit&entrycode=${logbookEntry.getCode()}`,
+        });
+      } else {
+        handleMessage(`Logbook entry with code '${code}' not found.`, false, true);
+      }
     } else {
-      handleMessage(`Logbook entry with code '${code}' not found.`, false, true);
+      handleMessage(`Cannot fetch logbook entry with code '${code}'.`, false, true);
     }
   };
 
@@ -177,13 +176,6 @@ export const LogbookEntryList = () => {
       filterable: true,
     },
     {
-      key: "involvedequipment",
-      name: "Involved Equipment",
-      sorting: true,
-      align: "start",
-      filterable: true,
-    },
-    {
       key: "componentCode",
       name: "Component Code",
       sorting: true,
@@ -213,23 +205,6 @@ export const LogbookEntryList = () => {
     },
   ];
 
-    // permId: openbis.SamplePermId;
-    // description: string;
-    // involvedEquip: string[];
-    // componentCode: string;
-    // name: string;
-    // type: string;
-    // validFrom: string;
-    // maintenance: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "MAINTENANCE_LOGENTRY", generatedCodePrefix: "MAINTENANCELOG", description: "Maintenance Logbook Entry" },
-    // errorsAndProblems: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "ERRORS_AND_PROBLEMS_LOGENTRY", generatedCodePrefix: "ERRORSANDPROBLEMSLOG", description: "Errors and Problems Logbook Entry" },
-    // calibrationOptimization: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CALIBRATION_OPTIMIZATION_LOGENTRY", generatedCodePrefix: "CALIBRATIONOPTIMIZATIONLOG", description: "Calibration and Optimization Logbook Entry" },
-    // cryogenFilling: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CRYOGEN_FILLING_LOGENTRY", generatedCodePrefix: "CRYOGENFILLINGLOG", description: "Cryogen Filling Logbook Entry" },
-    // degasing: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "DEGASING_LOGENTRY", generatedCodePrefix: "DEGASINGLOG", description: "Degasing Logbook Entry" },
-    // cleaning: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CLEANING_LOGENTRY", generatedCodePrefix: "CLEANINGLOG", description: "Cleaning Logbook Entry" },
-    // bakeout: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "BAKEOUT_LOGENTRY", generatedCodePrefix: "BAKEOUTLOG", description: "Bakeout Logbook Entry" },
-    // comment: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "COMMENT_LOGENTRY", generatedCodePrefix: "COMMENTLOG", description: "Comment Logbook Entry" },
-    // other: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "OTHER_LOGENTRY", generatedCodePrefix: "OTHERLOG", description: "Other Logbook Entry" },
-
   const colorMapping: Record<string, string> = {
     "CHANGE_PROPERTIES": "rgba(173, 216, 230, 0.5)", // light blue
     "MAINTENANCE_LOGENTRY": "rgba(144, 238, 144, 0.5)", // light green
@@ -247,12 +222,12 @@ export const LogbookEntryList = () => {
 
   const logbookRows: LogbookEntryRow[] = logbookEntries.map(
     (entry: openbis.Sample) => {
+      console.log(entry);
       return {
         permId: entry.getPermId(),
-        name: entry.getCode() || "",
+        name: entry.getProperty("$NAME") || "",
         responsible: entry.getProperty("RESPONSIBLE") || "",
         description: entry.getProperty("DESCRIPTION") || "",
-        involvedEquipment: entry.getProperty("INVOLVEDEQUIPMENT") || "",
         componentCode: entry.getProperty("COMPONENT") || "",
         type: entry.getType()?.getCode() || "",
         validFrom: (entry.getProperty("VALID_FROM") && typeof entry.getProperty("VALID_FROM") === "string" && entry.getProperty("VALID_FROM").includes("T")) ? entry.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
@@ -275,7 +250,6 @@ export const LogbookEntryList = () => {
         name: "-",
         responsible: entry.propertyValues["RESPONSIBLE"][0] || "",
         description: entry.propertyValues["DESCRIPTION"][0] || "",
-        involvedEquipment: entry.propertyValues["INVOLVEDEQUIPMENT"][0] || "",
         componentCode: objectCode,       
         type: historyType,
         validFrom: (typeof timestamp === "string" && timestamp.includes("T") && timestamp.includes("."))
@@ -297,13 +271,13 @@ export const LogbookEntryList = () => {
       <List
         columns={columns}
         rows={rows}
+        idColumn="name"
         defaultSortColumn="validFrom"
         defaultSortDirection="descending"
         navigatePath="/logbook/creator"
         // enableHistory={true}
         onDelete={onDelete}
-        idColumn="name"
-        onEdit={(permId, name) => onEdit(permId, name)}
+        onEdit={onEdit}
         onHistory={onHistory}
       />
       <MessageModal

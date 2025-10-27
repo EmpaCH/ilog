@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from "@tanstack/react-router";
-import { useGetAllLogbookEntries } from "../../apis/logbook/useGetAllLogbookEntry";
+import { useGetAllLogbookEntries } from "../../apis/logbook/useGetAllLogbookEntries";
 import openbis from "@openbis/openbis.esm";
 import { Accordion, AccordionItem, Button, Card, CardBody, Divider } from "@heroui/react";
 import { parseZonedDateTime } from "@internationalized/date";

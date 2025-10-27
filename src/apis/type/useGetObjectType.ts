@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {getObjectType } from './typeAPI.ts';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/auth/authContext';
@@ -11,11 +11,9 @@ export const useGetObjectType = (permId: string) => {
       const res = await getObjectType(apiFacade, permId);
       if(res === null || res === undefined) {
         throw new Error("Object type not found");
-      }
-      else {
+      } else {
         return res;
       }
-  
     },
   });
 }

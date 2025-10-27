@@ -6,7 +6,7 @@ import { useGetSpace } from "../space/useGetSpace";
 import { useGetProject } from "../project/useGetProject";
 import { useGetCollection } from "../collection/useGetCollection";
 import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetObjects';
-import { iLogID, labID, collectionID } from "../shared/common";
+import { iLogID, labID, componentCollectionID, instrumentCollectionID } from "../shared/common";
 
 const CREATE_OBJECT_MUTATION_KEY = "CREATE_OBJECT_MUTATION_KEY";
 
@@ -16,21 +16,22 @@ export const useCreateObject = () => {
 
   const space = useGetSpace(labID);
   const project = useGetProject(labID, iLogID);
-  const collection = useGetCollection(labID, iLogID, collectionID);
+  const componentCollection = useGetCollection(labID, iLogID, componentCollectionID);
+  const instrumentCollection = useGetCollection(labID, iLogID, instrumentCollectionID);
 
   return useMutation({
     mutationKey: [CREATE_OBJECT_MUTATION_KEY],
     mutationFn: async ({
+      collection,
       type,
-      code,
       properties,
     }: {
+      collection: string;
       type: string;
-      code: string;
       properties: object;
     }) => {
-      if (!space.data || !project.data || !collection.data) {
-        throw new Error("Space, project or collection not initialized");
+      if (!space.data || !project.data || !componentCollection.data || !instrumentCollection.data) {
+        throw new Error("Space, project or collections not initialized");
       }
       if (!apiFacade) {
         throw new Error("API facade not initialized");
@@ -38,11 +39,10 @@ export const useCreateObject = () => {
       return createObject(
         apiFacade,
         type,
-        code,
         properties,
         space.data.getPermId(),
         project.data.getPermId(),
-        collection.data.getPermId(),
+        collection === componentCollectionID ? componentCollection.data.getPermId() : instrumentCollection.data.getPermId(),
       );
     },
     onSuccess: () => {

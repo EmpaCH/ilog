@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useGetObjects } from "../../apis/object/useGetObjects";
 import {
   Dropdown,
@@ -22,7 +22,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import openbis from "@openbis/openbis.esm";
 
 interface ComponentListPropertyEditorProps {
-  dispatch: (input: string | boolean | Date | string[]) => void;
+  dispatch: React.Dispatch<any>;
+  // ((input: string | boolean | Date | string[]) => void 
 }
 
 export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorProps> = ({

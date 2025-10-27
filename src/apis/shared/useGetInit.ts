@@ -4,7 +4,7 @@ import { useGetObject } from "../object/useGetObject";
 import { useGetProject } from "../project/useGetProject";
 import { useGetSpace } from "../space/useGetSpace";
 import { useGetObjectType } from "../type/useGetObjectType";
-import { iLogID, labID, collectionID, logbookCollectionID } from "./environment";
+import { iLogID, labID, componentCollectionID, instrumentCollectionID, logbookCollectionID } from "./environment";
 import {
   COMPONENT_TYPE_DEFINITION,
   INSTRUMENT_TYPE_DEFINITION,
@@ -48,7 +48,8 @@ export const useGetInit = () => {
 
   const spaceResult = useGetSpace(labID);
   const projectResult = useGetProject(labID, iLogID);
-  const collectionEquipmentResult = useGetCollection(labID, iLogID, collectionID);
+  const collectionComponentResult = useGetCollection(labID, iLogID, componentCollectionID);
+  const collectionInstrumentResult = useGetCollection(labID, iLogID, instrumentCollectionID);
   const collectionLogbookResult = useGetCollection(labID, iLogID, logbookCollectionID);
   const vocabularyResult = useGetObject(iLogBaseTypesVocabularyID);
 
@@ -57,7 +58,8 @@ export const useGetInit = () => {
     typeChecks.some(check => check.isLoading) ||
     spaceResult.isLoading ||
     projectResult.isLoading ||
-    collectionEquipmentResult.isLoading ||
+    collectionComponentResult.isLoading ||
+    collectionInstrumentResult.isLoading ||
     collectionLogbookResult.isLoading ||
     vocabularyResult.isLoading;
 
@@ -71,7 +73,8 @@ export const useGetInit = () => {
         typeCheckResults &&
         spaceResult.data != null &&
         projectResult.data != null &&
-        collectionEquipmentResult.data != null &&
+        collectionComponentResult.data != null &&
+        collectionInstrumentResult.data != null &&
         collectionLogbookResult.data != null &&
         vocabularyResult.data != null;
 
@@ -82,7 +85,8 @@ export const useGetInit = () => {
         { 
           spaceExists: spaceResult.data !== null, 
           projectExists: projectResult.data !== null, 
-          collectionEquipmentExist: collectionEquipmentResult.data !== null, 
+          collectionComponentExist: collectionComponentResult.data !== null,
+          collectionInstrumentExist: collectionInstrumentResult.data !== null, 
           collectionLogbookExist: collectionLogbookResult.data !== null, 
           vocabularyExists: vocabularyResult.data !== null 
         }
@@ -96,7 +100,8 @@ export const useGetInit = () => {
         }, {} as Record<string, boolean>),
         spaceExists: spaceResult.data !== null,
         projectExists: projectResult.data !== null,
-        collectionExist: collectionEquipmentResult.data !== null,
+        collectionComponentExist: collectionComponentResult.data !== null,
+        collectionInstrumentExist: collectionInstrumentResult.data !== null,
         collectionLogbookExist: collectionLogbookResult.data !== null,
         vocabularyExists: vocabularyResult.data !== null,
       };

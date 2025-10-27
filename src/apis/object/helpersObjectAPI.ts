@@ -17,8 +17,8 @@ import {
 export function createEmptyObjectDefinition(): ObjectDefinition {
   return {
     id: null,
+    collection: "",
     type: "",
-    code: "",
     validFrom: now(getLocalTimeZone()),
     propertiesSchema: {},
     propertyValues: {},
@@ -44,9 +44,9 @@ export function convertOpenBISPropertyHistoryEntryListToObjectDefinition(
 
   return {
     id: sample.getIdentifier(),
+    collection: sample.getExperiment().getCode(),
     type: sample.getType().getCode(),
-    code: sample.getCode(),
-    validFrom: validFrom ?? parseZonedDateTime(transformedHistory["VALID_FROM"]),
+    validFrom: validFrom ? parseZonedDateTime(transformedHistory["VALID_FROM"]) : now(getLocalTimeZone()), 
     propertiesSchema: {},
     propertyValues: transformedHistory,
   };
@@ -94,9 +94,11 @@ export function reconstructHistory (
     const previousArray = validFromDict[previousKey];
     const currentArray = validFromDict[currentKey];
 
-    previousArray.forEach((entry, index) => {
-      if (!currentArray[index]) {
-        currentArray[index] = entry;
+    const currentPropertyNames = new Set(currentArray.map(entry => entry.getPropertyName()));
+    previousArray.forEach((previousEntry) => {
+      const propertyName = previousEntry.getPropertyName();
+      if (!currentPropertyNames.has(propertyName)) {
+        currentArray.push(previousEntry);
       }
     });
   }

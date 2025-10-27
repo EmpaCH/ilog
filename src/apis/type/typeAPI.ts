@@ -8,7 +8,10 @@ import {
   convertPropertyTypesSchemaToUpdateOperations,
   convertObjectTypeDefinitionToUpdateOperations
 } from "./helpersTypeAPI";
-import { ObjectTypeDefinition } from "./commonType";
+import {
+  ObjectTypeDefinition,
+  PropertyTypesSchema,
+} from "./commonType";
 import { getPropertyTypes } from "../propertyType/propertyTypeAPI";
 
 export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
@@ -21,6 +24,10 @@ export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
   ao.withEntityType();
   ao.withPropertyTypeUsing(po);
   fo.withPropertyAssignmentsUsing(ao);
+  
+  // If you need to access validation plugins or other metadata
+  fo.withValidationPlugin();
+  
   return fo;
 }
 
@@ -35,9 +42,13 @@ export async function getObjectTypes(
   search: string = ""
 ): Promise<openbis.SampleType[]> {
   const sc = new openbis.SampleTypeSearchCriteria();
-  sc.withCode().thatStartsWith(search.toUpperCase());
+
+  if (search && search.trim()) {
+    sc.withCode().thatStartsWith(search.toUpperCase());
+  }
+
   sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
-  const fo = createObjectTypeFetchOptions()
+  const fo = createObjectTypeFetchOptions();
   
   const result = await api.searchSampleTypes(sc, fo);
   return result.getObjects();
@@ -87,13 +98,13 @@ export async function createObjectType(
   const existingObjectTypes = await getObjectTypes(api);
   const creations = convertObjectTypeDefinitionToOperations(otd);
 
-  const filteredPropertyTypeCreations = creations.propertyTypeCreations.filter(
+  const filteredPropertyTypeCreations = creations.propertyTypeCreations?.filter(
     (creation) => {
       // Check if there is no element in existingPropertyTypes with the same code as the current creation
       return !existingPropertyTypes.some((type) => type.code === creation.getCode());
     }
   );
-  const filteredObjectTypeCreations = creations.objectTypeCreations.filter(
+  const filteredObjectTypeCreations = creations.objectTypeCreations?.filter(
     (creation) => {
       // Check if there is no element in existingObjectTypes with the same code as the current creation
       return !existingObjectTypes.some((type) => type.getCode() === creation.getCode());
@@ -127,13 +138,13 @@ export async function updateObjectType(
   const creations = convertObjectTypeDefinitionToOperations(otd);
 
   // First Create non existing property types and object types
-  const filteredPropertyTypeCreations = creations.propertyTypeCreations.filter(
+  const filteredPropertyTypeCreations = creations.propertyTypeCreations?.filter(
     (creation) => {
       // Check if there is an element in existingPropertyTypes with the same code as the current creation
       return !existingPropertyTypes.some((type) => type.code === creation.getCode());
     }
   );
-  const filteredObjectTypeCreations = creations.objectTypeCreations.filter(
+  const filteredObjectTypeCreations = creations.objectTypeCreations?.filter(
     (creation) => {
       // Check if there is an element in existingObjectTypes with the same code as the current creation
       return !existingObjectTypes.some((type) => type.getCode() === creation.getCode());
@@ -150,13 +161,19 @@ export async function updateObjectType(
 
   // Then update the existing property types 
   const updatePropOps = convertPropertyTypesSchemaToUpdateOperations(
-    otd.propertyTypes, existingPropertyTypes);
-  await api.executeOperations(updatePropOps, props);
+    otd.propertyTypes as PropertyTypesSchema, existingPropertyTypes);
+  if (updatePropOps.length > 0) {
+    const propertyUpdateOperation = new openbis.UpdatePropertyTypesOperation(updatePropOps);
+    await api.executeOperations([propertyUpdateOperation], props);
+  }
 
   // Finally update the object type
   const updateOps = convertObjectTypeDefinitionToUpdateOperations(
     otd, existingObjectTypes);
-  await api.executeOperations(updateOps, props);
+  if (updateOps.length > 0) {
+    const sampleTypeUpdateOperation = new openbis.UpdateSampleTypesOperation(updateOps);
+    await api.executeOperations([sampleTypeUpdateOperation], props);
+  }
 
   await createObjectTypeSettingsDefinition(api, otd.code);
 }
