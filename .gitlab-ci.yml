@@ -61,7 +61,8 @@ deploy_dev:
     OVERLAY_PATH: deploy/overlays/dev
     IMAGE_PATH: $CI_REGISTRY_IMAGE
   needs:
-    - build_image
+    - job: build-image
+      optional: true
 
 
 
