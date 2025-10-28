@@ -3,7 +3,7 @@
     	log default {
 		output stdout
 		format json
-        level DEBUG
+        level {$CADDY_LOG_LEVEL}
         }
 }
 
