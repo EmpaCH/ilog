@@ -10,9 +10,9 @@
 :80 {
     root * /var/www/html
     file_server
-
+    log default
     handle_path /openbis/* {
-        log default
+        
         rewrite * /openbis{path}
         reverse_proxy {$OPENBIS_URL}
     }
