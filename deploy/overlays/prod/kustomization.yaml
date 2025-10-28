@@ -21,7 +21,7 @@ configMapGenerator:
   - name: ilog-env
     behavior: replace
     literals:
-      - OPENBIS_URL=https://openbis-empa-dev205.ethz.ch
+      - OPENBIS_URL=openbis-empa-dev205.ethz.ch
       - CADDY_LOG_LEVEL=DEBUG
 
 # Prefer the images transformer so CI can "edit set image" here
