@@ -96,7 +96,7 @@ export const openBISHookFactory = (url: string) => {
     ): void => {
       idLogger("Logging in...");
       // Handle the async operation internally
-      withTimeout(apiFacade.login(username, password), 20000)
+      withTimeout(apiFacade.login(username, password), 180000)
         .then((sessionToken) => {
           idLogger("Login successful");
           if (sessionToken === undefined) {
@@ -127,7 +127,7 @@ export const openBISHookFactory = (url: string) => {
       // Set the token and verify it works
       apiFacade.setSessionToken(personalAccessToken);
       // Handle the async operation internally
-      withTimeout(apiFacade.getServerInformation(), 20000)
+      withTimeout(apiFacade.getServerInformation(), 180000)
         .then(() => {
           // For token-based login, we'll use a default username since
           // we don't have the actual username from the token
