@@ -38,7 +38,19 @@ export function convertOpenBISPropertyHistoryEntryListToObjectDefinition(
   validFrom?: ZonedDateTime,
 ): ObjectDefinition {
   const transformedHistory = history.reduce((acc: { [key: string]: any }, curr) => {
-    acc[curr.getPropertyName()] = curr.getPropertyValue();
+    const propertyName = curr.getPropertyName();
+    const propertyValue = curr.getPropertyValue();
+
+    // If property already exists, convert to array or append to existing array
+    if (acc[propertyName]) {
+      if (Array.isArray(acc[propertyName])) {
+        acc[propertyName].push(propertyValue);
+      } else {
+        acc[propertyName] = [acc[propertyName], propertyValue];
+      }
+    } else {
+      acc[propertyName] = propertyValue;
+    }
     return acc;
   }, {});
 

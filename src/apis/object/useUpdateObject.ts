@@ -16,9 +16,11 @@ export const useUpdateObject = () => {
     mutationFn: ({
       sampleId,
       properties,
+      objectCode,
     }: {
       sampleId: openbis.ISampleId;
       properties: object;
+      objectCode?: string;
     }) => {
       return updateObject(
         apiFacade,
@@ -26,8 +28,11 @@ export const useUpdateObject = () => {
         properties,
       );
     },
-    onSuccess:  () => {
+    onSuccess: (_data, variables) => {
       queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
+      if (variables.objectCode) {
+        queryClient.invalidateQueries({ queryKey: [variables.objectCode] });
+      }
     }
   });
 };

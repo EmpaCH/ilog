@@ -16,6 +16,7 @@ import { AuthContext } from "../../context/auth/authContext";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
 import { useCreateObject } from "../../apis/object/useCreateObject";
 import { useUpdateObject } from "../../apis/object/useUpdateObject";
+import { useUpdateObjectWithComponentLocations } from "../../apis/object/useUpdateObjectWithComponentLocations";
 import { useGetObject } from "../../apis/object/useGetObject";
 import { getObjectTypes } from "../../apis/type/typeAPI";
 import { objectCreatorReducer } from "./ObjectActions";
@@ -69,12 +70,14 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const objectResult = useGetObject(objectCode);
   const objectCreation = useCreateObject();
   const objectUpdate = useUpdateObject();
+  const objectUpdateWithComponents = useUpdateObjectWithComponentLocations();
   const allPropertyTypesResult = useGetPropertyTypes();
   const navigate = useNavigate();
 
   let [openbisSample, setOpenbisSample] = useState<openbis.Sample | undefined>(undefined);
   let [reconstructedHistory, setReconstructedHistory] = useState<ReconstructedHistory>({});
   let [objectTemplate, setObjectTemplate] = useState<ObjectDefinition>(createEmptyObjectDefinition());
+  let [originalPropertyValues, setOriginalPropertyValues] = useState<{ [key: string]: any }>({});
 
   let [isValidFromSelected, setIsValidFromSelected] = useState(false);
   let [minValidFrom, setMinValidFrom] = useState<ZonedDateTime | undefined>(undefined);
@@ -162,7 +165,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     }
   };
 
-  useMemo(() => {
+  useEffect(() => {
     if (objectResult.status == "success") {
       const openbisSample = objectResult.data[0];
       setOpenbisSample(openbisSample);
@@ -175,6 +178,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         const latestSampleState = latestKey ? reconstructedHistory[latestKey] : [];
         const objectTemplate = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, latestSampleState)
         setObjectTemplate(objectTemplate);
+        setOriginalPropertyValues({ ...objectTemplate.propertyValues });
         setMinValidFrom(parseZonedDateTime(Object.keys(reconstructedHistory)[0]));
         dispatch({ type: "RESET", payload: objectTemplate });
         createObjectSchemaBasedOnType(objectTemplate.type);
@@ -206,23 +210,50 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     localDispatch({ type: "CLEAR" });
 
     if (mode === "edit") {
-      objectUpdate.mutate({
-        sampleId: state.id as openbis.ISampleId,
-        properties: {
-          ...state.propertyValues,
-          VALID_FROM: state.validFrom.toString(),
-        },
-      }, {
-        onError: (err) => {
-          onError(err.message);
-        },
-        onSuccess: () => {
-          onSuccess("Object updated successfully!");
-          setTimeout(() => {
-            onBack();
-          }, 2000);
-        },
-      });
+
+      const isInstrument = state.collection === instrumentCollectionID;
+      if (isInstrument) {
+        // Use the enhanced update for instruments to handle component locations
+        objectUpdateWithComponents.mutate({
+          sampleId: state.id as openbis.ISampleId,
+          objectCode: objectCode,
+          properties: {
+            ...state.propertyValues,
+            VALID_FROM: state.validFrom.toString(),
+          },
+          previousProperties: originalPropertyValues,
+        }, {
+          onError: (err) => {
+            onError(err.message);
+          },
+          onSuccess: () => {
+            onSuccess("Instrument updated successfully! Component locations have been updated.");
+            setTimeout(() => {
+              onBack();
+            }, 2000);
+          },
+        });
+      } else {
+        // Use regular update for components
+        objectUpdate.mutate({
+          sampleId: state.id as openbis.ISampleId,
+          objectCode: objectCode,
+          properties: {
+            ...state.propertyValues,
+            VALID_FROM: state.validFrom.toString(),
+          },
+        }, {
+          onError: (err) => {
+            onError(err.message);
+          },
+          onSuccess: () => {
+            onSuccess("Object updated successfully!");
+            setTimeout(() => {
+              onBack();
+            }, 2000);
+          },
+        });
+      }
     } else {
       objectCreation.mutate({
         collection: state.collection,
@@ -374,6 +405,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
               iLogBaseTypesPropertyCode,
               "VALID_FROM",
             ]}
+            currentObjectCode={objectCode}
           />) : (
           <p className="text-gray-500">
             Please select a type.

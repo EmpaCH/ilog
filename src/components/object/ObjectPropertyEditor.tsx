@@ -17,6 +17,7 @@ interface ObjectPropertyEditorsProps {
   state: ObjectCreatorState;
   dispatch?: React.Dispatch<ObjectCreatorActions>;
   hiddenPropertyCodes?: string[];
+  currentObjectCode?: string;
 }
 
 // Generating random keys for list items
@@ -29,6 +30,7 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
   state,
   dispatch,
   hiddenPropertyCodes,
+  currentObjectCode,
 }) => {
   const keys = Object.fromEntries(
     Object.entries(state.propertiesSchema).flatMap(
@@ -86,7 +88,10 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
                         propertyValue={state.propertyValues[property.code]}
                         propertyDefinition={property as LocalPropertyTypeVariants}
                         mode={mode}
-                        onValueChange={(value) => handleValueChange(property.code, value)}
+                        onValueChange={(value) => {
+                          handleValueChange(property.code, value);
+                        }}
+                        currentObjectCode={currentObjectCode}
                       />
                     </AccordionItem>
                   ) : null;

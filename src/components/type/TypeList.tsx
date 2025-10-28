@@ -58,14 +58,14 @@ export const TypeList = () => {
 
   const columns: Column[] = [
     {
-      key: "name",
-      name: "Name",
+      key: "code",
+      name: "Code",
       sorting: true,
       align: "start",
     },
     {
-      key: "code",
-      name: "Code",
+      key: "prefix",
+      name: "Prefix",
       sorting: true,
       align: "start",
     },
@@ -88,8 +88,8 @@ export const TypeList = () => {
     
     return {
       permId: type.getPermId(),
-      name: type.getDescription() || type.getCode(), // Use description as name, fallback to code
       code: type.getCode(),
+      prefix: type.getGeneratedCodePrefix(),
       collectionType: metadata["collectionType"] || "Unknown",
     };
   });
@@ -101,6 +101,7 @@ export const TypeList = () => {
         columns={columns}
         rows={rows}
         defaultSortColumn="code"
+        searchColumn="code"
         navigatePath="/types/creator"
         onDelete={onDelete}
         onEdit={onEdit}

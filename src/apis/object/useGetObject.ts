@@ -11,5 +11,6 @@ export const useGetObject = (code: string) => {
     queryFn: () => {
       return getObject(apiFacade, code);
     },
+    enabled: !!code && code !== '',
   });
 };

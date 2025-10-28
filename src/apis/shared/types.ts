@@ -114,7 +114,23 @@ export const EMPTY_TYPE_DEFINITION: ObjectTypeDefinition = {
 };
 
 // Component schema and type definition
-export const COMPONENT_SCHEMA: PropertyTypesSchema = iLogBaseSchema;
+export const COMPONENT_SCHEMA: PropertyTypesSchema = {
+  ...iLogBaseSchema,
+  [iLogGeneralInfoGroup]: [
+    ...iLogBaseSchema[iLogGeneralInfoGroup],
+    {
+      code: "LOCATION",
+      type: "local",
+      multivalued: false,
+      dataType: "OBJECT",
+      objectType: "",
+      label: "Location",
+      description: "Location",
+      metadata: null,
+    },
+  ],
+};
+
 export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "COMPONENT",
   generatedCodePrefix: "COMPONENT",
@@ -153,6 +169,7 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         dataType: "VARCHAR",
         label: "ValidFrom",
         description: "ValidFrom",
+        metadata: null,
       },    
       {
         code: "DESCRIPTION",
@@ -161,6 +178,7 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         dataType: "VARCHAR",
         label: "Description",
         description: "Description",
+        metadata: null,
       },
       {
         code: "RESPONSIBLE",
@@ -169,6 +187,7 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         dataType: "VARCHAR",
         label: "Responsible",
         description: "Responsible",
+        metadata: null,
       },      
       {
         code: "COMPONENT",
@@ -177,6 +196,7 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         dataType: "VARCHAR",
         label: "Component",
         description: "Component (most directly involved)",
+        metadata: null,
       },
     ]
   } as PropertyTypesSchema,
@@ -194,7 +214,6 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
   comment: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "COMMENT_LOGENTRY", generatedCodePrefix: "COMMENTLOG", description: "Comment Logbook Entry" },
   other: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "OTHER_LOGENTRY", generatedCodePrefix: "OTHERLOG", description: "Other Logbook Entry" },
 }
-
 
 // Type definitions for iLog base types
 export type iLogBaseTypesType = (typeof iLogBaseTypes)[number];

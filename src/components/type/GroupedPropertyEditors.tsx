@@ -8,7 +8,6 @@ import LockIcon from "@mui/icons-material/Lock";
 import { LocalPropertyType, PropertyType, LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
 import { PropertyTypesSchema } from "../../apis/type/commonType";
 import { produce, current, original, enableMapSet } from "immer";
-import { EditableAccordionTitle } from "./EditableAccordionTitle";
 
 enableMapSet();
 
@@ -318,7 +317,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                   <AddIcon />
                 </Icon>
               </Button>
-                {properties.some((property) =>
+                {lockedGroups.includes(propertyGroup) || properties.some((property) =>
                 lockedPropertyCodes.includes(property.code)
                 ) ? (
                 <Button
