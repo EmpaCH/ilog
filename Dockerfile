@@ -26,3 +26,4 @@ ENV CADDY_LOG_LEVEL=INFO
 
 COPY --from=build /app/dist /var/www/html
 COPY Caddyfile /etc/caddy/
+EXPOSE 80

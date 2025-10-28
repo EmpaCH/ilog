@@ -12,6 +12,7 @@
     file_server
 
     handle_path /openbis/* {
+        log default
         rewrite * /openbis{path}
         reverse_proxy {$OPENBIS_URL}
     }
