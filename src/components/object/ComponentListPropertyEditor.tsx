@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useGetObjects } from "../../apis/object/useGetObjects";
 import {
   Dropdown,
@@ -23,67 +23,33 @@ import openbis from "@openbis/openbis.esm";
 
 interface ComponentListPropertyEditorProps {
   dispatch: React.Dispatch<any>;
-  // ((input: string | boolean | Date | string[]) => void 
+  objectType?: string;
+  multivalued?: boolean;
+  value?: string | string[] | any;
+  currentObjectCode?: string;
 }
 
 export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorProps> = ({
   dispatch,
+  objectType,
+  multivalued,
+  value,
+  currentObjectCode,
 }) => {
   const getObjectsResult = useGetObjects();
-
+  const lastDispatchedRef = useRef<string>('');
+  const hasInitializedRef = useRef<boolean>(false);
+  const lastValueRef = useRef<any>(null);
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
+  const [allComponents, setAllComponents] = useState<openbis.Sample[]>([]);
   const [components, setComponents] = useState<openbis.Sample[]>([]);
   const [componentTypes, setComponentTypes] = useState<string[]>([]);
   const [codeFilter, setCodeFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<Selection>("all");
+  const [typeFilter, setTypeFilter] = useState<Selection>(new Set([]));
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
     column: "name",
     direction: "ascending",
   });
-
-  useMemo(() => {
-    if (getObjectsResult.status === "success") {
-      setComponents(getObjectsResult.data);
-      const componentTypes = getObjectsResult.data.map((component) => {
-        return component.getType().getCode();
-      });
-      setComponentTypes(componentTypes);
-    }
-  }, [getObjectsResult.status, getObjectsResult.data]);
-
-  useMemo(() => {
-    let filteredComponents = getObjectsResult.data ? [...getObjectsResult.data] : [];
-    if (codeFilter) {
-      filteredComponents = filteredComponents.filter((getObjectsResult) =>
-        getObjectsResult.getCode().toLowerCase().includes(codeFilter.toLowerCase())
-      );
-    }
-    if (typeFilter !== "all" && Array.from(typeFilter).length !== componentTypes.length) {
-      filteredComponents = filteredComponents.filter((component) =>
-        Array.from(typeFilter).includes(component.getType().getCode()),
-      );
-    }
-    setComponents(filteredComponents);
-  }, [codeFilter, typeFilter]);
-
-  const sortComponents = (descriptor: SortDescriptor) => {
-    const sortedComponents = [...components].sort((a, b) => {
-      let first = descriptor.column === "name" ? a.getCode() : a.getType().getCode();
-      let second = descriptor.column === "name" ? b.getCode() : b.getType().getCode();
-
-      if (descriptor.direction === "ascending") {
-        return first.localeCompare(second, undefined, { numeric: true });
-      } else {
-        return second.localeCompare(first, undefined, { numeric: true });
-      }
-    });
-    setComponents(sortedComponents);
-  };
-
-  const onSortChange = (descriptor: SortDescriptor) => {
-    setSortDescriptor(descriptor);
-    sortComponents(descriptor);
-  };
 
   const getSelectedCodes = (): string[] => {
     let selectedCodes: string[] = [];
@@ -104,10 +70,133 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     });
   };
 
+  useMemo(() => {
+    if (getObjectsResult.status === "success") {
+      let filteredData = getObjectsResult.data;
+
+      if (objectType && objectType !== "any") {
+        filteredData = filteredData.filter((component) => 
+          component.getType().getCode() === objectType
+        );
+      }
+      if (currentObjectCode) {
+        filteredData = filteredData.filter((component) => 
+          component.getCode() !== currentObjectCode
+        );
+      }
+      filteredData = filteredData.filter((component) => {
+        const location = component.getProperty("LOCATION");
+        return !location || location === "" || location === null || location === undefined;
+      });
+
+      setAllComponents(filteredData);
+      setComponents(filteredData);
+
+      const componentTypes = filteredData.map((component) => {
+        return component.getType().getCode();
+      });
+      // Remove duplicates
+      setComponentTypes([...new Set(componentTypes)]);
+    }
+  }, [getObjectsResult.status, getObjectsResult.data, objectType, currentObjectCode]);
+
+  useMemo(() => {
+    if (allComponents.length === 0) return;
+    let filteredComponents = [...allComponents];
+    if (codeFilter) {
+      filteredComponents = filteredComponents.filter((component) => {
+        const name = component.getProperty("NAME") || component.getCode();
+        return name.toLowerCase().includes(codeFilter.toLowerCase());
+      });
+    }
+
+    if ((!objectType || objectType === "any") && typeFilter !== "all" && Array.from(typeFilter).length > 0) {
+      filteredComponents = filteredComponents.filter((component) =>
+        Array.from(typeFilter).includes(component.getType().getCode()),
+      );
+    }
+    setComponents(filteredComponents);
+  }, [codeFilter, typeFilter, objectType, componentTypes, allComponents]);
+
+  const selectedPermIds = useMemo(() => {
+    return getSelectedPermIds();
+  }, [selectedKeys, components]);
+
+  useEffect(() => {
+    const currentValue = JSON.stringify(selectedPermIds);
+    if (lastDispatchedRef.current === currentValue) {
+      return;
+    }
+    // Only dispatch if we have actually initialized or if this is a user interaction
+    // This prevents the initial empty dispatch that causes the feedback loop
+    if (!hasInitializedRef.current && selectedPermIds.length === 0) {
+      return;
+    }
+    dispatch(selectedPermIds);
+    lastDispatchedRef.current = currentValue;
+  }, [selectedPermIds, dispatch]);
+
+  useEffect(() => {
+    if (!value || !Array.isArray(components) || components.length === 0) {
+      return;
+    }
+    const currentValueString = JSON.stringify(value);
+    if (lastValueRef.current === currentValueString) {
+      return;
+    }
+    // Create a copy to avoid mutation
+    const valueArray = Array.isArray(value) ? [...value] : [value];
+    const matchingCodes = new Set<string>();
+
+    valueArray.forEach(val => {
+      const matchingComponent = components.find(component => 
+        component.getPermId().getPermId() === val
+      );
+      if (matchingComponent) {
+        matchingCodes.add(matchingComponent.getCode());
+      }
+    });
+
+    setSelectedKeys(matchingCodes);
+    lastValueRef.current = currentValueString;
+    hasInitializedRef.current = true;
+  }, [value, components]);
+
+  const sortComponents = (descriptor: SortDescriptor) => {
+    const sortedComponents = [...components].sort((a, b) => {
+      let first: string;
+      let second: string;
+
+      if (descriptor.column === "code") {
+        first = a.getCode();
+        second = b.getCode();
+      } else if (descriptor.column === "name") {
+        first = a.getProperty("NAME") || a.getCode();
+        second = b.getProperty("NAME") || b.getCode();
+      } else {
+        first = a.getType().getCode();
+        second = b.getType().getCode();
+      }
+
+      if (descriptor.direction === "ascending") {
+        return first.localeCompare(second, undefined, { numeric: true });
+      } else {
+        return second.localeCompare(first, undefined, { numeric: true });
+      }
+    });
+    setComponents(sortedComponents);
+  };
+
+  const onSortChange = (descriptor: SortDescriptor) => {
+    setSortDescriptor(descriptor);
+    sortComponents(descriptor);
+  };
+
   const renderTableRow = (component: openbis.Sample) => {
     return (
       <TableRow key={component.getCode()}>
         <TableCell>{component.getCode()}</TableCell>
+        <TableCell>{component.getProperty("NAME") || component.getCode()}</TableCell>
         <TableCell>{component.getType().getCode()}</TableCell>
       </TableRow>
     );
@@ -117,16 +206,14 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     const value = getSelectedCodes().length === 0 ?
       undefined :
       getSelectedCodes().map((item) => item).join(", ");
-    // dispatch the selected codes to the parent component
-    dispatch(getSelectedPermIds());
 
     return (
       <>
         <Textarea
           isDisabled
           minRows={1}
-          label="Selected components"
-          placeholder="Select components from the table below"
+          label={multivalued ? "Selected components" : "Selected component"}
+          placeholder={multivalued ? "Select components from the table below" : "Select a component from the table below"}
           value={value}
         />
         <div className="flex flex-col gap-4">
@@ -141,27 +228,29 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
               onClear={() => setCodeFilter("")}
             />
             <div className="flex gap-4">
-              <Dropdown>
-                <DropdownTrigger className="hidden md:flex">
-                  <Button endContent={<ChevronDownIcon className="text-small" />} variant="flat">
-                    Component Type
-                  </Button>
-                </DropdownTrigger>
-                <DropdownMenu
-                  disallowEmptySelection
-                  aria-label="Table Columns"
-                  closeOnSelect={false}
-                  selectionMode="multiple"
-                  selectedKeys={typeFilter}
-                  onSelectionChange={setTypeFilter}
-                >
-                  {componentTypes.map((type) => (
-                    <DropdownItem key={type}>
-                      {type}
-                    </DropdownItem>
-                  ))}
-                </DropdownMenu>
-              </Dropdown>
+              {(!objectType || objectType === "any") && (
+                <Dropdown>
+                  <DropdownTrigger className="hidden md:flex">
+                    <Button endContent={<ChevronDownIcon className="text-small" />} variant="flat">
+                      Component Type
+                    </Button>
+                  </DropdownTrigger>
+                  <DropdownMenu
+                    disallowEmptySelection={false}
+                    aria-label="Component Type Filter"
+                    closeOnSelect={false}
+                    selectionMode="multiple"
+                    selectedKeys={typeFilter}
+                    onSelectionChange={setTypeFilter}
+                  >
+                    {componentTypes.map((type) => (
+                      <DropdownItem key={type}>
+                        {type}
+                      </DropdownItem>
+                    ))}
+                  </DropdownMenu>
+                </Dropdown>
+              )}
             </div>
           </div>
         </div>
@@ -174,7 +263,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       <Table 
         isHeaderSticky
         isStriped
-        selectionMode="multiple" 
+        selectionMode={multivalued ? "multiple" : "single"} 
         aria-label="Component list"
         topContent={topContent}
         topContentPlacement="outside"
@@ -182,12 +271,14 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         onSelectionChange={setSelectedKeys}
         classNames={{
           wrapper: "max-h-[300px]",
+          tr: "cursor-pointer hover:bg-gray-150",
         }}
         onSortChange={onSortChange}
         sortDescriptor={sortDescriptor}
       >
         <TableHeader>
           <TableColumn key="name" allowsSorting>Name</TableColumn>
+          <TableColumn key="code" allowsSorting>Code</TableColumn>
           <TableColumn key="type" allowsSorting>Type</TableColumn>
         </TableHeader>
         <TableBody emptyContent={"No components found"}>

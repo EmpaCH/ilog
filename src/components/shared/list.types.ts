@@ -10,8 +10,8 @@ export interface Column {
 
 export interface TypeRow {
   permId: openbis.EntityTypePermId;
-  name: string;
   code: string;
+  prefix: string;
   collectionType: string;
 };
 

@@ -71,8 +71,10 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
   return (
     <Autocomplete
       label="Select object type"
-      selectedKey={selectedKey}
+      placeholder="Choose an object type..."
+      selectedKey={selectedKey || null}
       onSelectionChange={(val)=> onSelectionChange(val as string)}
+      allowsEmptyCollection={true}
     >
       {objectTypes.map((objectType) => {
         return (

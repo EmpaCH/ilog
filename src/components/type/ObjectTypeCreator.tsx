@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useReducer, useState } from "react";
+import React, { ChangeEvent, useReducer, useState, useMemo } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   Button,
@@ -15,6 +15,7 @@ import {
   EMPTY_TYPE_DEFINITION,
   COMPONENT_SCHEMA,
   INSTRUMENT_SCHEMA,
+  iLogGeneralInfoGroup,
 } from "../../apis/shared/common";
 import {
   componentCollectionID,
@@ -51,7 +52,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   mode,
   objectTypeCode,
 }) => {
-  // Initialize the useCreateObjectType hook and fetch object and property types
   const typeCreation = useCreateObjectType();
   const typeUpdate = useUpdateObjectType();
   const allPropertyTypesResult = useGetPropertyTypes();
@@ -59,12 +59,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const allObjectTypesResult = useGetAllObjectTypes();
   const navigate = useNavigate();
 
-  // Dispatch is used to update the state of the component
   const [state, dispatch] = useReducer(typeCreatorReducer, {
     schema: EMPTY_TYPE_DEFINITION,
   });
 
-  // Initialize the loading state and message state (initial represents whether the object and property types have been fetched)
   const [loading, setLoading] = useState(false);
   const [initial, setInitial] = useState(true);
   const [message, setMessage] = useState("");
@@ -72,12 +70,39 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const [messageColor, setMessageColor] = useState("success-message");
   const [objectBaseType, setObjectBaseType] = useState(EMPTY_TYPE_DEFINITION);
 
-  // Some basic property types are given based on the ilogbasetype we lock these properties
-  const lockedPropertyCodes = Object.entries(
-    objectBaseType.propertyTypes
-  ).flatMap(([_, assignment]) => assignment.map((el) => el.code));
+  const getLockedPropertiesSource = () => {
+    if (mode === "edit" && (!state.schema.baseType || state.schema.baseType === "")) {
+      // In edit mode with no parent - lock base type properties (COMPONENT or INSTRUMENT)
+      return state.schema.collectionType === instrumentCollectionID 
+        ? { propertyTypes: INSTRUMENT_SCHEMA }
+        : { propertyTypes: COMPONENT_SCHEMA };
+    }
+    
+    if (mode === "create" && (!objectBaseType.code || objectBaseType === EMPTY_TYPE_DEFINITION)) {
+      // In create mode with no parent selected - lock default properties based on collection type
+      if (state.schema.collectionType === instrumentCollectionID) {
+        return { propertyTypes: INSTRUMENT_SCHEMA };
+      } else if (state.schema.collectionType === componentCollectionID) {
+        return { propertyTypes: COMPONENT_SCHEMA };
+      }
+      // If no collection type is selected yet, don't lock anything
+      return { propertyTypes: {} };
+    }
+    
+    return objectBaseType;
+  };
 
-  const lockedGroups = Object.keys(objectBaseType.propertyTypes);
+  const lockedPropertiesSource = getLockedPropertiesSource();
+  const lockedPropertyCodes = useMemo(() => {
+    return Object.entries(lockedPropertiesSource.propertyTypes)
+      .flatMap(([_, assignment]) => assignment.map((el: any) => el.code));
+  }, [lockedPropertiesSource, state.schema.collectionType, objectBaseType]);
+
+  const lockedGroups = [...new Set([
+    ...Object.keys(lockedPropertiesSource.propertyTypes), 
+    "Components", 
+    iLogGeneralInfoGroup
+  ])];
 
   const objectTypes = allObjectTypesResult.isSuccess
     ? allObjectTypesResult.data.map((type) =>
@@ -94,11 +119,12 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const getCurrentFilteredTypes = () => {
     if (!state.schema.collectionType) return [];
     return objectTypes.filter((oj) => {
-      return oj.collectionType && oj.collectionType === state.schema.collectionType;
+      const matchesCollection = oj.collectionType && oj.collectionType === state.schema.collectionType;
+      const isNotCurrentType = mode === "create" || oj.code !== state.schema.code;
+      return matchesCollection && isNotCurrentType;
     });
   };
 
-  // If the object and property types have been fetched, set the object type template and property types
   if (
     allPropertyTypesResult.status == "success" &&
     allObjectTypesResult.status == "success" &&
@@ -159,11 +185,17 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       },
     });
 
+    // In edit mode, if the type has a parent, set objectBaseType to the parent
+    if (mode === "edit" && objectTypeTemplate.baseType) {
+      const parentType = objectTypes.find(type => type.code === objectTypeTemplate.baseType);
+      if (parentType) {
+        setObjectBaseType(parentType);
+      }
+    }
+
     if (objectTypeTemplate.collectionType) {
       filterObjectTypesByCollection(objectTypeTemplate.collectionType);
     }
-
-    // Set the initial state to false
     setInitial(false);
   }
 
@@ -193,6 +225,19 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       state.schema.propertyTypes.Components.length === 0
     ) {
       setMessage("An instrument or a type derived from INSTRUMENT must have at least one component.");
+      setMessageColor("error-message");
+      setShowMessage(true);
+      setLoading(false);
+      return;
+    }
+
+    if (
+      mode === "create" &&
+      state.schema.collectionType === instrumentCollectionID &&
+      (!state.schema.propertyTypes.Components || 
+       state.schema.propertyTypes.Components.length === 0)
+    ) {
+      setMessage("When creating a new instrument type, you must add at least one property to the COMPONENTS section.");
       setMessageColor("error-message");
       setShowMessage(true);
       setLoading(false);
@@ -496,7 +541,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
         <Divider className="my-4" />
         {showMessage && (
-          <div style={{ marginBottom: "15px", color: messageColor }}>
+          <div style={{ marginBottom: "15px" }} className={messageColor}>
             {message}
           </div>
         )}

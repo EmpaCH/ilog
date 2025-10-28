@@ -60,18 +60,15 @@ export type PropertyType = ReferencePropertyType | LocalPropertyTypeVariants;
 export function convertPropertyTypeToCreation(
   propertyType: PropertyType
 ): openbis.PropertyTypeCreation | null {
-  console.log("PropertyType init", propertyType);
   switch (propertyType.type) {
     case "reference": {
       return null;
     }
     case "local": {
       const creation = initializePropertyTypeCreation(propertyType);
-      console.log("PropertyTypeCreation", creation);
       switch (propertyType.dataType) {
         case "OBJECT": {
-          if (propertyType?.objectType !== null || propertyType?.objectType !== undefined) {   
-            console.log("ObjectType", propertyType.objectType);
+          if (propertyType.objectType) {
             creation.setSampleTypeId(
               new openbis.EntityTypePermId(
                 propertyType.objectType.toUpperCase(),

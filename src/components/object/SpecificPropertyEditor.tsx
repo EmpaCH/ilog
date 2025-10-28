@@ -32,6 +32,7 @@ interface SpecificPropertyEditorProps {
   propertyValue: string;
   mode: CreatorMode;
   onValueChange: (input: string | boolean | Date | string[]) => void;
+  currentObjectCode?: string;
 }
 
 const toOpenBISDate = (value: ZonedDateTime): string => {
@@ -47,6 +48,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   propertyDefinition,
   mode,
   onValueChange,
+  currentObjectCode,
 }) => {
   if (
     propertyDefinition.dataType == "VARCHAR" &&
@@ -86,11 +88,15 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       />
     );
   } else if (propertyDefinition.dataType == "OBJECT") {
-    return (
-      <ComponentListPropertyEditor
-        dispatch={onValueChange}
-      />
-    );
+        return (
+          <ComponentListPropertyEditor
+            dispatch={onValueChange}
+            objectType={propertyDefinition.objectType}
+            multivalued={propertyDefinition.multivalued}
+            value={propertyValue}
+            currentObjectCode={currentObjectCode}
+          />
+        );
   } else if (propertyDefinition.dataType == "BOOLEAN") {
     return (
       <Checkbox

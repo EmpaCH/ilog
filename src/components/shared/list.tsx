@@ -25,6 +25,7 @@ export const List = (props: {
   rows: Row[];
   defaultSortColumn: string;
   idColumn?: string;
+  searchColumn?: string;
   defaultSortDirection?: "ascending" | "descending";
   navigatePath: string;
   enableHistory?: boolean;
@@ -62,8 +63,9 @@ export const List = (props: {
   const filteredItems = React.useMemo(() => {
     let filteredItems: Row[] = [...props.rows];
     if (hasSearchFilter) {
+      const searchField = props.searchColumn || "name";
       filteredItems = filteredItems.filter((items) =>
-        items["name"]
+        items[searchField]
           ?.toString()
           .toLowerCase()
           .includes(filter[generalListFilter].toLowerCase())
@@ -146,7 +148,7 @@ export const List = (props: {
           <Input
             isClearable
             className="w-full sm:max-w-[44%]"
-            placeholder="Search by name"
+            placeholder={`Search by ${props.searchColumn || "name"}`}
             startContent={<SearchIcon />}
             value={filter[generalListFilter]}
             onClear={() => onClear()}

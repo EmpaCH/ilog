@@ -110,13 +110,17 @@ export async function updateObject(
   const updateObj = new openbis.SampleUpdate();
   updateObj.setSampleId(sampleId);
   for (const [key, value] of Object.entries(properties)) {
-    updateObj.setProperty(key, value);
+    if (Array.isArray(value) && value.length === 0) {
+      updateObj.setProperty(key, undefined);
+    } else if (Array.isArray(value) && value.length === 1) {
+      updateObj.setProperty(key, value[0]);
+    } else if (Array.isArray(value) && value.length > 1) {
+      updateObj.setProperty(key, value.join(','));
+    } else {
+      updateObj.setProperty(key, value);
+    }
   }
   await api.updateSamples([updateObj]);
-  // const tag = new openbis.TagCreation();
-  // tag.setCode("test");
-  // tag.setSampleIds([sampleId]);
-  // await api.createTags([tag]);
 }
 
 /**
