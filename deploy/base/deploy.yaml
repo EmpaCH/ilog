@@ -26,6 +26,6 @@ spec:
             limits:
               memory: "256Mi"
               cpu: "500m"
-          env:
-            - envFrom:
-              name: ilog-env
+            envFrom:
+                - configMapRef: 
+                  name: ilog-env
