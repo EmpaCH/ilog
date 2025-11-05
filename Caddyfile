@@ -5,15 +5,28 @@
 		format json
         level {$CADDY_LOG_LEVEL}
         }
+        
 }
 
-:80 {
-    root * /var/www/html
-    file_server
+(openbis) {
+    
     log default
-    handle_path /openbis/* {
-        
-        rewrite * /openbis{path}
-        reverse_proxy {$OPENBIS_URL}
+    handle /openbis/* {
+    reverse_proxy {$OPENBIS_URL} {
+        header_up Host {upstream_hostport}
+        }
     }
+    handle {
+        root * /var/www/html
+        file_server
+    }
+}
+
+localhost:443 {
+    import openbis
+}
+
+
+localhost:80 {
+    import openbis
 }
