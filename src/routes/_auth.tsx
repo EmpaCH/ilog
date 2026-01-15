@@ -57,10 +57,6 @@ function AuthLayout() {
               Home
             </Link>
             {" | "}
-            <Link to="/user_info" className="[&.active]:font-bold">
-              User Info
-            </Link>
-            {" | "}
             <Link to="/types" className="[&.active]:font-bold">
               Types
             </Link>
@@ -69,12 +65,12 @@ function AuthLayout() {
               Objects
             </Link>
             {" | "}
-            <Link to="/trashcan" className="[&.active]:font-bold">
-              Trashcan
-            </Link>
-            {" | "}
             <Link to="/logbook" className="[&.active]:font-bold">
               Logbook
+            </Link>
+            {" | "}
+            <Link to="/trashcan" className="[&.active]:font-bold">
+              Trashcan
             </Link>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useContext } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import openbis from '@openbis/openbis.esm';
 import { createObject } from './objectAPI';
 import { AuthContext } from '../../context/auth/authContext';
 import { useGetSpace } from "../space/useGetSpace";
@@ -36,7 +37,7 @@ export const useCreateObject = () => {
       if (!apiFacade) {
         throw new Error("API facade not initialized");
       }
-      return createObject(
+      await createObject(
         apiFacade,
         type,
         properties,
@@ -44,6 +45,17 @@ export const useCreateObject = () => {
         project.data.getPermId(),
         collection === componentCollectionID ? componentCollection.data.getPermId() : instrumentCollection.data.getPermId(),
       );
+      
+      // Query the newly created object to get its code
+      // Get all objects and return the code of the most recently created one
+      const sc = new openbis.SampleSearchCriteria();
+      sc.withExperiment().withCode().thatEquals(collection);
+      const fo = new openbis.SampleFetchOptions();
+      fo.withType();
+      const result = await apiFacade.searchSamples(sc, fo);
+      const objects = result.getObjects();
+      // Return the code of the last object (most recently created)
+      return objects.length > 0 ? objects[objects.length - 1].getCode() : "";
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });

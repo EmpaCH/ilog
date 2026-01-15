@@ -92,7 +92,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
                     state={history[timestamp]}
                     hiddenPropertyCodes={[
                       iLogID,
-                      iLogBaseTypesPropertyCode,
+                      // iLogBaseTypesPropertyCode,
                       "VALID_FROM",
                     ]}
                   />

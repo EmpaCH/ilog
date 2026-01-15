@@ -11,6 +11,7 @@ import {
   TimeInput,
   Radio,
   RadioGroup,
+  Input,
 } from "@heroui/react";
 import { AuthContext } from "../../context/auth/authContext";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
@@ -38,7 +39,6 @@ import {
   componentCollectionID,
   instrumentCollectionID,
 } from "../../apis/shared/environment";
-import { iLogBaseTypesPropertyCode } from "../../apis/shared/types";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
 import {
   PropertyTypesSchema,
@@ -48,7 +48,6 @@ import {
 import {
   now,
   getLocalTimeZone,
-  parseZonedDateTime,
   ZonedDateTime,
 } from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
@@ -80,8 +79,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   let [originalPropertyValues, setOriginalPropertyValues] = useState<{ [key: string]: any }>({});
 
   let [isValidFromSelected, setIsValidFromSelected] = useState(false);
-  let [minValidFrom, setMinValidFrom] = useState<ZonedDateTime | undefined>(undefined);
-  let [maxValidFrom, setMaxValidFrom] = useState<ZonedDateTime | undefined>(now(getLocalTimeZone()));
+  let [selectedComponentsByProperty, setSelectedComponentsByProperty] = useState<{ [propertyCode: string]: string[] }>({});
 
   const [state, dispatch] = useReducer(objectCreatorReducer, objectTemplate);
   const [localState, localDispatch] = useReducer(objectCreatorLocalReducer,
@@ -109,9 +107,9 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       const collectionType = metadata["collectionType"];
 
       if (state.collection === instrumentCollectionID) {
-        return collectionType === "INSTRUMENT_COLLECTION";
+        return collectionType === instrumentCollectionID;
       } else if (state.collection === componentCollectionID) {
-        return collectionType === "COMPONENT_COLLECTION";
+        return collectionType === componentCollectionID;
       }
 
       return false;
@@ -121,7 +119,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   useEffect(() => {
     if (!isValidFromSelected) {
       const interval = setInterval(() => {
-        setMaxValidFrom(now(getLocalTimeZone()));
         dispatch({ type: "SET_VALID_FROM", payload: now(getLocalTimeZone()) })
       }, 1000);
       return () => clearInterval(interval);
@@ -132,6 +129,10 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     type: string,
     mode?: CreatorMode,
   ) => {
+    if (!objectTypes.data || objectTypes.status !== "success") {
+      return;
+    }
+
     const selectedType = objectTypes.data?.find(
       (it) => it.code === type
     );
@@ -150,8 +151,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
 
       if (mode === "create") {
         const propertyValues = Object.entries(objectTypeTemplate.propertyTypes).reduce(
-          (acc, [group, propertyTypesGroup]) => {
-            propertyTypesGroup.forEach((property) => {
+          (acc, [_group, propertyTypesGroup]) => {
+            propertyTypesGroup.forEach((property: any) => {
               acc[property.code] = undefined;
             });
             return acc;
@@ -177,14 +178,33 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         const latestKey = Object.keys(reconstructedHistory).pop();
         const latestSampleState = latestKey ? reconstructedHistory[latestKey] : [];
         const objectTemplate = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, latestSampleState)
+        
+        // Ensure LOCATION property is set from current sample properties if not in history
+        if (!objectTemplate.propertyValues["LOCATION"] && openbisSample.getProperty("LOCATION")) {
+          objectTemplate.propertyValues["LOCATION"] = openbisSample.getProperty("LOCATION");
+        }
+        
         setObjectTemplate(objectTemplate);
         setOriginalPropertyValues({ ...objectTemplate.propertyValues });
-        setMinValidFrom(parseZonedDateTime(Object.keys(reconstructedHistory)[0]));
         dispatch({ type: "RESET", payload: objectTemplate });
-        createObjectSchemaBasedOnType(objectTemplate.type);
       }
     }
   }, [objectCode, objectResult.status, objectResult.data]);
+
+  // Load schema after objectTypes query is ready
+  useEffect(() => {
+    if (mode === "edit" && state.type && objectTypes.status === "success" && allPropertyTypesResult.status === "success") {
+      createObjectSchemaBasedOnType(state.type, mode);
+    }
+  }, [state.type, objectTypes.status, allPropertyTypesResult.status, mode]);
+
+  // Ensure objectTypesFilteredByCollection is updated when objectTypes loads
+  useEffect(() => {
+    if (mode === "edit" && state.type && objectTypes.status === "success") {
+      // Force a re-render by triggering objectTypesFilteredByCollection calculation
+      // The useMemo will automatically recalculate
+    }
+  }, [objectTypes.status, objectTypes.data]);
 
   const onLoadValidFrom = (newValidFrom: ZonedDateTime | null) => {
     const keys = Object.keys(reconstructedHistory);
@@ -202,6 +222,27 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       const objectState = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, previousState, newValidFrom);
       dispatch({ type: "RESET", payload: objectState });
       createObjectSchemaBasedOnType(objectTemplate.type);
+    }
+  };
+
+  const updateComponentLocations = async (instrumentPermId: string) => {
+    if (!Object.keys(selectedComponentsByProperty).length || !apiFacade) {
+      return;
+    }
+
+    try {
+      for (const permIds of Object.values(selectedComponentsByProperty)) {
+        for (const permId of permIds) {
+          const sampleId = new openbis.SamplePermId(permId);
+          const updateObj = new openbis.SampleUpdate();
+          updateObj.setSampleId(sampleId);
+          updateObj.setProperty("LOCATION", instrumentPermId);
+          await apiFacade.updateSamples([updateObj]);
+        }
+      }
+    } catch (err: any) {
+      console.error("Error updating component locations:", err);
+      throw err;
     }
   };
 
@@ -226,8 +267,21 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           onError: (err) => {
             onError(err.message);
           },
-          onSuccess: () => {
-            onSuccess("Instrument updated successfully! Component locations have been updated.");
+          onSuccess: async () => {
+            // If we have selected components, update their locations
+            if (Object.keys(selectedComponentsByProperty).length > 0) {
+              try {
+                const instrumentPermId = openbisSample?.getPermId().getPermId();
+                if (instrumentPermId) {
+                  await updateComponentLocations(instrumentPermId);
+                }
+                onSuccess("Instrument updated successfully! Component locations have been updated.");
+              } catch (err: any) {
+                onError("Instrument updated but failed to update component locations: " + err.message);
+              }
+            } else {
+              onSuccess("Instrument updated successfully!");
+            }
             setTimeout(() => {
               onBack();
             }, 2000);
@@ -266,9 +320,34 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         onError: (err) => {
           onError(err.message);
         },
-        onSuccess: () => {
-          onSuccess("Object created successfully!");
-          onClear(2000);
+        onSuccess: async (newObjectCode) => {
+          // If this is an instrument and we have selected components, update their locations
+          if (state.collection === instrumentCollectionID && Object.keys(selectedComponentsByProperty).length > 0) {
+            try {
+              // Get the newly created instrument's permId
+              const sc = new openbis.SampleSearchCriteria();
+              sc.withCode().thatEquals(newObjectCode);
+              const fo = new openbis.SampleFetchOptions();
+              fo.withType();
+              
+              const instrumentObjects = await apiFacade?.searchSamples(sc, fo);
+              const instrument = instrumentObjects?.getObjects()[0];
+              
+              if (instrument) {
+                const instrumentPermId = instrument.getPermId().getPermId();
+                await updateComponentLocations(instrumentPermId);
+              }
+
+              onSuccess("Object created successfully! Component locations have been updated.");
+              onClear(2000);
+            } catch (err: any) {
+              onError("Object created but failed to update component locations: " + err.message);
+              onClear(2000);
+            }
+          } else {
+            onSuccess("Object created successfully!");
+            onClear(2000);
+          }
         },
       });
     }
@@ -373,27 +452,36 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           <Radio value={instrumentCollectionID}>Instrument</Radio>
           <Radio value={componentCollectionID}>Component</Radio>
         </RadioGroup>
-        <Autocomplete
-          isRequired
-          isDisabled={mode === "edit"}
-          id="type"
-          label="Type"
-          placeholder="Type to search..."
-          className="form-field"
-          defaultItems={[]}
-          items={objectTypesFilteredByCollection}
-          onInputChange={(value) => {
-            localDispatch({ type: "SET_SEARCH_TERM", payload: value });
-          }}
-          selectedKey={state.type}
-          onSelectionChange={(value) => {
-            const newType = value?.toString() ?? "";
-            dispatch({ type: "SET_TYPE", payload: newType });
-            createObjectSchemaBasedOnType(newType, "create");
-          }}
-        >
-          {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
-        </Autocomplete>
+        {mode === "edit" ? (
+          <Input
+            isReadOnly
+            id="type"
+            label="Type"
+            value={state.type}
+            className="form-field"
+          />
+        ) : (
+          <Autocomplete
+            isRequired
+            id="type"
+            label="Type"
+            placeholder="Type to search..."
+            className="form-field"
+            defaultItems={objectTypesFilteredByCollection}
+            items={objectTypesFilteredByCollection}
+            onInputChange={(value) => {
+              localDispatch({ type: "SET_SEARCH_TERM", payload: value });
+            }}
+            selectedKey={state.type || ""}
+            onSelectionChange={(value) => {
+              const newType = value?.toString() ?? "";
+              dispatch({ type: "SET_TYPE", payload: newType });
+              createObjectSchemaBasedOnType(newType, "create");
+            }}
+          >
+            {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
+          </Autocomplete>
+        )}
         <Divider className="my-4" />
         {state.type !== "" ? (
           <ObjectPropertyEditor
@@ -402,10 +490,18 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             dispatch={dispatch}
             hiddenPropertyCodes={[
               iLogID,
-              iLogBaseTypesPropertyCode,
+              // iLogBaseTypesPropertyCode,
               "VALID_FROM",
             ]}
             currentObjectCode={objectCode}
+            onSelectedComponentsChange={(propertyCode, permIds) => {
+              setSelectedComponentsByProperty((prev) => ({
+                ...prev,
+                [propertyCode]: permIds,
+              }));
+            }}
+            currentInstrumentPermId={openbisSample?.getPermId().getPermId()}
+            isComponent={state.collection === componentCollectionID}
           />) : (
           <p className="text-gray-500">
             Please select a type.

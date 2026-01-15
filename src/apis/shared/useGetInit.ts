@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useGetCollection } from "../collection/useGetCollection";
-import { useGetObject } from "../object/useGetObject";
+// import { useGetObject } from "../object/useGetObject";
 import { useGetProject } from "../project/useGetProject";
 import { useGetSpace } from "../space/useGetSpace";
 import { useGetObjectType } from "../type/useGetObjectType";
@@ -10,7 +10,7 @@ import {
   INSTRUMENT_TYPE_DEFINITION,
   LOGBOOK_ENTRY_TYPE_DEFINITION,
   LOGBOOK_ENTRY_TYPES,
-  iLogBaseTypesVocabularyID,
+  // iLogBaseTypesVocabularyID,
 } from "./types";
 
 export const useGetInit = () => {
@@ -51,7 +51,7 @@ export const useGetInit = () => {
   const collectionComponentResult = useGetCollection(labID, iLogID, componentCollectionID);
   const collectionInstrumentResult = useGetCollection(labID, iLogID, instrumentCollectionID);
   const collectionLogbookResult = useGetCollection(labID, iLogID, logbookCollectionID);
-  const vocabularyResult = useGetObject(iLogBaseTypesVocabularyID);
+  // const vocabularyResult = useGetObject(iLogBaseTypesVocabularyID);
 
   // Check if any dependency is still loading
   const isLoading = 
@@ -60,8 +60,8 @@ export const useGetInit = () => {
     projectResult.isLoading ||
     collectionComponentResult.isLoading ||
     collectionInstrumentResult.isLoading ||
-    collectionLogbookResult.isLoading ||
-    vocabularyResult.isLoading;
+    collectionLogbookResult.isLoading;
+    // vocabularyResult.isLoading;
 
   return useQuery({
     queryKey: ["INIT_ILOG"],

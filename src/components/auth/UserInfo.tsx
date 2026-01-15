@@ -1,6 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-import { useContext, useEffect, useMemo } from "react";
-import { AuthContext } from "../../context/auth/authContext";
 import openbis from "@openbis/openbis.esm";
 import {
   Table,
@@ -10,8 +7,6 @@ import {
   TableRow,
   TableCell,
 } from "@heroui/react";
-
-import { useGetUser } from "../../apis/user/useGetUser";
 import { useGetCurrentUser } from "../../apis/user/useGetCurrentUser";
 
 const renderTableRow = (person: openbis.Person) => {
@@ -28,7 +23,6 @@ const renderTableRow = (person: openbis.Person) => {
 
 const UserInfo = () => {
   const res = useGetCurrentUser();
-
 
   if (res.isLoading) {
     return <div>Loading...</div>;
@@ -55,4 +49,4 @@ const UserInfo = () => {
   );
 };
 
-export default UserInfo;
+export { UserInfo };

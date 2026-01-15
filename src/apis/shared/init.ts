@@ -1,15 +1,17 @@
-import openbis from "@openbis/openbis.esm";
-import * as common from "./common";
-import { initProperties } from "./initElnSettings";
-import { createPropertyType } from "../propertyType/propertyTypeAPI";
-import { createVocabulary, getVocabulary } from "../vocabulary/vocabularyAPI";
-import { useCreateObjectType } from "../type/useCreateObjectType";
+// import openbis from "@openbis/openbis.esm";
+// import * as common from "./common";
+// import { initProperties } from "./initElnSettings";
+// import { createPropertyType } from "../propertyType/propertyTypeAPI";
+// import { createVocabulary, getVocabulary } from "../vocabulary/vocabularyAPI";
+// import { useCreateObjectType } from "../type/useCreateObjectType";
+// import { getIsInitializing, getCurrentLabID } from "./environment";
 
 /**
  * Creates the iLog property type if it does not already exist.
  * This property is used to identify iLog entities.
  * @param api - The OpenBIS JavaScript facade instance.
  */
+/*
 export async function createIlogTypeProperty(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<void> {
@@ -30,12 +32,14 @@ export async function createIlogTypeProperty(
     console.log('iLog property type already exists.');
   }
 }
+*/
 
 /**
  * Creates the iLog logbook property type if it does not already exist.
  * This property is used to identify iLog logbook entities.
  * @param api - The OpenBIS JavaScript facade instance.
  */
+/*
 export async function createIlogLogbookTypeProperty(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<void> {
@@ -55,11 +59,13 @@ export async function createIlogLogbookTypeProperty(
     console.log('iLog logbook property type already exists.');
   }
 }
+*/
 
 /**
  * Creates the iLog type variants vocabulary if it does not already exist.
  * @param api - The OpenBIS JavaScript facade instance.
  */
+/*
 export async function createIlogTypeVariants(
   api: openbis.OpenBISJavaScriptFacade
 ): Promise<void> {
@@ -70,28 +76,37 @@ export async function createIlogTypeVariants(
   }
   console.log("ILog type variants vocabulary already exists.");
 }
+*/
 
 /**
  * Creates the ELN settings properties if they do not already exist.
+ * Only creates settings during initialization mode to avoid overriding existing lab configurations.
  * @param api - The OpenBIS JavaScript facade instance.
  */
+/*
 export async function createElnSettingsProperties(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<void> {
   const res = await common.getElnSettings(api);
   if (!res[common.generalElnSettings].getProperty(common.propertyElnSettings)) {
-    await common.updateElnSettings(api, initProperties);
-    console.log("Eln settings initialized.");
+    if (getIsInitializing()) {
+      await common.updateElnSettings(api, initProperties);
+      console.log("Eln settings initialized.");
+    } else {
+      console.log("Eln settings not found. (Not updating - existing lab instance)");
+    }
   }
   else {
     console.log("Eln settings already defined.");
   }
 }
+*/
 
 /**
  * Creates the iLog base type property if it does not already exist.
  * @param api - The OpenBIS JavaScript facade instance.
  */
+/*
 export async function createIlogBaseTypeProperty(
   api: openbis.OpenBISJavaScriptFacade
 ): Promise<void> {
@@ -107,35 +122,46 @@ export async function createIlogBaseTypeProperty(
     console.log("iLog base type property already exists.");
   }
 }
+*/
 
 /**
  * Creates the inventory space if it does not already exist.
+ * Only modifies ELN settings during initialization mode to avoid overriding existing lab configurations.
  * @param api - The OpenBIS JavaScript facade instance.
  * @returns The ID of the created or existing space.
  */
+/*
 export async function createSpace(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<openbis.ISpaceId> {
+  const labID = getCurrentLabID();
   const sc = new openbis.SpaceSearchCriteria();
-  sc.withCode().thatEquals(common.labID);
+  sc.withCode().thatEquals(labID);
   const fo = new openbis.SpaceFetchOptions();
   const result = await api.searchSpaces(sc, fo);
   if (result.getTotalCount() == 0) {
     const newSpace = new openbis.SpaceCreation();
-    newSpace.setCode(common.labID);
+    newSpace.setCode(labID);
     const result = await api.createSpaces([newSpace]);
-    const settings = await common.parseElnSettingsProperties(api);
-    settings.inventorySpaces = [
-      ...settings.inventorySpaces,
-      common.labID
-    ];
-    await common.updateElnSettings(api, settings);
-    console.log("Inventory space initialized.");
+    
+    // Only update ELN settings if we're in initialization mode
+    if (getIsInitializing()) {
+      const settings = await common.parseElnSettingsProperties(api);
+      settings.inventorySpaces = [
+        ...settings.inventorySpaces,
+        labID
+      ];
+      await common.updateElnSettings(api, settings);
+      console.log("Inventory space initialized and added to ELN settings.");
+    } else {
+      console.log("Inventory space created. (Not updating ELN settings - existing lab instance)");
+    }
     return result[0];
   }
-  console.log(`Inventory space ${common.labID} already exists.`);
+  console.log(`Inventory space ${labID} already exists.`);
   return result.getObjects()[0].getPermId();
 }
+*/
 
 /**
  * Creates the project within the specified space if it does not already exist.
@@ -143,13 +169,15 @@ export async function createSpace(
  * @param spaceId - The ID of the space where the project will be created.
  * @returns The ID of the created or existing project.
  */
+/*
 export async function createProject(
   api: openbis.OpenBISJavaScriptFacade,
   spaceId: openbis.ISpaceId,
 ): Promise<openbis.IProjectId> {
+  const labID = getCurrentLabID();
   const sc = new openbis.ProjectSearchCriteria();
   sc.withCode().thatEquals(common.iLogID);
-  sc.withSpace().withCode().thatEquals(common.labID);
+  sc.withSpace().withCode().thatEquals(labID);
   const fo = new openbis.ProjectFetchOptions();
   const result = await api.searchProjects(sc, fo);
   if (result.getTotalCount() == 0) {
@@ -160,9 +188,10 @@ export async function createProject(
     console.log("Project initialized.");
     return result[0];
   }
-  console.log(`Project ${common.iLogID} already exists for lab ${common.labID}.`);
+  console.log(`Project ${common.iLogID} already exists for lab ${labID}.`);
   return result.getObjects()[0].getPermId();
 }
+*/
 
 /**
  * Creates the collection within the specified project if it does not already exist.
@@ -170,21 +199,25 @@ export async function createProject(
  * @param projectId - The ID of the project where the collection will be created.
  * @returns The created or existing collection.
  */
+/*
 export async function createComponentCollection(
   api: openbis.OpenBISJavaScriptFacade,
   projectId: openbis.IProjectId,
 ): Promise<openbis.Experiment> {
+  const labID = getCurrentLabID();
   const sc = new openbis.ExperimentSearchCriteria();
   sc.withCode().thatEquals(common.componentCollectionID);
   sc.withProject().withCode().thatEquals(common.iLogID);
-  sc.withProject().withSpace().withCode().thatEquals(common.labID);
+  sc.withProject().withSpace().withCode().thatEquals(labID);
   const fo = new openbis.ExperimentFetchOptions();
   fo.withProject().withSpace();
   const result = await api.searchExperiments(sc, fo);
+  console.log(result);
   if (result.getTotalCount() == 0) {
     const newCollection = new openbis.ExperimentCreation();
     newCollection.setTypeId(new openbis.EntityTypePermId("COLLECTION"));
     newCollection.setCode(common.componentCollectionID);
+    newCollection.setProperties({ "NAME": common.componentCollectionName });
     newCollection.setProjectId(projectId);
     const newExp = await api.createExperiments([newCollection]);
     const sc = new openbis.ExperimentSearchCriteria();
@@ -193,9 +226,10 @@ export async function createComponentCollection(
     console.log("Collection initialized.");
     return result.getObjects()[0];
   }
-  console.log(`Collection ${common.componentCollectionID} already exists in project ${common.iLogID} for lab ${common.labID}.`);
+  console.log(`Collection ${common.componentCollectionID} already exists in project ${common.iLogID} for lab ${labID}.`);
   return result.getObjects()[0];
 }
+*/
 
 /**
  * Creates the collection within the specified project if it does not already exist.
@@ -203,6 +237,7 @@ export async function createComponentCollection(
  * @param projectId - The ID of the project where the collection will be created.
  * @returns The created or existing collection.
  */
+/*
 export async function createInstrumentCollection(
   api: openbis.OpenBISJavaScriptFacade,
   projectId: openbis.IProjectId,
@@ -229,11 +264,13 @@ export async function createInstrumentCollection(
   console.log(`Collection ${common.instrumentCollectionID} already exists in project ${common.iLogID} for lab ${common.labID}.`);
   return result.getObjects()[0];
 }
+*/
 
 /**
  * Initializes the iLog environment by creating necessary property types, vocabularies, spaces, projects, and collections.
  * @param api - The OpenBIS JavaScript facade instance.
  */
+/*
 export async function initIlog(
   api: openbis.OpenBISJavaScriptFacade,
 ): Promise<void> {
@@ -253,3 +290,4 @@ export async function initIlog(
   common.env.setEnv(componentCollection, instrumentCollection, instrumentCollection.getProject(), instrumentCollection.getProject().getSpace());
   console.log("App environment initialized.");
 }
+*/

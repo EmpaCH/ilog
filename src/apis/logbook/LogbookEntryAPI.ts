@@ -1,18 +1,20 @@
 import openbis from "@openbis/openbis.esm";
-import { iLogID, iLogLogbookID, labID, logbookCollectionID } from "../shared/common";
+import { iLogID, iLogLogbookID, logbookCollectionID } from "../shared/common";
 
 /**
  * Get all logbook entries from the iLog inventory Equipment collection.
  * @param api - The OpenBIS JavaScript facade instance.
+ * @param labID - The lab ID to search in.
  * @returns A promise that resolves to an array of Sample objects.
  */
 export async function getAllLogbookEntries(
   api: openbis.OpenBISJavaScriptFacade,
+  labID: string,
 ): Promise<openbis.Sample[]> {
   const sc = new openbis.SampleSearchCriteria();
   sc.withSpace().withCode().thatEquals(labID);
   sc.withProject().withCode().thatEquals(iLogID);
-  sc.withExperiment().withCode().thatEquals(logbookCollectionID);
+  sc.withExperiment().withCode().thatEquals(logbookCollectionID.toUpperCase());
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
   fo.withProperties();

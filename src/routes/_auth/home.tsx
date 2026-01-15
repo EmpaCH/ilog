@@ -1,11 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useGetCurrentUser } from "../../apis/user/useGetCurrentUser";
 import { InitComponent } from "../../components/auth/Init";
-import { useState } from "react";
+import { UserInfo } from "../../components/auth/UserInfo";
+import { ImportProgress } from "../../components/auth/ImportProgress";
+import { useState, useContext, useRef } from "react";
+import { Divider, Button } from "@heroui/react";
+import { AuthContext } from "../../context/auth/authContext";
+import { useExportImportObjectTypes } from "../../apis/type/useExportImportObjectTypes";
 
 export const Route = createFileRoute("/_auth/home")({
   component: () => {
     const [showInitModal, setShowInitModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importProgress, setImportProgress] = useState<string[]>([]);
+    const [importStats, setImportStats] = useState<{
+      success: number;
+      skipped: number;
+      failed: number;
+    } | null>(null);
+    const { apiFacade } = useContext(AuthContext);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const { exportObjectTypes, importObjectTypes } =
+      useExportImportObjectTypes({ apiFacade });
     const {
       data: currentUser,
       isLoading,
@@ -16,8 +32,42 @@ export const Route = createFileRoute("/_auth/home")({
     
     const handleInitializeWorkspace = () => {
       console.log("Initializing workspace...");
-      // Use InitComponent which should be a popup - display the initialization progress
       setShowInitModal(true);
+    };
+
+    const handleExportObjectTypes = async () => {
+      try {
+        await exportObjectTypes();
+      } catch (err) {
+        console.error("Export failed:", err);
+      }
+    };
+
+    const handleImportObjectTypes = async (
+      event: React.ChangeEvent<HTMLInputElement>
+    ) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setShowImportModal(true);
+      setImportProgress(["Starting import..."]);
+      setImportStats(null);
+
+      try {
+        const stats = await importObjectTypes(file, (message: string) => {
+          setImportProgress((prev) => [...prev, message]);
+        });
+        setImportStats(stats);
+      } catch (err) {
+        setImportProgress((prev) => [
+          ...prev,
+          `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
+        ]);
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
     };
 
     if (isLoading) {
@@ -31,15 +81,45 @@ export const Route = createFileRoute("/_auth/home")({
 
       return (
         <>
-          <h2>Welcome, {currentUser?.[0]?.getUserId?.() ?? "User"} &#128075;</h2>
-            <button 
-            onClick={handleInitializeWorkspace}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 disabled:hover:bg-gray-400 disabled:cursor-not-allowed"
-            disabled={showInitModal} // Disable button if init modal was shown
+          <h1>Welcome, {currentUser?.[0]?.getUserId?.() ?? "User"} 👋</h1>
+          <div className="flex gap-4 items-center justify-center my-8">
+            <Button
+              color="primary"
+              onPress={handleInitializeWorkspace}
+              size="lg"
+              isDisabled={showInitModal} // Disable button if init modal was shown
             >
               Initialize Workspace
-            </button>
+            </Button>
+            <Button
+              onPress={handleExportObjectTypes}
+              size="lg"
+            >
+              Export Object Types
+            </Button>
+            <Button
+              onPress={() => fileInputRef.current?.click()}
+              size="lg"
+            >
+              Import Object Types
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportObjectTypes}
+              style={{ display: "none" }}
+            />
+          </div>
           {showInitModal && <InitComponent show={showInitModal} />}
+          <ImportProgress
+            isOpen={showImportModal}
+            onOpenChange={setShowImportModal}
+            progress={importProgress}
+            stats={importStats}
+          />
+          <Divider className="my-8" />
+          <UserInfo />
         </>
       );
     }

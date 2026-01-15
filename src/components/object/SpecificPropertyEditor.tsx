@@ -19,6 +19,7 @@ import {
 } from "../../apis/propertyType/commonPropertyType";
 import { ImagePropertyEditor } from "../widgets/ImagePropertyEditor";
 import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
+import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
 import { Editor } from "@monaco-editor/react";
 import { ComponentListPropertyEditor } from "./ComponentListPropertyEditor";
 
@@ -33,6 +34,10 @@ interface SpecificPropertyEditorProps {
   mode: CreatorMode;
   onValueChange: (input: string | boolean | Date | string[]) => void;
   currentObjectCode?: string;
+  propertyCode?: string;
+  onSelectedComponentsChange?: (permIds: string[]) => void;
+  currentInstrumentPermId?: string;
+  isComponent?: boolean;
 }
 
 const toOpenBISDate = (value: ZonedDateTime): string => {
@@ -49,7 +54,57 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   mode,
   onValueChange,
   currentObjectCode,
+  propertyCode,
+  onSelectedComponentsChange,
+  currentInstrumentPermId,
+  isComponent,
 }) => {
+  // For LOCATION property - always show disabled field
+  if (propertyCode === "LOCATION") {
+    if (isComponent) {
+      // For components: show the attached instrument name/code
+      let instrumentPermId: string | undefined;
+      
+      if (typeof propertyValue === "string" && propertyValue.trim() !== "") {
+        instrumentPermId = propertyValue;
+      } else if (Array.isArray(propertyValue) && (propertyValue as any[]).length > 0 && typeof (propertyValue as any[])[0] === "string") {
+        instrumentPermId = (propertyValue as any[])[0];
+      }
+
+      const instrumentQuery = useGetObjectByPermId(instrumentPermId);
+      
+      let displayValue = "";
+      if (instrumentQuery.isLoading) {
+        displayValue = "Loading...";
+      } else if (instrumentQuery.data) {
+        displayValue = instrumentQuery.data.getProperty("NAME") || instrumentQuery.data.getCode() || "";
+      }
+
+      return (
+        <Input
+          isDisabled
+          id={propertyDefinition.code}
+          aria-label={propertyDefinition.code}
+          placeholder="Not attached to any instrument"
+          value={displayValue}
+          type="text"
+        />
+      );
+    } else {
+      // For instruments: show that it's managed automatically
+      return (
+        <Input
+          isDisabled
+          id={propertyDefinition.code}
+          aria-label={propertyDefinition.code}
+          placeholder="Managed automatically through component attachment"
+          value=""
+          type="text"
+        />
+      );
+    }
+  }
+
   if (
     propertyDefinition.dataType == "VARCHAR" &&
     propertyDefinition.metadata?.[CUSTOM_WIDGET_KEY] === "IMAGE"
@@ -95,6 +150,9 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
             multivalued={propertyDefinition.multivalued}
             value={propertyValue}
             currentObjectCode={currentObjectCode}
+            propertyCode={propertyCode}
+            onSelectedComponentsChange={onSelectedComponentsChange}
+            currentInstrumentPermId={currentInstrumentPermId}
           />
         );
   } else if (propertyDefinition.dataType == "BOOLEAN") {

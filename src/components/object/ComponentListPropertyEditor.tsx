@@ -27,6 +27,9 @@ interface ComponentListPropertyEditorProps {
   multivalued?: boolean;
   value?: string | string[] | any;
   currentObjectCode?: string;
+  propertyCode?: string;
+  onSelectedComponentsChange?: (permIds: string[]) => void;
+  currentInstrumentPermId?: string;
 }
 
 export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorProps> = ({
@@ -35,6 +38,8 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   multivalued,
   value,
   currentObjectCode,
+  onSelectedComponentsChange,
+  currentInstrumentPermId,
 }) => {
   const getObjectsResult = useGetObjects();
   const lastDispatchedRef = useRef<string>('');
@@ -84,10 +89,23 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           component.getCode() !== currentObjectCode
         );
       }
-      filteredData = filteredData.filter((component) => {
-        const location = component.getProperty("LOCATION");
-        return !location || location === "" || location === null || location === undefined;
-      });
+      
+      // Filter based on LOCATION property
+      if (currentInstrumentPermId) {
+        // Edit mode: show components attached to this instrument + available components
+        // Hide components attached to other instruments
+        filteredData = filteredData.filter((component) => {
+          const location = component.getProperty("LOCATION");
+          // Include if: no location (available) OR location is current instrument
+          return !location || location === "" || location === null || location === undefined || location === currentInstrumentPermId;
+        });
+      } else {
+        // Create mode: only show available components (not attached to any instrument)
+        filteredData = filteredData.filter((component) => {
+          const location = component.getProperty("LOCATION");
+          return !location || location === "" || location === null || location === undefined;
+        });
+      }
 
       setAllComponents(filteredData);
       setComponents(filteredData);
@@ -98,7 +116,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       // Remove duplicates
       setComponentTypes([...new Set(componentTypes)]);
     }
-  }, [getObjectsResult.status, getObjectsResult.data, objectType, currentObjectCode]);
+  }, [getObjectsResult.status, getObjectsResult.data, objectType, currentObjectCode, currentInstrumentPermId]);
 
   useMemo(() => {
     if (allComponents.length === 0) return;
@@ -133,8 +151,9 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       return;
     }
     dispatch(selectedPermIds);
+    onSelectedComponentsChange?.(selectedPermIds);
     lastDispatchedRef.current = currentValue;
-  }, [selectedPermIds, dispatch]);
+  }, [selectedPermIds, dispatch, onSelectedComponentsChange]);
 
   useEffect(() => {
     if (!value || !Array.isArray(components) || components.length === 0) {
@@ -262,7 +281,6 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     <>
       <Table 
         isHeaderSticky
-        isStriped
         selectionMode={multivalued ? "multiple" : "single"} 
         aria-label="Component list"
         topContent={topContent}

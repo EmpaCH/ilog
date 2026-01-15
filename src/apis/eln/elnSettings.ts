@@ -1,7 +1,7 @@
 import openbis from "@openbis/openbis.esm";
 
 // SampleType settings for object types
-export const propertyElnSettings = '$ELN_SETTINGS';
+export const propertyElnSettings = "ELN_SETTINGS";
 export const generalElnSettings = "/ELN_SETTINGS/GENERAL_ELN_SETTINGS";
 
 // ELN Settings definitions

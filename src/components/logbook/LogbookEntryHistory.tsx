@@ -92,7 +92,7 @@ export const LogbookEntryHistory: React.FC<LogbookEntryHistoryProps> = ({ logboo
                     state={history[timestamp]}
                     hiddenPropertyCodes={[
                       iLogID,
-                      iLogBaseTypesPropertyCode,
+                      // iLogBaseTypesPropertyCode,
                       "VALID_FROM",
                     ]}
                   />

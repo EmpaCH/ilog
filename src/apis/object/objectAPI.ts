@@ -1,5 +1,6 @@
 import openbis from "@openbis/openbis.esm";
-import { iLogID, labID, componentCollectionID, instrumentCollectionID } from "../shared/common";
+import { iLogID } from "../shared/common";
+import { componentCollectionID, instrumentCollectionID } from "../shared/environment";
 
 // TODO
 // 1.Look for templates in the settings
@@ -12,10 +13,12 @@ import { iLogID, labID, componentCollectionID, instrumentCollectionID } from "..
 /**
  * Get all objects from the iLog inventory Equipment collection.
  * @param api - The OpenBIS JavaScript facade instance.
+ * @param labID - The lab ID to search in.
  * @returns A promise that resolves to an array of Sample objects.
  */
 export async function getObjects(
   api: openbis.OpenBISJavaScriptFacade,
+  labID: string,
 ): Promise<openbis.Sample[]> {
   const sc = new openbis.SampleSearchCriteria();
   sc.withSpace().withCode().thatEquals(labID);
@@ -67,6 +70,21 @@ export async function getObject(
 
   const result = await api.searchSamples(sc, fo);
   return result.getObjects();
+}
+
+export async function getObjectByPermId(
+  api: openbis.OpenBISJavaScriptFacade,
+  permId: string,
+): Promise<openbis.Sample | null> {
+  const sc = new openbis.SampleSearchCriteria();
+  sc.withId().thatEquals(new openbis.SamplePermId(permId));
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  fo.withProperties();
+
+  const result = await api.searchSamples(sc, fo);
+  const objects = result.getObjects();
+  return objects.length > 0 ? objects[0] : null;
 }
 
 /**
