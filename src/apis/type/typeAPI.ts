@@ -162,20 +162,27 @@ export async function updateObjectType(
   // Then update the existing property types 
   const updatePropOps = convertPropertyTypesSchemaToUpdateOperations(
     otd.propertyTypes as PropertyTypesSchema, existingPropertyTypes);
+  console.log("Update property operations:", updatePropOps);
+  console.log("Update ops length:", updatePropOps.length);
   if (updatePropOps.length > 0) {
     const propertyUpdateOperation = new openbis.UpdatePropertyTypesOperation(updatePropOps);
     await api.executeOperations([propertyUpdateOperation], props);
+    console.log("Property types updated successfully");
   }
 
   // Finally update the object type
   const updateOps = convertObjectTypeDefinitionToUpdateOperations(
     otd, existingObjectTypes);
+  console.log("Update object type operations:", updateOps);
+  console.log("Update object ops length:", updateOps.length);
   if (updateOps.length > 0) {
     const sampleTypeUpdateOperation = new openbis.UpdateSampleTypesOperation(updateOps);
     await api.executeOperations([sampleTypeUpdateOperation], props);
+    console.log("Object type updated successfully");
   }
 
   await createObjectTypeSettingsDefinition(api, otd.code);
+  console.log("Update complete for type:", otd.code);
 }
 
 /**

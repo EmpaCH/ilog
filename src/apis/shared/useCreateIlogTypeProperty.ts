@@ -2,7 +2,6 @@ import { useMutation } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { useGetPropertyTypes } from "../propertyType/useGetPropertyTypes";
-import { ILOG_BASE_TYPES_PROPERTY } from "./types";
 import { useSearchPropertyType } from "../propertyType/useSearchPropertyType";
 import openbis from "@openbis/openbis.esm";
 import { iLogID, iLogLogbookID } from "./common";

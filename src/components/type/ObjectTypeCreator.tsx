@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useReducer, useState, useMemo } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Input,
@@ -125,6 +125,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     });
   };
 
+  // Initialize component from query data
   if (
     allPropertyTypesResult.status == "success" &&
     allObjectTypesResult.status == "success" &&
@@ -293,14 +294,43 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   };
 
   const handleAddProperty = (propertyGroup: string, propertyCode: string) => {
-    const newProp = {
-      code: propertyCode,
-      label: "New Property",
-      description: "New description",
-      dataType: "VARCHAR",
-      type: "local",
-      multivalued: false,
-    } as LocalPrimitivePropertyType;
+    // Check if this is an existing property
+    const existingProperty = allPropertyTypesResult.data?.find(
+      (prop) => prop.code === propertyCode
+    );
+
+    let newProp: LocalPrimitivePropertyType;
+    
+    if (existingProperty) {
+      // Use existing property data
+      newProp = {
+        code: propertyCode,
+        label: existingProperty.label || propertyCode,
+        description: existingProperty.description || "",
+        dataType: existingProperty.dataType as any,
+        type: "local",
+        multivalued: existingProperty.multivalued || false,
+      } as LocalPrimitivePropertyType;
+      
+      // Add vocabulary/sampleType if they exist
+      if ((existingProperty as any).vocabulary) {
+        (newProp as any).vocabulary = (existingProperty as any).vocabulary;
+      }
+      if ((existingProperty as any).sampleType) {
+        (newProp as any).sampleType = (existingProperty as any).sampleType;
+      }
+    } else {
+      // Create new property with defaults
+      newProp = {
+        code: propertyCode,
+        label: "New Property",
+        description: "New description",
+        dataType: "VARCHAR",
+        type: "local",
+        multivalued: false,
+      } as LocalPrimitivePropertyType;
+    }
+    
     dispatch({
       type: "SET_NEW_PROPERTY",
       payload: { group: propertyGroup, property: newProp },
@@ -512,7 +542,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         <Input
           id="prefix"
           label="Prefix"
-          placeholder="If left empty then the code's first 10 characters will be used as a prefix"
+          placeholder="If left empty then the code's first 4 characters will be used as a prefix"
           type="text"
           className="form-field"
           value={state.schema.generatedCodePrefix ?? ""}
@@ -537,6 +567,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           lockedPropertyCodes={lockedPropertyCodes}
           onEvent={handlePropertyEditorEvents}
           lockedGroups={lockedGroups}
+          mode={mode}
         />
 
         <Divider className="my-4" />

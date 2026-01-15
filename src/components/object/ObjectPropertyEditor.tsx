@@ -18,12 +18,10 @@ interface ObjectPropertyEditorsProps {
   dispatch?: React.Dispatch<ObjectCreatorActions>;
   hiddenPropertyCodes?: string[];
   currentObjectCode?: string;
+  onSelectedComponentsChange?: (propertyCode: string, permIds: string[]) => void;
+  currentInstrumentPermId?: string;
+  isComponent?: boolean;
 }
-
-// Generating random keys for list items
-const createPropertyKey = () => {
-  return `${Math.random().toString(36).substring(7)}`;
-};
 
 export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
   mode,
@@ -31,22 +29,13 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
   dispatch,
   hiddenPropertyCodes,
   currentObjectCode,
+  onSelectedComponentsChange,
+  currentInstrumentPermId,
+  isComponent,
 }) => {
-  const keys = Object.fromEntries(
-    Object.entries(state.propertiesSchema).flatMap(
-      ([propertyGroup, properties]) => {
-        return properties.map((property) => [
-          String(property.code),
-          createPropertyKey(),
-        ]);
-      }
-    )
-  );
-
   const [selectedTab, setSelectedTab] = React.useState(0);
-  const [accordionKeys, setAccordionKeys] = React.useState(keys);
 
-  const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
+  const handleTabChange = (_event: React.ChangeEvent<{}>, newValue: number) => {
     setSelectedTab(newValue);
   };
 
@@ -62,8 +51,8 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
   return (
     <>
       <Tabs value={selectedTab} onChange={handleTabChange}>
-        {Object.keys(state.propertiesSchema).map((propertyGroup, index) => (
-          <Tab key={index} label={propertyGroup} />
+        {Object.keys(state.propertiesSchema).map((propertyGroup) => (
+          <Tab key={propertyGroup} label={propertyGroup} />
         ))}
       </Tabs>
       {Object.entries(state.propertiesSchema).map(
@@ -77,10 +66,11 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
           >
             {selectedTab === index && (
               <Accordion selectionMode="multiple">
-                {properties.map((property) => {
-                  return !hiddenPropertyCodes?.includes(property.code) ? (
+                {properties
+                  .filter((property) => !hiddenPropertyCodes?.includes(property.code))
+                  .map((property) => (
                     <AccordionItem
-                      key={accordionKeys[property.code]}
+                      key={property.code}
                       title={property.code}
                       aria-label={property.code}
                     >
@@ -92,10 +82,15 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
                           handleValueChange(property.code, value);
                         }}
                         currentObjectCode={currentObjectCode}
+                        propertyCode={property.code}
+                        onSelectedComponentsChange={(permIds) => {
+                          onSelectedComponentsChange?.(property.code, permIds);
+                        }}
+                        currentInstrumentPermId={currentInstrumentPermId}
+                        isComponent={isComponent}
                       />
                     </AccordionItem>
-                  ) : null;
-                })}
+                  ))}
               </Accordion>
             )}
           </div>

@@ -9,6 +9,14 @@ import {
   objectListLocalReducer,
   EMPTY_OBJECT_LIST_DEFINITION,
 } from "./ObjectLocalActions";
+import {
+  componentCollectionID,
+  instrumentCollectionID,
+  logbookCollectionID,
+  componentCollectionName,
+  instrumentCollectionName,
+  logbookCollectionName,
+} from "../../apis/shared/environment";
 import openbis from "@openbis/openbis.esm";
 
 export const ObjectList = () => {
@@ -31,6 +39,26 @@ export const ObjectList = () => {
     permId: any,
     code: string,
   ) => {
+    // Check if this is a component with a LOCATION (attached to an instrument)
+    const objectToDelete = objects.find((obj) => obj.getCode() === code);
+    if (objectToDelete) {
+      const location = objectToDelete.getProperty("LOCATION");
+      if (location && location.trim() !== "") {
+        // Find the instrument by matching LOCATION with existing objects
+        const instrument = objects.find((obj) => obj.getPermId().getPermId() === location);
+        const instrumentDisplay = instrument 
+          ? `'${instrument.getProperty("NAME") || instrument.getCode()}'`
+          : "an instrument";
+        
+        handleMessage(
+          `Cannot delete '${code}' - it is attached to ${instrumentDisplay}. Please detach it first.`,
+          false,
+          true
+        );
+        return;
+      }
+    }
+
     await deleteObjectResult.mutateAsync(
       permId as openbis.SamplePermId,
     ).then(() => {
@@ -82,6 +110,17 @@ export const ObjectList = () => {
     }, 3000);
   };
 
+  const getCollectionName = (collectionType: string | undefined): string => {
+    if (collectionType === instrumentCollectionID) {
+      return instrumentCollectionName;
+    } else if (collectionType === componentCollectionID) {
+      return componentCollectionName;
+    } else if (collectionType === logbookCollectionID) {
+      return logbookCollectionName;
+    }
+    return "Unknown";
+  };
+
   const columns: Column[] = [
     {
       key: "name",
@@ -102,6 +141,12 @@ export const ObjectList = () => {
       align: "start",
     },
     {
+      key: "collection",
+      name: "Collection",
+      sorting: false,
+      align: "start",
+    },
+    {
       key: "btns",
       name: "",
       sorting: false,
@@ -111,11 +156,15 @@ export const ObjectList = () => {
 
   const rows: ObjectRow[] = objects.map(
     (obj: openbis.Sample) => {
+      const metadata = obj.getType().getMetaData();
+      const collectionType = metadata["collectionType"];
+      
       return {
         permId: obj.getPermId(),
         name: obj.getProperty("NAME") || obj.getCode(),
         code: obj.getCode(),
         type: obj.getType().getCode(),
+        collection: getCollectionName(collectionType),
       }
     }
   );

@@ -5,8 +5,26 @@ export const iLogID = "ILOG";
 export const iLogLogbookID = "ILOG_LOGBOOK";
 export const labID = "LAB205_EQUIPMENT";
 export const componentCollectionID = "COMPONENT_COLLECTION";
+export const componentCollectionName = "Components";
 export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
-export const logbookCollectionID = "LOGBOOK";
+export const instrumentCollectionName = "Instruments";
+export const logbookCollectionID = "LOGBOOK_COLLECTION";
+export const logbookCollectionName = "Logbook";
+
+// Helper functions
+export function getCurrentLabID(): string {
+  return labID;
+}
+
+let isInitializing = false;
+
+export function setIsInitializing(value: boolean): void {
+  isInitializing = value;
+}
+
+export function getIsInitializing(): boolean {
+  return isInitializing;
+}
 
 // Space (lab) > Project (iLog) > Collection (i.e. Components, Instruments)
 class Env {

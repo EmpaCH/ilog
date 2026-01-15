@@ -12,8 +12,8 @@ export const useCreateCollection = (
   space: string,
   project: string,
   code: string,
-  description: string,
-  type: string
+  name: string,
+  type: string,
 ) => {
   const { apiFacade } = useContext(AuthContext);
   const existingCollectionResult = useGetCollections();
@@ -21,7 +21,6 @@ export const useCreateCollection = (
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      console.log(code, space, project, description, type);
       if (
         existingCollectionResult.isSuccess &&
         existingProjectsResult.isSuccess
@@ -35,6 +34,7 @@ export const useCreateCollection = (
         console.log("foundProject", foundProject, "or", `/${space}/${project}`);
         const creation = new openbis.ExperimentCreation();
         creation.setCode(code);
+        creation.setProperties({ NAME: name });
         creation.setProjectId(
           foundProject?.getIdentifier() ||
             new openbis.ProjectIdentifier(`/${space}/${project}`)

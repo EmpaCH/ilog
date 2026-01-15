@@ -327,7 +327,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             hiddenPropertyCodes={[
               iLogID,
               iLogLogbookID,
-              iLogBaseTypesPropertyCode,
+              // iLogBaseTypesPropertyCode,
               "VALID_FROM",
             ]}
           />) : (

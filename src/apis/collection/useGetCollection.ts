@@ -11,7 +11,7 @@ export const useGetCollection = (space: string, project: string, code: string) =
     queryKey: [QUERY_PREFIX, space, project, code],
     queryFn: async () => {
       const sc = new openbis.ExperimentSearchCriteria();
-      sc.withCode().thatEquals(code);
+      sc.withCode().thatEquals(code.toUpperCase());
       sc.withProject().withCode().thatEquals(project);
       sc.withProject().withSpace().withCode().thatEquals(space);
       const collection = await apiFacade.searchExperiments(

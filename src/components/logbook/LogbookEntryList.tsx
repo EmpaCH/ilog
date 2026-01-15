@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AuthContext } from "../../context/auth/authContext";
 import { getAllLogbookEntries, deleteLogbookEntry } from "../../apis/logbook/LogbookEntryAPI";
+import { getCurrentLabID } from "../../apis/shared/environment";
 import openbis from "@openbis/openbis.esm";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
@@ -21,6 +22,7 @@ import { useGetLogbookEntryByPermId } from "../../apis/logbook/useGetLogbookEntr
 export const LogbookEntryList = () => {
   const { apiFacade } = useContext(AuthContext);
   const navigate = useNavigate();
+  const labID = getCurrentLabID();
 
   const [state, dispatch] = useReducer(logbookEntryListLocalReducer,
     EMPTY_LOGBOOK_ENTRY_LIST_DEFINITION,
@@ -28,9 +30,9 @@ export const LogbookEntryList = () => {
 
   // Fetch manual logbook entries (objects)
   const res = useQuery({
-    queryKey: ["getLogbookEntries"],
+    queryKey: ["getLogbookEntries", labID],
     queryFn: async () => {
-      return getAllLogbookEntries(apiFacade);
+      return getAllLogbookEntries(apiFacade, labID);
     },
   });
 

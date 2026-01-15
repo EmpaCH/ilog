@@ -1,13 +1,14 @@
-import React, { useEffect } from "react";
-import { Button, Accordion, AccordionItem } from "@heroui/react";
+import React, { useState } from "react";
+import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Accordion, AccordionItem } from "@heroui/react";
 import { PropertyEditor } from "./PropertyEditor";
-import { Icon, Tabs, Tab} from "@mui/material";
+import { Icon, Tabs, Tab } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import LockIcon from "@mui/icons-material/Lock";
-import { LocalPropertyType, PropertyType, LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
+import { PropertyType, LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
 import { PropertyTypesSchema } from "../../apis/type/commonType";
-import { produce, current, original, enableMapSet } from "immer";
+import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
+import { produce, enableMapSet } from "immer";
 
 enableMapSet();
 
@@ -39,6 +40,7 @@ export interface GroupedPropertyEditorsProps {
   lockedPropertyCodes: string[];
   lockedGroups: string[];
   onEvent: (event: GroupedPropertyEditorsEvents) => void;
+  mode?: "create" | "edit";
 }
 
 //The state of the component
@@ -100,6 +102,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   lockedPropertyCodes,
   lockedGroups,
   onEvent,
+  mode,
 }) => {
   const keys = Object.fromEntries(
     Object.entries(schema).flatMap(([propertyGroup, properties]) => {
@@ -113,6 +116,80 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
     groupCount: 0,
     accordionItemKeyMapping: keys,
   });
+
+  // Fetch existing property types
+  const existingPropertyTypesResult = useGetPropertyTypes();
+  const existingPropertyTypes = existingPropertyTypesResult.data || [];
+
+  // State for add property modal
+  const [showAddPropertyModal, setShowAddPropertyModal] = useState(false);
+  const [selectedPropertyGroup, setSelectedPropertyGroup] = useState<string>("");
+  const [propertySearchInput, setPropertySearchInput] = useState<string>("");
+  const [addPropertyError, setAddPropertyError] = useState<string>("");
+
+  // Track original properties to only lock those in edit mode
+  const [originalPropertyCodes, setOriginalPropertyCodes] = useState<Set<string>>(
+    () => new Set(Object.values(schema).flat().map((p) => p.code))
+  );
+
+  // Track properties with locked codes (originals + reused existing ones)
+  const [propertiesWithLockedCodes, setPropertiesWithLockedCodes] = useState<Set<string>>(
+    () => new Set(Object.values(schema).flat().map((p) => p.code))
+  );
+
+  // Track reused existing properties (should be fully locked, not just code)
+  const [reusedExistingProperties, setReusedExistingProperties] = useState<Set<string>>(new Set());
+
+  // In edit mode, lock editing of all existing properties but allow add/delete
+  const isEditMode = mode === "edit";
+
+  // Get properties not already in the schema
+  const availableProperties = existingPropertyTypes.filter(
+    (prop) => !Object.values(schema).flat().some((p) => p.code === prop.code)
+  );
+
+  const handleOpenAddPropertyModal = (group: string) => {
+    setSelectedPropertyGroup(group);
+    setPropertySearchInput("");
+    setAddPropertyError("");
+    setShowAddPropertyModal(true);
+  };
+
+  const handleConfirmAddProperty = () => {
+    // Use propertySearchInput which now contains either typed or selected value
+    const propertyCode = propertySearchInput.trim();
+    
+    // Require at least one value
+    if (!propertyCode) {
+      setAddPropertyError("Please select an existing property or type a new property name");
+      return;
+    }
+    
+    // Check if value matches an existing property
+    const matchingExistingProperty = existingPropertyTypes.find(
+      (prop) => prop.code === propertyCode
+    );
+    
+    if (matchingExistingProperty) {
+      // Using existing property - fully lock it
+      setReusedExistingProperties((prev) => new Set([...prev, propertyCode]));
+      setPropertiesWithLockedCodes((prev) => new Set([...prev, propertyCode]));
+    } else {
+      // New property - only lock the code
+      setPropertiesWithLockedCodes((prev) => new Set([...prev, propertyCode]));
+    }
+    
+    onEvent({
+      type: "ADD_PROPERTY",
+      payload: { group: selectedPropertyGroup, code: propertyCode },
+    });
+    dispatch({ type: "ADD_PROPERTY", payload: { code: propertyCode, group: selectedPropertyGroup } });
+    
+    setShowAddPropertyModal(false);
+    setSelectedPropertyGroup("");
+    setPropertySearchInput("");
+    setAddPropertyError("");
+  };
 
   // This function handles the events from
   // the PropertyEditor component
@@ -287,7 +364,8 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                           newProperty
                         )
                       }
-                      locked={lockedPropertyCodes.includes(property.code)}
+                      locked={lockedPropertyCodes.includes(property.code) || (isEditMode && originalPropertyCodes.has(property.code)) || reusedExistingProperties.has(property.code)}
+                      lockedCode={(isEditMode && propertiesWithLockedCodes.has(property.code)) || reusedExistingProperties.has(property.code)}
                       propertyTypeDefinitions={property as LocalPropertyTypeVariants}
                     />
                   </AccordionItem>
@@ -297,13 +375,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
               <Button
                 isIconOnly
                 onPress={() => {
-                  // generate random one with 5 digits
-                  const newPropertyCode = `NEW_PROPERTY_${10000 + Math.floor(Math.random() * 90000)}`;
-                  onEvent({
-                    type: "ADD_PROPERTY",
-                    payload: { group: propertyGroup, code: newPropertyCode },
-                  })
-                  dispatch({ type: "ADD_PROPERTY", payload: { code: newPropertyCode, group: propertyGroup } });
+                  handleOpenAddPropertyModal(propertyGroup);
                 }}
                 color="primary"
               >
@@ -357,6 +429,50 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           )}
         </div>
       ))}
+      <Modal size="2xl" isOpen={showAddPropertyModal} onOpenChange={setShowAddPropertyModal}>
+        <ModalContent>
+          <ModalHeader>Add Property to {selectedPropertyGroup}</ModalHeader>
+          <ModalBody>
+            <p style={{  color: "rgb(243, 18, 96)" }}>
+              Type a property name: if it matches an existing property it will be reused, otherwise a new one will be created.
+            </p>
+              <Input
+                placeholder="Type property code..."
+                value={propertySearchInput}
+                onValueChange={(value) => {
+                  setPropertySearchInput(value);
+                  setAddPropertyError("");
+                }}
+                list="available-properties-list"
+                autoComplete="off"
+              />
+              <datalist id="available-properties-list">
+                {availableProperties.map((prop) => (
+                  <option key={prop.code} value={prop.code}>
+                    {prop.dataType}{prop.multivalued ? "[]" : ""}
+                  </option>
+                ))}
+              </datalist>
+            {addPropertyError && (
+              <p style={{ color: "rgb(243, 18, 96)", fontSize: "0.875rem" }}>
+                {addPropertyError}
+              </p>
+            )}
+          </ModalBody>
+          <ModalFooter>
+            <Button color="default" onPress={() => {
+              setShowAddPropertyModal(false);
+              setPropertySearchInput("");
+              setAddPropertyError("");
+            }}>
+              Cancel
+            </Button>
+            <Button color="primary" onPress={handleConfirmAddProperty}>
+              Add Property
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 };

@@ -103,8 +103,10 @@ export function convertPropertyTypeToUpdate(
     }
     case "local": {
       update.setTypeId(propertyType.code.toUpperCase());
+      const test = convertDataTypeToOpenBISDataType(propertyType.dataType);
+      console.log("Updating property type", propertyType.code, "to data type", test);
       update.convertToDataType(
-        convertDataTypeToOpenBISDataType(propertyType.dataType)
+        test
       );
       update.setLabel(propertyType.label);
       update.setDescription(propertyType.description);
