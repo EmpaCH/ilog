@@ -28,23 +28,35 @@ services:
     networks:
       - openbis-network
 
-  ilog:
-    build:
-      context: . 
-      dockerfile: Dockerfile
-      target: env
-      network: host
+  ingress:
+    container_name: openbis-ingress
+    image: openbis/openbis-local:latest
+    depends_on:
+      - app
+    environment:
+      - OPENBIS_HOST=openbis-app
     ports:
-      - 5173:5173
-    env_file:
-      - .env
+      - 443:443
     networks:
       - openbis-network
-    develop: 
-      watch: 
-        - action: sync
-          path: ./src
-          target: /app
+
+  # ilog:
+  #   build:
+  #     context: . 
+  #     dockerfile: Dockerfile
+  #     target: env
+  #     network: host
+  #   ports:
+  #     - 5173:5173
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - openbis-network
+  #   develop: 
+  #     watch: 
+  #       - action: sync
+  #         path: ./src
+  #         target: /app
 
 volumes:
   openbis-db-data:

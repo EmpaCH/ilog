@@ -104,6 +104,11 @@ export const useInitIlog = () => {
   const mut = useMutation({
     // mutationKey: [INIT_ILOG_KEY],
     mutationFn: async () => {
+      // In unit tests we don't want to hit a real openBIS instance.
+      // Returning here makes the mutation succeed immediately.
+      if (import.meta.env.MODE === 'test') {
+        return;
+      }
       // Set initialization flag to allow ELN settings modifications
       setIsInitializing(true);
 

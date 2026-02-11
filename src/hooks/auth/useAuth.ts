@@ -11,15 +11,19 @@ export class OpenBISApiFacade {
 
   private constructor() {}
 
-  public static getInstance(url: string): openbis.openbis {
-    console.log("Getting instance with URL:", url);
-    if (OpenBISApiFacade.instances.get(url) === undefined) {
-      console.log("Creating new instance with URL:", url);
-      OpenBISApiFacade.instances.set(url, new openbis.openbis(url));
+  public static getInstance(asUrl: string, dssUrl?: string): openbis.openbis {
+    const hasDssUrl = dssUrl !== undefined;
+    const key = hasDssUrl ? `${asUrl}::${dssUrl}` : asUrl;
+    console.log("Getting instance with URL:", key);
+
+    if (OpenBISApiFacade.instances.get(key) === undefined) {
+      console.log("Creating new instance with URL:", key);
+      const instance = hasDssUrl ? new openbis.openbis(asUrl, dssUrl as string) : new openbis.openbis(asUrl);
+      OpenBISApiFacade.instances.set(key, instance);
     }
-    console.log("Returning instance with URL:", url);
-    const current = OpenBISApiFacade.instances.get(url) as openbis.openbis;
-    return current;
+
+    console.log("Returning instance with URL:", key);
+    return OpenBISApiFacade.instances.get(key) as openbis.openbis;
   }
 }
 
@@ -31,7 +35,12 @@ export const USER_KEY = "user";
 export const openBISHookFactory = (url: string) => {
   return () => {
     // const apiFacade = new openbis.openbis(url);
-    const apiFacade = OpenBISApiFacade.getInstance(url);
+    // When we talk to openBIS via the Vite dev proxy (relative AS URL), force DSS calls to use
+    // same-origin requests so they are routed through the `/datastore_server/` dev proxy.
+    // NOTE: the openBIS JS client itself appends `/datastore_server/...` when calling DSS.
+    // Therefore the DSS base URL must be empty (same-origin), not "/datastore_server".
+    const dssUrl = url.startsWith("/") ? "" : undefined;
+    const apiFacade = OpenBISApiFacade.getInstance(url, dssUrl);
     // @ts-ignore
     apiFacade._private.log = () => {};
     const id = new Date();
@@ -93,16 +102,15 @@ export const openBISHookFactory = (url: string) => {
       password: string,
       onSuccess?: () => void,
       onError?: (error: string) => void
-    ): void => {
+    ): Promise<string | null> => {
       idLogger("Logging in...");
-      // Handle the async operation internally
-      withTimeout(apiFacade.login(username, password), 180000)
+      return withTimeout(apiFacade.login(username, password), 180000)
         .then((sessionToken) => {
           idLogger("Login successful");
           if (sessionToken === undefined) {
             setLoginResult(null);
             onError?.("Login failed - no session token");
-            return;
+            return null;
           }
           setLoginInfo(username, sessionToken);
           setLoginResult(sessionToken);
@@ -114,6 +122,7 @@ export const openBISHookFactory = (url: string) => {
           removeLoginInfo();
           setLoginResult(null);
           onError?.("Login failed");
+          return null;
         });
     };
 
@@ -122,12 +131,11 @@ export const openBISHookFactory = (url: string) => {
       personalAccessToken: string,
       onSuccess?: () => void,
       onError?: (error: string) => void
-    ): void => {
+    ): Promise<string | null> => {
       idLogger("Logging in with token...");
       // Set the token and verify it works
       apiFacade.setSessionToken(personalAccessToken);
-      // Handle the async operation internally
-      withTimeout(apiFacade.getServerInformation(), 180000)
+      return withTimeout(apiFacade.getServerInformation(), 180000)
         .then(() => {
           // For token-based login, we'll use a default username since
           // we don't have the actual username from the token
@@ -136,13 +144,14 @@ export const openBISHookFactory = (url: string) => {
           setLoginInfo(username, personalAccessToken);
           setLoginResult(personalAccessToken);
           onSuccess?.();
-          return;
+          return personalAccessToken;
         })
         .catch((e) => {
           idLogger("Token login failed", e);
           removeLoginInfo();
           setLoginResult(null);
           onError?.("Token login failed");
+          return null;
         });
     };
 

@@ -70,7 +70,7 @@ export const ObjectList = () => {
   };
 
   const onEdit = async (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    _permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => {
     const object = objects.find((t) => t.getCode() === code);
@@ -178,6 +178,12 @@ export const ObjectList = () => {
         defaultSortColumn="name"
         idColumn="code"
         navigatePath="/objects/creator"
+        extraTopButtons={[
+          {
+            label: 'Add dataset',
+            onPress: () => navigate({ to: '/objects/datasets/upload' as any }),
+          },
+        ]}
         enableHistory={true}
         onDelete={onDelete}
         onEdit={onEdit}

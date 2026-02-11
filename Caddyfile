@@ -16,6 +16,11 @@
         header_up Host {upstream_hostport}
         }
     }
+    handle /datastore_server/* {
+    reverse_proxy {$OPENBIS_DSS_URL} {
+        header_up Host {upstream_hostport}
+        }
+    }
     handle {
         root * /var/www/html
         file_server

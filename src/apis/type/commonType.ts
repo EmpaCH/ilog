@@ -339,7 +339,7 @@ export function findAncestors(
     ancestors: string[] = []
   ): string[] {
     // IF the type has a base type, we continue searching for its ancestors
-    if (type.baseType !== undefined || type.baseType !== null) {
+    if (type.baseType !== undefined && type.baseType !== null) {
       // Find the base type in allTypes
       const baseType = allTypes.find((t) => t.code === type.baseType);
       if (baseType !== undefined) {
