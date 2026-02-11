@@ -111,6 +111,8 @@ function DatasetUploadPage() {
 
   const [dataStoreCodesText, setDataStoreCodesText] = useState('')
   const [dataSetCodesText, setDataSetCodesText] = useState('')
+  const [dataSetTypeCodesText, setDataSetTypeCodesText] = useState('')
+  const [sampleFilterIdentifiersText, setSampleFilterIdentifiersText] = useState('')
 
   const [downloadStatus, setDownloadStatus] = useState<
     | { kind: 'idle' }
@@ -288,10 +290,12 @@ function DatasetUploadPage() {
         throw new Error('No downloadable files found in this dataset')
       }
 
-      const preferredPath = 'original/ai_alu.png'
+      // Heuristic: prefer a likely "preview" image (typically stored under original/).
+      // Avoid hardcoding a specific filename; datasets may contain different file names.
       const pick =
-        candidates.find((f) => f.getPath() === preferredPath) ||
-        candidates.find((f) => String(f.getPath()).startsWith('original/') && String(f.getPath()).toLowerCase().endsWith('.png')) ||
+        candidates.find(
+          (f) => String(f.getPath()).startsWith('original/') && String(f.getPath()).toLowerCase().endsWith('.png')
+        ) ||
         candidates.find((f) => String(f.getPath()).toLowerCase().endsWith('.png')) ||
         candidates[0]
 
@@ -358,7 +362,18 @@ function DatasetUploadPage() {
   }
 
   const dataSetsQuery = useQuery({
-    queryKey: ['as', 'searchDataSets', { page, rowsPerPage, dataStoreCodesText, dataSetCodesText }],
+    queryKey: [
+      'as',
+      'searchDataSets',
+      {
+        page,
+        rowsPerPage,
+        dataStoreCodesText,
+        dataSetCodesText,
+        dataSetTypeCodesText,
+        sampleFilterIdentifiersText,
+      },
+    ],
     queryFn: async (): Promise<DataSetsPage> => {
       const sc = new openbis.DataSetSearchCriteria()
       const fo = new openbis.DataSetFetchOptions()
@@ -393,6 +408,24 @@ function DatasetUploadPage() {
         const codesOr: any = root.withSubcriteria().withOrOperator()
         for (const code of requestedCodes) {
           codesOr.withCode().thatEquals(code)
+        }
+      }
+
+      const requestedTypeCodes = splitCsvLike(dataSetTypeCodesText)
+      if (requestedTypeCodes.length > 0) {
+        // (type.code == A OR type.code == B ...)
+        const typesOr: any = root.withSubcriteria().withOrOperator()
+        for (const code of requestedTypeCodes) {
+          typesOr.withType().withCode().thatEquals(code)
+        }
+      }
+
+      const requestedSampleIdentifiers = splitCsvLike(sampleFilterIdentifiersText)
+      if (requestedSampleIdentifiers.length > 0) {
+        // (sample.identifier == A OR sample.identifier == B ...)
+        const samplesOr: any = root.withSubcriteria().withOrOperator()
+        for (const identifier of requestedSampleIdentifiers) {
+          samplesOr.withSample().withIdentifier().thatEquals(identifier)
         }
       }
       const result = await apiFacade.searchDataSets(sc, fo)
@@ -707,6 +740,16 @@ function DatasetUploadPage() {
           description="If set, uses OR criteria like the openBIS examples"
         />
         <Input
+          label="Dataset types (optional)"
+          placeholder="ELN_PREVIEW, MY_TYPE"
+          value={dataSetTypeCodesText}
+          onValueChange={(v) => {
+            setDataSetTypeCodesText(v)
+            setPage(1)
+          }}
+          description="Filters by dataset type code"
+        />
+        <Input
           label="Data stores (optional)"
           placeholder="DSS1, DSS2"
           value={dataStoreCodesText}
@@ -715,6 +758,16 @@ function DatasetUploadPage() {
             setPage(1)
           }}
           description="Leave empty to search across all data stores"
+        />
+        <Input
+          label="Sample identifiers (optional)"
+          placeholder="/SPACE/PROJECT/SAMPLE"
+          value={sampleFilterIdentifiersText}
+          onValueChange={(v) => {
+            setSampleFilterIdentifiersText(v)
+            setPage(1)
+          }}
+          description="Filters by linked sample identifier(s)"
         />
       </div>
 

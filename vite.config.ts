@@ -1,18 +1,17 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import TanStackRouterVite from "@tanstack/router-plugin/vite";
-import { log } from "console";
 
 /// <reference types="vitest/config" />
-export default defineConfig(({ command, mode }) => {
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  log(env)
   return {
     test: {
       testTransformMode: "web",
       printConsoleTrace: false,
       environment: "happy-dom",
       testUrl: `${env.OPENBIS_URL}`,
+      setupFiles: ["./src/tests/vitest.setup.ts"],
     },
     plugins: [react(), TanStackRouterVite()],
     server: {
@@ -20,6 +19,11 @@ export default defineConfig(({ command, mode }) => {
       proxy: {
         "/openbis/": {
           target: `${env.OPENBIS_URL}`,
+          changeOrigin: true,
+          secure: false,
+        },
+        "/datastore_server/": {
+          target: `${env.OPENBIS_DSS_URL ?? env.OPENBIS_URL}`,
           changeOrigin: true,
           secure: false,
         },
