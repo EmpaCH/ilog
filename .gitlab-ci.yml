@@ -43,7 +43,11 @@ build_image:
 
 deploy:
   stage: deploy
-  image: alpine:3.20
+  image: 29.2.1-alpine3.23
+  services:
+    - docker:dind
+  tags:
+    - dind
   variables:
     GIT_STRATEGY: fetch
     GIT_DEPTH: "0"
@@ -64,62 +68,45 @@ deploy:
     # work on a real branch, not detached HEAD
     - git fetch origin "$CI_COMMIT_REF_NAME"
     - git checkout -B "$CI_COMMIT_REF_NAME" "origin/$CI_COMMIT_REF_NAME"
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
 
   script:
     - |
       set -euo pipefail
 
-      REGISTRY="https://${CI_REGISTRY}"
-      REPO_PATH="${CI_PROJECT_PATH}"   # correct for GitLab registry in most setups
-      AUTH="$(printf 'gitlab-ci-token:%s' "$CI_JOB_TOKEN" | base64 | tr -d '\n')"
+      SHA_REF="${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}"
+      BRANCH_REF="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
 
-
-      SHA_TAG="${CI_COMMIT_SHA}"
-      BRANCH_TAG="${CI_COMMIT_REF_SLUG}"
-
-      manifest_exists() {
-        local tag="$1"
-        curl -fsSI \
-          -H "Authorization: Basic ${AUTH}" \
-          -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-          "${REGISTRY}/v2/${REPO_PATH}/manifests/${tag}" >/dev/null
-      }
-
-      digest_for() {
-        local tag="$1"
-        curl -fsSI \
-          -H "Authorization: Basic ${AUTH}" \
-          -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-          "${REGISTRY}/v2/${REPO_PATH}/manifests/${tag}" \
-        | awk -F': ' 'tolower($1)=="docker-content-digest"{gsub("\r","",$2); print $2}'
-      }
-
-      if manifest_exists "$SHA_TAG"; then
-        SELECTED_TAG="$SHA_TAG"
-        echo "Using commit image: ${CI_REGISTRY_IMAGE}:${SHA_TAG}"
-      elif manifest_exists "$BRANCH_TAG"; then
-        SELECTED_TAG="$BRANCH_TAG"
-        echo "Commit image missing, falling back to branch image: ${CI_REGISTRY_IMAGE}:${BRANCH_TAG}"
+      if docker manifest inspect "$SHA_REF" >/dev/null 2>&1; then
+        SELECTED_REF="$SHA_REF"
+        echo "Using commit image: $SELECTED_REF"
+      elif docker manifest inspect "$BRANCH_REF" >/dev/null 2>&1; then
+        SELECTED_REF="$BRANCH_REF"
+        echo "Commit image missing, falling back to branch image: $SELECTED_REF"
       else
-        echo "ERROR: neither ${SHA_TAG} nor ${BRANCH_TAG} exists in registry" >&2
+        echo "ERROR: neither $SHA_REF nor $BRANCH_REF exists in the registry" >&2
         exit 1
       fi
 
-      DIGEST="$(digest_for "$SELECTED_TAG")"
-      if [ -z "$DIGEST" ]; then
-        echo "ERROR: could not resolve digest for ${SELECTED_TAG}" >&2
+      # Get an immutable digest reference: image@sha256:...
+      # We pull (lightweight) to populate RepoDigests locally.
+      docker pull "$SELECTED_REF" >/dev/null
+
+      PINNED_IMAGE="$(docker inspect --format='{{index .RepoDigests 0}}' "$SELECTED_REF")"
+      if [ -z "$PINNED_IMAGE" ]; then
+        echo "ERROR: could not resolve RepoDigest for $SELECTED_REF" >&2
+        docker inspect "$SELECTED_REF" || true
         exit 1
       fi
 
-      PINNED_IMAGE="${CI_REGISTRY_IMAGE}@${DIGEST}"
-      echo "Resolved immutable image reference: ${PINNED_IMAGE}"
+      echo "Resolved immutable image reference: $PINNED_IMAGE"
 
       for env in $DEPLOY_OVERLAYS; do
-        echo "→ pinning overlay ${env}"
-        (cd "deploy/overlays/${env}" && \
+        echo "→ pinning overlay $env"
+        (cd "deploy/overlays/$env" && \
           kustomize edit set image "${CI_REGISTRY_IMAGE}=${PINNED_IMAGE}")
       done
 
       git add deploy/overlays/*/kustomization.yaml
-      git commit -m "Pin ilog to ${PINNED_IMAGE} [ci skip]" || echo "No changes to commit"
+      git commit -m "Pin ilog to $PINNED_IMAGE [ci skip]" || echo "No changes to commit"
       git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:"$CI_COMMIT_REF_NAME"
