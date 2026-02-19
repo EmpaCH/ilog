@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useReducer, useState, useMemo } from "react";
+import React, { useReducer, useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
@@ -393,12 +393,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     });
   };
 
-  const handleSelectParentType = (value: ChangeEvent<HTMLSelectElement>) => {
-    const newTemplate = objectTypes.find((el) => el.code == value.target.value);
-    if (newTemplate !== undefined) {
-      setObjectBaseType(newTemplate);
-    }
-  };
+
 
   const handlePropertyEditorEvents = (event: GroupedPropertyEditorsEvents) => {
     switch (event.type) {
@@ -495,7 +490,17 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           label="Does it have a parent?"
           isDisabled={mode === "view" && !isEditMode}
           selectedKeys={state.schema.baseType ? [state.schema.baseType] : []}
-          onChange={handleSelectParentType}
+          onSelectionChange={(selection) => {
+            const val = (selection as any).currentKey as string | null;
+            const newTemplate = objectTypes.find((el) => el.code === val);
+            if (newTemplate !== undefined) {
+              setObjectBaseType(newTemplate);
+              dispatch({ type: "SET_BASE_TYPE", payload: { newBaseType: newTemplate } });
+            } else {
+              setObjectBaseType(EMPTY_TYPE_DEFINITION);
+              dispatch({ type: "SET_BASE_TYPE", payload: { newBaseType: EMPTY_TYPE_DEFINITION } });
+            }
+          }}
         >
           {getCurrentFilteredTypes().map((type) => (
             <SelectItem key={type.code} value={type.code}>
