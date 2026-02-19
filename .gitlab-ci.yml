@@ -71,7 +71,8 @@ deploy:
 
       REGISTRY="https://${CI_REGISTRY}"
       REPO_PATH="${CI_PROJECT_PATH}"   # correct for GitLab registry in most setups
-      AUTH="$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 -w0)"
+      AUTH="$(printf 'gitlab-ci-token:%s' "$CI_JOB_TOKEN" | base64 | tr -d '\n')"
+
 
       SHA_TAG="${CI_COMMIT_SHA}"
       BRANCH_TAG="${CI_COMMIT_REF_SLUG}"
