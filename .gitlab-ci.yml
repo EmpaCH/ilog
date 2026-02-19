@@ -70,4 +70,13 @@ deploy_dev:
       optional: true
 
 
-
+deploy_prod:
+  extends:
+    - .deploy_template
+    - .rules_common
+  variables:
+    OVERLAY_PATH: deploy/overlays/prod
+    IMAGE_PATH: $CI_REGISTRY_IMAGE
+  needs:
+    - job: build_image
+      optional: true
