@@ -5,6 +5,8 @@ variables:
   DOCKER_IMAGE_SHA_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA # CI_COMMIT_SHA is the commit hash => a1b2c3d4
   DOCKER_IMAGE_BRANCH_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG # CI_COMMIT_REF_SLUG is the branch name
   DOCKER_IMAGE_LATEST_TAG: $CI_REGISTRY_IMAGE:latest
+  DEPLOY_OVERLAYS: "dev prod" 
+
 
 
 stages:
@@ -38,45 +40,31 @@ build_image:
     - dind
 
 
-.deploy_template:
+deploy:
   stage: deploy
   image: alpine:3.20
+  variables:
+    GIT_STRATEGY: fetch
+    GIT_DEPTH: "0"
+  needs:
+    - job: build_image
+      optional: true
   before_script:
     - apk add --no-cache git curl ca-certificates
     - curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz | tar xz
     - mv kustomize /usr/local/bin/
     - kustomize version && git --version
-  script:
-    - echo "Pinning image to $DOCKER_IMAGE_SHA_TAG in $OVERLAY_PATH"
-    - cd $OVERLAY_PATH
-    - kustomize edit set image $IMAGE_PATH=$DOCKER_IMAGE_SHA_TAG
     - git config --global user.email "ci-bot@gitlab.empa.ch"
     - git config --global user.name "CI Bot"
-    - git add kustomization.yaml
+    - git fetch origin "$CI_COMMIT_REF_NAME"
+    - git checkout -B "$CI_COMMIT_REF_NAME" "origin/$CI_COMMIT_REF_NAME"
+  script:
+    - |
+      for env in $DEPLOY_OVERLAYS; do
+        echo "→ $env"
+        (cd "deploy/overlays/$env" && \
+          kustomize edit set image "$IMAGE_PATH=$DOCKER_IMAGE_SHA_TAG")
+      done
+    - git add deploy/overlays/*/kustomization.yaml
     - git commit -m "Pin ilog to $DOCKER_IMAGE_SHA_TAG [ci skip]" || echo "No changes to commit"
-    - git push https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git HEAD:$CI_COMMIT_REF_NAME
-
-
-
-deploy_dev:
-  extends:
-    - .deploy_template
-    - .rules_common
-  variables:
-    OVERLAY_PATH: deploy/overlays/dev
-    IMAGE_PATH: $CI_REGISTRY_IMAGE
-  needs:
-    - job: build_image
-      optional: true
-
-
-deploy_prod:
-  extends:
-    - .deploy_template
-    - .rules_common
-  variables:
-    OVERLAY_PATH: deploy/overlays/prod
-    IMAGE_PATH: $CI_REGISTRY_IMAGE
-  needs:
-    - job: build_image
-      optional: true
+    - git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:"$CI_COMMIT_REF_NAME"
