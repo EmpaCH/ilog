@@ -42,6 +42,6 @@
 }
 
 .md-size-div { 
-  width: 60%;
+  max-width: 64rem;
   margin: auto;
 }

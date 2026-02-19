@@ -1,57 +1,45 @@
-import React, { useState } from "react";
-import { Card, Image, Input } from "@heroui/react";
-import FileUploadIcon from "@mui/icons-material/FileUpload";
+import React from "react";
+import { Card } from "@heroui/react";
+import { ImageDatasetEditor } from "./ImageDatasetEditor";
 
 interface ImagePropertyEditorProps {
-  image: string;
-  onImageChange: (image: string) => void;
+  samplePermId?: string;
+  onImageChange?: (datasetPermId: string) => void;
+  isReadOnly?: boolean;
 }
 
-const type_re  = /data:image\/([a-zA-Z0-9]+);base64,/;
-const mimeType = "image/*";
-
+/**
+ * Image Property Editor that uses openBIS AFS datasets instead of base64
+ * This component is used when images are configured as property types with IMAGE widget
+ */
 export const ImagePropertyEditor = ({
-  image,
+  samplePermId,
   onImageChange,
+  isReadOnly = false,
 }: ImagePropertyEditorProps) => {
-  const [currentImage, setCurrentImage] = useState(image ?? "");
-  const [type, setType] = useState(currentImage.match(type_re)?.[1] ?? mimeType);
+  // If no sample exists yet, show a message
+  if (!samplePermId) {
+    return (
+      <Card className="p-4">
+        <p className="text-gray-500 text-center">
+          Save the object first to upload images
+        </p>
+      </Card>
+    );
+  }
 
-  const reader = new FileReader();
-
-  reader.onloadend = (e) => {
-    const imageData = e.target?.result
-      ?.toString()
-    const type = imageData?.match(type_re);
-    setType(type?.[1] ?? mimeType);
-    if (imageData) {
-      setCurrentImage(imageData);
-      console.log(imageData);
-      onImageChange(imageData);
-    }
-  };
-
-  const handleChangeImage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.currentTarget?.files) {
-      reader.readAsDataURL(event.currentTarget.files[0]);
-    }
-  };
-
+  // Use the dataset editor for AFS file management
   return (
-    <Card>
-      <img
-        alt="Icon"
-        src={currentImage}
-        width={240}
-      />
-      <Input
-        startContent={<FileUploadIcon />}
-        label="Replace image"
-        placeholder="Click here to replace"
-        type="file"
-        accept={type}
-        onChange={handleChangeImage}
-      ></Input>
-    </Card>
+    <ImageDatasetEditor
+      samplePermId={samplePermId}
+      datasetTypeCode="ELN_PREVIEW"
+      onImageUploaded={(datasetPermId) => {
+        console.log("Image uploaded with dataset ID:", datasetPermId);
+        onImageChange?.(datasetPermId);
+      }}
+      onImageDeleted={(datasetPermId) => {
+        console.log("Image deleted with dataset ID:", datasetPermId);
+      }}
+    />
   );
 };

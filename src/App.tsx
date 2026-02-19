@@ -3,6 +3,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useOpenBIS } from "./hooks/auth/useAuth";
 import { AuthContext } from "./context/auth/authContext";
+import { useInitializeDatasetTypes } from './hooks/useInitializeDatasetTypes';
 import { router } from "./router";
 import "./App.css";
 
@@ -21,6 +22,7 @@ function InnerApp() {
 
 function App() {
   const facade = useOpenBIS();
+  useInitializeDatasetTypes();
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: 10000 } },
   });

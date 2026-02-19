@@ -37,6 +37,8 @@ export const useCreateObject = () => {
       if (!apiFacade) {
         throw new Error("API facade not initialized");
       }
+      
+      // Create the object
       await createObject(
         apiFacade,
         type,
@@ -46,16 +48,8 @@ export const useCreateObject = () => {
         collection === componentCollectionID ? componentCollection.data.getPermId() : instrumentCollection.data.getPermId(),
       );
       
-      // Query the newly created object to get its code
-      // Get all objects and return the code of the most recently created one
-      const sc = new openbis.SampleSearchCriteria();
-      sc.withExperiment().withCode().thatEquals(collection);
-      const fo = new openbis.SampleFetchOptions();
-      fo.withType();
-      const result = await apiFacade.searchSamples(sc, fo);
-      const objects = result.getObjects();
-      // Return the code of the last object (most recently created)
-      return objects.length > 0 ? objects[objects.length - 1].getCode() : "";
+      // Return success - the UI will refetch objects naturally
+      return "success";
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });

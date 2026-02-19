@@ -19,6 +19,8 @@ export async function getAllLogbookEntries(
   fo.withType();
   fo.withProperties();
   fo.withPropertiesHistory();
+  fo.withParents().withProperties();
+  fo.withRegistrator();
 
   const ao = new openbis.PropertyAssignmentFetchOptions();
   const po = new openbis.PropertyTypeFetchOptions();
@@ -42,6 +44,7 @@ export async function getLogbookEntry(
   fo.withType();
   fo.withProperties();
   fo.withPropertiesHistory();
+  fo.withParents();
 
   const ao = new openbis.PropertyAssignmentFetchOptions();
   const po = new openbis.PropertyTypeFetchOptions();
@@ -51,17 +54,6 @@ export async function getLogbookEntry(
   ao.withPropertyTypeUsing(po);
   fo.withType().withPropertyAssignmentsUsing(ao);
 
-  const result = await api.searchSamples(sc, fo);
-  return result.getObjects();
-}
-
-export async function getLogbookEntryByPermId(
-  api: openbis.OpenBISJavaScriptFacade,
-  permId: string,
-): Promise<openbis.Sample[]> {
-  const sc = new openbis.SampleSearchCriteria();
-  sc.withPermId().thatEquals(permId);
-  const fo = new openbis.SampleFetchOptions();
   const result = await api.searchSamples(sc, fo);
   return result.getObjects();
 }
@@ -83,6 +75,7 @@ export async function createLogbookEntry(
   spacePermId: openbis.SpacePermId,
   projectPermId: openbis.ProjectPermId,
   collectionPermId: openbis.ExperimentPermId,
+  parentPermIds?: string[],
 ): Promise<void> {
   const newEntry = new openbis.SampleCreation();
   newEntry.setTypeId(new openbis.EntityTypePermId(type));
@@ -91,6 +84,9 @@ export async function createLogbookEntry(
   newEntry.setExperimentId(collectionPermId);
   newEntry.setProjectId(projectPermId);
   newEntry.setSpaceId(spacePermId);
+  if (parentPermIds && parentPermIds.length > 0) {
+    newEntry.setParentIds(parentPermIds.map((permId) => new openbis.SamplePermId(permId)));
+  }
   for (const [key, value] of Object.entries(properties)) {
     newEntry.setProperty(key, value);
   }

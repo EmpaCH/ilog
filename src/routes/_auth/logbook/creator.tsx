@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_auth/logbook/creator')({
     const location = useLocation()
     const searchParams = new URLSearchParams(location.search)
     const mode = (searchParams.get('mode') as 'create' | 'edit') || 'create'
-    const logbookEntryCode = searchParams.get('logbookentrycode')
+    const logbookEntryCode = searchParams.get('logbookEntryCode')
 
     return LogbookEntryCreator({
       logbookEntryCode: logbookEntryCode || '',

@@ -18,9 +18,11 @@ export const useCreateLogbookEntry = () => {
     mutationFn: ({
       type,
       properties,
+      parentPermIds,
     }: {
       type: string;
       properties: object;
+      parentPermIds?: string[];
     }) => {
       if (!space.data || !project.data || !collection.data) {
         console.error('Error: Missing required data for space, project, or collection.');
@@ -34,6 +36,7 @@ export const useCreateLogbookEntry = () => {
         space.data.getPermId(),
         project.data.getPermId(),
         collection.data.getPermId(),
+        parentPermIds,
       );
     },
   });

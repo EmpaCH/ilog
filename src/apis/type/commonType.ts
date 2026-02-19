@@ -421,9 +421,14 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
         return assignment.getPropertyType();
       });
 
-    propertyTypes[section] = propertyTypesBySection.map(
-      convertOpenBISPropertyType
-    );
+    // Filter out reference properties and convert
+    const convertedProperties = propertyTypesBySection
+      .map(convertOpenBISPropertyType)
+      .filter((prop) => prop.type !== "reference");
+
+    if (convertedProperties.length > 0) {
+      propertyTypes[section] = convertedProperties;
+    }
   });
 
   return propertyTypes;

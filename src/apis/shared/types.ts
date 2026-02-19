@@ -41,18 +41,7 @@ export const iLogBaseSchema: PropertyTypesSchema = {
       label: "Description",
       description: "Description",
       metadata: null,
-    },
-    {
-      code: "PREVIEW",
-      type: "local",
-      multivalued: false,
-      dataType: "VARCHAR",
-      label: "Preview",
-      description: "Preview",
-      metadata: {
-        "custom-widget": "IMAGE",
-      },
-    },
+    }
   ],
 };
 

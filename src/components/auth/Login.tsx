@@ -1,5 +1,5 @@
 import { useContext, useState } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { Button, Input, Divider } from "@heroui/react";
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -8,8 +8,7 @@ import '../../assets/styles/Login.css';
 import { router } from '../../router';
 
 function Login() {
-  const { login, loginWithToken, isLoading } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const [isVisible, setIsVisible] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'credentials' | 'token'>('credentials');
@@ -18,39 +17,31 @@ function Login() {
 
   const toggleVisibility = () => setIsVisible(!isVisible);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
     const formValues = form.elements as typeof form.elements & {
       username: { value: string };
       password: { value: string };
-      token: { value: string };
-    };
-
-    const onSuccess = () => {
-      console.log('Login successful.');
-      setTimeout(async () => {
-        await router.invalidate();
-      }, 50);
-    };
-
-    const onError = (error: string) => {
-      setShowError(true);
-      setErrorMessage(error);
     };
 
     // Clear any previous errors
     setShowError(false);
     
-    if (loginMethod === 'token') {
-      loginWithToken(formValues.token.value, onSuccess, onError);
-    } else {
-      login(formValues.username.value, formValues.password.value, onSuccess, onError);
+    try {
+      const result = await login(formValues.username.value, formValues.password.value);
+      if (result) {
+        console.log('Login successful.');
+        setTimeout(async () => {
+          await router.invalidate();
+        }, 50);
+      } else {
+        setShowError(true);
+        setErrorMessage('Login failed - invalid credentials');
+      }
+    } catch (error: any) {
+      setShowError(true);
+      setErrorMessage(error?.message || 'Login failed');
     }
   };  return (
     <div className="main-div">

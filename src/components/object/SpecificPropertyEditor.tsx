@@ -23,21 +23,17 @@ import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
 import { Editor } from "@monaco-editor/react";
 import { ComponentListPropertyEditor } from "./ComponentListPropertyEditor";
 
-// The props that are received by the component
-// define whether this will be an Object Creator or Editor component
-const creatorModes = ["edit", "view"] as const;
-type CreatorMode = (typeof creatorModes)[number];
-
 interface SpecificPropertyEditorProps {
   propertyDefinition: LocalPropertyTypeVariants;
   propertyValue: string;
-  mode: CreatorMode;
   onValueChange: (input: string | boolean | Date | string[]) => void;
   currentObjectCode?: string;
   propertyCode?: string;
   onSelectedComponentsChange?: (permIds: string[]) => void;
   currentInstrumentPermId?: string;
+  currentSamplePermId?: string;
   isComponent?: boolean;
+  isReadOnly?: boolean;
 }
 
 const toOpenBISDate = (value: ZonedDateTime): string => {
@@ -51,13 +47,14 @@ const fromOpenBISDate = (value: string): ZonedDateTime => {
 export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   propertyValue,
   propertyDefinition,
-  mode,
   onValueChange,
   currentObjectCode,
   propertyCode,
   onSelectedComponentsChange,
   currentInstrumentPermId,
+  currentSamplePermId,
   isComponent,
+  isReadOnly,
 }) => {
   // For LOCATION property - always show disabled field
   if (propertyCode === "LOCATION") {
@@ -111,17 +108,19 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   ) {
     return (
       <ImagePropertyEditor
-        image={propertyValue}
-        onImageChange={(image) => {
-          console.log("Image changed", image);
-          onValueChange(image);
+        samplePermId={currentSamplePermId}
+        onImageChange={(datasetPermId) => {
+          console.log("Image dataset created with ID:", datasetPermId);
+          // Store dataset reference in property instead of base64
+          onValueChange(datasetPermId);
         }}
+        isReadOnly={isReadOnly}
       />
     );
   } else if (propertyDefinition.dataType == "VARCHAR") {
     return (
       <Input
-        disabled={mode === "view"}
+        isReadOnly={isReadOnly}
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
         placeholder={propertyDefinition.description}
@@ -133,7 +132,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   } else if (propertyDefinition.dataType == "MULTILINE_VARCHAR") {
     return (
       <Textarea
-        disabled={mode === "view"}
+        isReadOnly={isReadOnly}
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
         placeholder={propertyDefinition.description}
@@ -143,22 +142,22 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       />
     );
   } else if (propertyDefinition.dataType == "OBJECT") {
-        return (
-          <ComponentListPropertyEditor
-            dispatch={onValueChange}
-            objectType={propertyDefinition.objectType}
-            multivalued={propertyDefinition.multivalued}
-            value={propertyValue}
-            currentObjectCode={currentObjectCode}
-            propertyCode={propertyCode}
-            onSelectedComponentsChange={onSelectedComponentsChange}
-            currentInstrumentPermId={currentInstrumentPermId}
-          />
-        );
+    return (
+      <ComponentListPropertyEditor
+        dispatch={onValueChange}
+        objectType={propertyDefinition.objectType}
+        multivalued={propertyDefinition.multivalued}
+        value={propertyValue}
+        currentObjectCode={currentObjectCode}
+        onSelectedComponentsChange={onSelectedComponentsChange}
+        currentInstrumentPermId={currentInstrumentPermId}
+        isReadOnly={isReadOnly}
+      />
+    );
   } else if (propertyDefinition.dataType == "BOOLEAN") {
     return (
       <Checkbox
-        disabled={mode === "view"}
+        isDisabled={isReadOnly}
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
         value={propertyValue}
@@ -168,7 +167,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   } else if (propertyDefinition.dataType == "HYPERLINK") {
     return (
       <Input
-        disabled={mode === "view"}
+        isReadOnly={isReadOnly}
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
         placeholder={propertyDefinition.description}
@@ -183,7 +182,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   ) {
     return (
       <Input
-        disabled={mode === "view"}
+        isReadOnly={isReadOnly}
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
         placeholder={propertyDefinition.description}
@@ -195,11 +194,11 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   } else if (propertyDefinition.dataType == "DATE") {
     return (
       <DatePicker
-        isDisabled={mode === "view"}
+        isDisabled={isReadOnly}
         showMonthAndYearPickers
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
-        value={parseDate(propertyValue ?? new Date().toISOString())}
+        value={propertyValue ? parseDate(propertyValue) : undefined}
         onChange={(value) => value !== null ? onValueChange(value?.toString()) : null}
       />
     );
@@ -208,10 +207,10 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       <DatePicker
         hideTimeZone
         showMonthAndYearPickers
-        isDisabled={mode === "view"}
+        isDisabled={isReadOnly}
         id={propertyDefinition.code}
         aria-label={propertyDefinition.code}
-        value={fromOpenBISDate(propertyValue ?? new Date().toISOString())}
+        value={propertyValue ? fromOpenBISDate(propertyValue) : undefined}
         onChange={(value) =>
           value !== null ? onValueChange(toOpenBISDate(value)) : null
         }
@@ -227,7 +226,11 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
     }
     if (vocabularyRes?.data) {
       return (
-        <Autocomplete>
+        <Autocomplete
+          isDisabled={isReadOnly}
+          defaultSelectedKey={propertyValue}
+          onSelectionChange={(value) => onValueChange(value?.toString() ?? "")}
+        >
           {vocabularyRes.data.terms.map((term) => {
             return (
               <AutocompleteItem key={term.code} value={term.code}>
@@ -250,12 +253,13 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
         onChange={(value) => {
           onValueChange(value ?? "");
         }}
+        options={{readOnly: isReadOnly}}
       />
     );
   } else {
     return (
       <Input
-        disabled={mode === "view"}
+        disabled={isReadOnly}
         id={propertyDefinition.code}
         placeholder={propertyDefinition.description}
         value={propertyValue}

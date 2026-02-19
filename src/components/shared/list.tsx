@@ -1,3 +1,4 @@
+import { Accordion, AccordionItem } from "@heroui/accordion";
 import React, { useReducer } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -9,12 +10,12 @@ import {
   TableCell,
   Input,
   Button,
+  Divider,
   Pagination,
   SortDescriptor,
 } from "@heroui/react";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import FilterIcon from "@mui/icons-material/FilterAltTwoTone"; // Assuming FilterIcon is from MUI
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import HistoryIcon from "@mui/icons-material/History";
 import { Column, Row } from "./list.types";
@@ -40,6 +41,9 @@ export const List = (props: {
     code: string,
   ) => void;
   onHistory?: (
+    code: string,
+  ) => void;
+  onView?: (
     code: string,
   ) => void;
 }) => {
@@ -133,58 +137,106 @@ export const List = (props: {
   }, []);
 
   const onClear = React.useCallback(() => {
-    setFilterValue({ key: generalListFilter, value: "" });
+    Object.keys(filter).forEach(key => {
+      setFilterValue({ key, value: "" });
+    });
     setPage(1);
-  }, []);
+  }, [filter]);
 
   const onBack = () => {
     navigate({ to: props.navigatePath });
   };
 
-  const topContent = React.useMemo(() => {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="flex justify-between gap-3 items-end">
-          <Input
-            isClearable
-            className="w-full sm:max-w-[44%]"
-            placeholder={`Search by ${props.searchColumn || "name"}`}
-            startContent={<SearchIcon />}
-            value={filter[generalListFilter]}
-            onClear={() => onClear()}
-            onValueChange={onSearchChange}
-          />
-          <div className="flex gap-3">
-            <Button color="primary" onPress={() => onBack()}>
-              Add New
-            </Button>
+  // Build filter bar for filterable columns
+  const filterableColumns = props.columns.filter(col => col.filterable);
+  const filterBar = filterableColumns.length > 0 && (
+    <>
+      <Accordion>
+        <AccordionItem key="filters" aria-label="Filters" title="Filters">
+          <div className="flex flex-row flex-wrap gap-2 items-end mb-2">
+            {filterableColumns.map(col => {
+              const values = Array.from(new Set(props.rows.map(row => row[col.key]).filter(v => v != null))).sort();
+              return (
+                <div key={col.key} className="flex flex-col min-w-[230px]">
+                  <span className="text-xs mb-1 font-bold text-left">{col.name}</span>
+                  <div className="flex flex-row gap-1 items-center">
+                    <Input
+                      placeholder={"Type or select..."}
+                      value={filter[col.key] || ""}
+                      onValueChange={val => setFilterValue({ key: col.key, value: val })}
+                      className="flex-1"
+                      list={`filter-options-${col.key}`}
+                      autoComplete="off"
+                    />
+                    <datalist id={`filter-options-${col.key}`}>
+                      {values.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </datalist>
+                    {filter[col.key] && (
+                      <button
+                        type="button"
+                        aria-label={`Clear ${col.name} filter`}
+                        className="ml-1 text-gray-400 hover:text-red-500 focus:outline-none"
+                        style={{ fontSize: '1.2rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                        onClick={() => setFilterValue({ key: col.key, value: "" })}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {filterableColumns.length > 0 && (
+              <Button variant="ghost" color="primary" onPress={onClear}>
+                Clear Filters
+              </Button>
+            )}
           </div>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-default-400 text-small">
-            Total {props.rows.length} items
-          </span>
-          <label className="flex items-center text-default-400 text-small">
-            Rows per page:
-            <select
-              className="bg-transparent outline-none text-default-400 text-small"
-              onChange={onRowsPerPageChange}
-            >
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="20">50</option>
-            </select>
-          </label>
+        </AccordionItem>
+      </Accordion>
+      <Divider />
+    </>
+  );
+
+  const topContent = (
+    <div className="flex flex-col">
+      {filterBar}
+      <div className="flex justify-between gap-3 my-4 items-end">
+        <Input
+          isClearable
+          className="w-full sm:max-w-[44%]"
+          placeholder={`Search by ${props.searchColumn || "name"}`}
+          startContent={<SearchIcon />}
+          value={filter[generalListFilter]}
+          onClear={() => onClear()}
+          onValueChange={onSearchChange}
+        />
+        <div className="flex gap-3">
+          <Button color="primary" onPress={() => onBack()}>
+            Add New
+          </Button>
         </div>
       </div>
-    );
-  }, [
-    filter,
-    onSearchChange,
-    onRowsPerPageChange,
-    props.rows.length,
-    hasSearchFilter,
-  ]);
+      <div className="flex justify-between items-center">
+        <span className="text-default-400 text-small">
+          Total {props.rows.length} items
+        </span>
+        <label className="flex items-center text-default-400 text-small">
+          Rows per page:
+          <select
+            className="bg-transparent outline-none text-default-400 text-small"
+            onChange={onRowsPerPageChange}
+          >
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  );
 
   const bottomContent = React.useMemo(() => {
     return (
@@ -227,41 +279,7 @@ export const List = (props: {
         allowsSorting={column.sorting}
         align={column.align}
       >
-        {column.filterable
-          ? (
-
-            <div style={{ display: "flex", alignItems: "center" }}>
-          <span>
-            {column.name}
-            </span>
-            <button
-              style={{
-            marginLeft: "5px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-              }}
-              onClick={() => {
-            const value = prompt(
-              `Enter filter value for ${column.key}`,
-              filter[column.key] || ""
-            );
-            if (value !== null) {
-              setFilterValue({ key: column.key, value: value });
-            }
-              }}
-            >
-                <span
-                role="img"
-                aria-label="filter"
-                style={{ color: filter[column.key] ? "red" : "inherit" }}
-                >
-                <FilterIcon />
-                </span>
-            </button>
-            </div>
-          )
-          : column.name}
+        {column.name}
       </TableColumn>
     );
   };
@@ -276,7 +294,13 @@ export const List = (props: {
   ): JSX.Element[] => {
     const cells = Object.entries(row).map(([key, value]) => (
       // §TODO: Fix such that key matches the column name, not just same order as input
-      (<TableCell key={`${permId}-${key}`} >{printText(value)}</TableCell>)
+      (<TableCell key={`${permId}-${key}`} >
+        {key === "preview" ? (
+          <img src={value} alt="preview" style={{ width: "90px", height: "90px", objectFit: "cover" }} />
+        ) : (
+          printText(value)
+        )}
+      </TableCell>)
     ));
 
     cells.push(
@@ -329,7 +353,9 @@ export const List = (props: {
         key={permId.getPermId()}
         style={{
           backgroundColor: color,
+          cursor: props.onView ? "pointer" : "default",
         }}
+        onClick={() => props.onView?.(row[props.idColumn ? props.idColumn : props.defaultSortColumn])}
       >
         {renderRowCells(permId, newRow, props.idColumn, props.defaultSortColumn, enableModification, props.enableHistory)}
       </TableRow>

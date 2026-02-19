@@ -3,14 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { useGetObjects } from "../../apis/object/useGetObjects";
 import openbis from "@openbis/openbis.esm";
 import { Accordion, AccordionItem, Button, Card, CardBody, Divider } from "@heroui/react";
-import { parseZonedDateTime } from "@internationalized/date";
 import {
   reconstructHistory,
   convertOpenBISPropertyHistoryEntryListToObjectDefinition,
 } from "../../apis/object/helpersObjectAPI";
 import { GroupedHistory } from "../../apis/object/commonObject";
 import { iLogID } from "../../apis/shared/environment";
-import { iLogBaseTypesPropertyCode } from "../../apis/shared/types";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
 import {
   PropertyTypesSchema,
@@ -35,13 +33,16 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
 
       if (openbisSample) {
         const objectHistory = openbisSample.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
-        const reconstructedHistory = reconstructHistory(objectHistory);
+        console.log("Object history entries:", objectHistory);
+        const registrationDate = openbisSample.getRegistrationDate();
+        const reconstructedHistory = reconstructHistory(objectHistory, registrationDate);
 
         const groupedHistory: GroupedHistory = {};
         for (const timestamp of Object.keys(reconstructedHistory)) {
           const objectDefinition = convertOpenBISPropertyHistoryEntryListToObjectDefinition(
             openbisSample,
             reconstructedHistory[timestamp],
+            Number(timestamp),
           );
 
           const objectTypeTemplate: ObjectTypeDefinition = convertOpenBISSampleTypeToObjectTypeDefinition(
@@ -60,15 +61,26 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
     }
   }, [objectCode, allObjectsResult.status, allObjectsResult.data]);
 
-  const displayDateTime = (timestamp: string) => {
+  const displayDateTime = (timestampMs: number) => {
     const displayNumber = (num: number) => num < 10 ? `0${num}` : num.toString();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    const parsedDate = parseZonedDateTime(timestamp);
-    return (
-      `${displayNumber(parsedDate.day)} ${monthNames[parsedDate.month - 1]} ${parsedDate.year}, ` +
-      `${displayNumber(parsedDate.hour)}:${displayNumber(parsedDate.minute)}`
-    );
+    try {
+      // Convert milliseconds to ISO 8601 string and parse
+      const date = new Date(timestampMs);
+      const day = date.getUTCDate();
+      const month = date.getUTCMonth();
+      const year = date.getUTCFullYear();
+      const hour = date.getUTCHours();
+      const minute = date.getUTCMinutes();
+      
+      return (
+        `${displayNumber(day)} ${monthNames[month]} ${year}, ` +
+        `${displayNumber(hour)}:${displayNumber(minute)}`
+      );
+    } catch {
+      return new Date(timestampMs).toISOString();
+    }
   };
 
   return (
@@ -79,17 +91,21 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
       <Accordion
         selectionMode="multiple"
       >
-        {Object.keys(history).map((timestamp) => {
+        {Object.keys(history)
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map((timestamp) => {
+          const timestampStr = timestamp.toString();
           return (
             <AccordionItem
-              key={timestamp}
+              key={timestampStr}
               title={displayDateTime(timestamp)}
             >
               <Card>
                 <CardBody>
                   <ObjectPropertyEditor
                     mode="view"
-                    state={history[timestamp]}
+                    state={history[timestampStr]}
                     hiddenPropertyCodes={[
                       iLogID,
                       // iLogBaseTypesPropertyCode,

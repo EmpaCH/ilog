@@ -41,7 +41,7 @@ import "../../index.css";
 import { TypeInheritanceChain } from "./TypeInheritanceChain";
 
 // define whether this will be a Type Creator or Editor component
-const creatorModes = ["create", "edit"] as const;
+const creatorModes = ["create", "edit", "view"] as const;
 type CreatorMode = (typeof creatorModes)[number];
 interface TypeCreatorProps {
   mode: CreatorMode;
@@ -69,10 +69,11 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const [showMessage, setShowMessage] = useState(false);
   const [messageColor, setMessageColor] = useState("success-message");
   const [objectBaseType, setObjectBaseType] = useState(EMPTY_TYPE_DEFINITION);
+  const [isEditMode, setIsEditMode] = useState(mode === "edit" || mode === "create");
 
   const getLockedPropertiesSource = () => {
-    if (mode === "edit" && (!state.schema.baseType || state.schema.baseType === "")) {
-      // In edit mode with no parent - lock base type properties (COMPONENT or INSTRUMENT)
+    if ((mode === "edit" || (mode === "view" && isEditMode)) && (!state.schema.baseType || state.schema.baseType === "")) {
+      // In edit mode (or view mode with edit enabled) with no parent - lock base type properties (COMPONENT or INSTRUMENT)
       return state.schema.collectionType === instrumentCollectionID 
         ? { propertyTypes: INSTRUMENT_SCHEMA }
         : { propertyTypes: COMPONENT_SCHEMA };
@@ -145,8 +146,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     });
 
     // Set the property types
-    const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
-      ([group, propertyTypesGroup]) => {
+    const resolvedTypes = Object.keys(objectTypeTemplate.propertyTypes).map(
+      (group) => {
+        const propertyTypesGroup = objectTypeTemplate.propertyTypes[group];
         return [
           group,
           propertyTypesGroup.map((propertyType: any) => {
@@ -163,6 +165,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
               multivalued: propertyType.multivalued !== undefined ? Boolean(propertyType.multivalued) : Boolean(apiPropertyType.multivalued),
               description: propertyType.description || apiPropertyType.description,
               label: propertyType.label || apiPropertyType.label,
+              // Only include typeId if it's a number
+              ...(typeof (apiPropertyType as any).typeId === "number"
+                ? { typeId: (apiPropertyType as any).typeId }
+                : {}),
             };
 
             if ((propertyType as any).vocabulary || (apiPropertyType as any).vocabulary) {
@@ -186,8 +192,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       },
     });
 
-    // In edit mode, if the type has a parent, set objectBaseType to the parent
-    if (mode === "edit" && objectTypeTemplate.baseType) {
+    // In edit or view mode, if the type has a parent, set objectBaseType to the parent
+    if ((mode === "edit" || mode === "view") && objectTypeTemplate.baseType) {
       const parentType = objectTypes.find(type => type.code === objectTypeTemplate.baseType);
       if (parentType) {
         setObjectBaseType(parentType);
@@ -202,8 +208,15 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   const handleSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
+    
+    // Prevent form submission in view mode
+    if (mode === "view" && !isEditMode) {
+      return;
+    }
+    
     setShowMessage(false);
     setLoading(true);
+
     const ancestors = findAncestors(state.schema, objectTypes);
     const ancestorType = objectTypes.find((type) => type.code === ancestors[0]);
     if (ancestorType) {
@@ -245,11 +258,28 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       return;
     }
 
-    if (mode === "edit") {
-      console.log("Updating type with schema:", state.schema);
+    // Clean schema: remove typeId if not a number from all properties
+    const cleanSchema = {
+      ...state.schema,
+      propertyTypes: Object.fromEntries(
+        Object.entries(state.schema.propertyTypes).map(([group, props]) => [
+          group,
+          props.map((prop) => {
+            // Create a clean copy without typeId if it's not a number
+            const cleanProp = { ...prop };
+            if (typeof (cleanProp as any).typeId !== "number") {
+              delete (cleanProp as any).typeId;
+            }
+            return cleanProp;
+          }),
+        ])
+      ),
+    };
+
+    if (mode === "edit" || (mode === "view" && isEditMode)) {
       typeUpdate.mutate(
         {
-          definition: state.schema,
+          definition: cleanSchema,
         },
         {
           onError: (err) => {
@@ -262,14 +292,19 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             setMessage("Type updated successfully!");
             setMessageColor("success-message");
             setShowMessage(true);
-            handleClear(2000);
+            setLoading(false);
+            setTimeout(() => {
+              setMessage("");
+              setShowMessage(false);
+              navigate({ to: "/types" });
+            }, 2000);
           },
         }
       );
     } else {
       typeCreation.mutate(
         {
-          definition: state.schema,
+          definition: cleanSchema,
         },
         {
           onError: (err) => {
@@ -298,9 +333,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     const existingProperty = allPropertyTypesResult.data?.find(
       (prop) => prop.code === propertyCode
     );
-
     let newProp: LocalPrimitivePropertyType;
-    
     if (existingProperty) {
       // Use existing property data
       newProp = {
@@ -310,8 +343,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         dataType: existingProperty.dataType as any,
         type: "local",
         multivalued: existingProperty.multivalued || false,
-      } as LocalPrimitivePropertyType;
-      
+      };
       // Add vocabulary/sampleType if they exist
       if ((existingProperty as any).vocabulary) {
         (newProp as any).vocabulary = (existingProperty as any).vocabulary;
@@ -319,6 +351,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       if ((existingProperty as any).sampleType) {
         (newProp as any).sampleType = (existingProperty as any).sampleType;
       }
+      // Do NOT set typeId: "PREVIEW" or any string!
     } else {
       // Create new property with defaults
       newProp = {
@@ -328,13 +361,11 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         dataType: "VARCHAR",
         type: "local",
         multivalued: false,
+        // Do NOT set typeId: "PREVIEW" or any string!
       } as LocalPrimitivePropertyType;
     }
-    
-    dispatch({
-      type: "SET_NEW_PROPERTY",
-      payload: { group: propertyGroup, property: newProp },
-    });
+    // Add the property to the schema
+    dispatch({ type: "SET_NEW_PROPERTY", payload: { group: propertyGroup, property: newProp } });
   };
 
   const handleClear = (ms: number) => {
@@ -356,11 +387,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   };
 
   const handleSelectBaseType = (value: PropertyTypesSchema) => {
-    dispatch({
-      type: "SET_ALL_PROPERTYTYPES",
-      payload: {
-        schema: value,
-      },
+    dispatch({ 
+      type: "SET_ALL_PROPERTYTYPES", 
+      payload: { schema: value } 
     });
   };
 
@@ -368,12 +397,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     const newTemplate = objectTypes.find((el) => el.code == value.target.value);
     if (newTemplate !== undefined) {
       setObjectBaseType(newTemplate);
-      dispatch({
-        type: "SET_BASE_TYPE",
-        payload: {
-          newBaseType: newTemplate,
-        },
-      });
     }
   };
 
@@ -428,43 +451,36 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           payload: { group: event.payload.group },
         });
         break;
-      case "REORDER_GROUPS":
-        dispatch({
-          type: "REORDER_GROUPS",
-          payload: {
-            fromIndex: event.payload.fromIndex,
-            toIndex: event.payload.toIndex,
-          },
-        });
-        break;
-    }
-  };
-
-  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      const form = (event.target as HTMLInputElement).form;
-      const index = Array.prototype.indexOf.call(form, event.target);
-      (form?.elements[index + 1] as HTMLElement)?.focus();
-      event.preventDefault();
     }
   };
 
   // If trying to edit an object, then show a spinner until the object is fetched
   if (initial && mode === "edit") {
-    return <Spinner />;
+    const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Enter") {
+        const form = (event.target as HTMLInputElement).form;
+        const index = Array.prototype.indexOf.call(form, event.target);
+        (form?.elements[index + 1] as HTMLElement)?.focus();
+      }
+    };
+
+    // If trying to edit an object, then show a spinner until the object is fetched
+    if (initial && mode === "edit") {
+      return <Spinner />;
+    }
   }
 
   return (
     <div className="md-size-div">
-      <h2>{mode === "edit" ? "Edit Type" : "Create Type"}</h2>
+      <h2>{mode === "create" ? "Create Type" : mode === "edit" ? "Edit Type" : "View Type"}</h2>
       <form onSubmit={handleSubmit}>
         <RadioGroup
           isRequired
-          isDisabled={mode === "edit"}
+          isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
           label="What is the base type of this object type?"
           orientation="horizontal"
           style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
-          value={state.schema.collectionType}
+          value={state.schema.collectionType || ""}
           onValueChange={(value) => {
             dispatch({ type: "SET_COLLECTION_TYPE", payload: value });
             handleSelectBaseType(value === instrumentCollectionID ? INSTRUMENT_SCHEMA : COMPONENT_SCHEMA);
@@ -477,7 +493,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
         <Select
           label="Does it have a parent?"
-          // §TODO: baseType is not actually a field, once we agree on an inheritance model, this will be adjusted
+          isDisabled={mode === "view" && !isEditMode}
           selectedKeys={state.schema.baseType ? [state.schema.baseType] : []}
           onChange={handleSelectParentType}
         >
@@ -493,6 +509,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
         <Input
           isRequired
+          isDisabled={mode === "view" && !isEditMode}
+          isReadOnly={mode === "view" && !isEditMode}
           id="code"
           label="Code"
           type="text"
@@ -532,7 +550,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           }}
           autoComplete="off"
           list="type-suggestions"
-          onKeyDown={handleInputKeyDown}
         />
         <datalist id="type-suggestions">
           {allObjectTypesResult.data?.map((type) => (
@@ -541,6 +558,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         </datalist>
         <Input
           id="prefix"
+          isDisabled={mode === "view" && !isEditMode}
+          isReadOnly={mode === "view" && !isEditMode}
           label="Prefix"
           placeholder="If left empty then the code's first 4 characters will be used as a prefix"
           type="text"
@@ -549,10 +568,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           onValueChange={(value) =>
             dispatch({ type: "SET_PREFIX", payload: value })
           }
-          onKeyDown={handleInputKeyDown}
         />
         <Textarea
           id="description"
+          isReadOnly={mode === "view" && !isEditMode}
           label="Description"
           className="form-field"
           value={state.schema.description ?? ""}
@@ -568,6 +587,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           onEvent={handlePropertyEditorEvents}
           lockedGroups={lockedGroups}
           mode={mode}
+          isViewOnly={mode === "view" && !isEditMode}
+          isEditMode={isEditMode}
         />
 
         <Divider className="my-4" />
@@ -585,29 +606,45 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           >
             Back
           </Button>
-          <Button
-            type="button"
-            color="danger"
-            className="mx-2"
-            onPress={() => {
-              if (mode === "edit") {
-                window.location.reload();
-              } else {
-                handleClear(0);
-              }
-            }}
-          >
-            {mode === "edit" ? "Reset" : "Clear"}
-          </Button>
-          <Button
-            type="submit"
-            color="primary"
-            className="mx-2"
-            isDisabled={mode === "edit" ? typeUpdate.isPending : typeCreation.isPending}
-            isLoading={loading}
-          >
-            {mode === "edit" ? "Update" : "Create"}
-          </Button>
+          {mode === "view" && !isEditMode && (
+            <Button
+              type="button"
+              color="primary"
+              className="mx-2"
+              onPress={() => setIsEditMode(true)}
+            >
+              Edit
+            </Button>
+          )}
+          {isEditMode && (
+            <>
+              <Button
+                type="button"
+                color="danger"
+                className="mx-2"
+                onPress={() => {
+                  if (mode === "view") {
+                    setIsEditMode(false);
+                  } else if (mode === "edit") {
+                    window.location.reload();
+                  } else {
+                    handleClear(0);
+                  }
+                }}
+              >
+                {mode === "view" ? "Cancel" : mode === "edit" ? "Reset" : "Clear"}
+              </Button>
+              <Button
+                type="submit"
+                color="primary"
+                className="mx-2"
+                isDisabled={mode === "edit" || (mode === "view" && isEditMode) ? typeUpdate.isPending : typeCreation.isPending}
+                isLoading={loading}
+              >
+                {mode === "edit" || (mode === "view" && isEditMode) ? "Update" : "Create"}
+              </Button>
+            </>
+          )}
         </div>
       </form>
     </div>

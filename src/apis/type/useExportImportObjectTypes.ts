@@ -69,7 +69,7 @@ export const useExportImportObjectTypes = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `object-types-export-${new Date().toISOString().split("T")[0]}.json`;
+      link.download = `types-export-${new Date().toISOString().split("T")[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

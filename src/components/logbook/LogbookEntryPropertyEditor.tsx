@@ -1,8 +1,8 @@
 import React from "react";
-import { Accordion, AccordionItem, Input } from "@heroui/react";
-import { Tabs, Tab } from "@mui/material";
+import { Input, Select, SelectItem } from "@heroui/react";
 import { LogbookEntryState, LogbookEntryActions } from "./LogbookEntryActions";
 import { ComponentListPropertyEditor } from "../object/ComponentListPropertyEditor";
+import { LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
 
 // The props that are received by the component
 // define whether this will be a Logbook Entry Creator or Editor component
@@ -15,86 +15,141 @@ interface LogbookEntryPropertyEditorsProps {
   hiddenPropertyCodes?: string[];
 }
 
-// Generating random keys for list items
-const createPropertyKey = () => {
-  return `${Math.random().toString(36).substring(7)}`;
-};
-
 export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsProps> = ({
   mode,
   state,
   dispatch,
   hiddenPropertyCodes,
 }) => {
-  const keys = Object.fromEntries(
-    Object.entries(state.propertiesSchema).flatMap(([propertyGroup, properties]) => {
-      return properties.map((property) => [
-        String(property.code),
-        createPropertyKey(),
-      ]);
-    })
-  );
+  // Get properties from the schema, flattening all property groups
+  // Filter to only local properties (not references)
+  const allProperties = Object.values(state.propertiesSchema)
+    .flat()
+    .filter((p) => p.type === "local") as LocalPropertyTypeVariants[];
 
-  const [selectedTab, setSelectedTab] = React.useState(0);
-  const [accordionKeys, setAccordionKeys] = React.useState(keys);
+  const getWidgetType = (property: LocalPropertyTypeVariants): string => {
+    return (property.metadata?.["widget-type"] as string) || "string";
+  };
 
-  const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
-    setSelectedTab(newValue);
+  const getOptions = (property: LocalPropertyTypeVariants): string[] => {
+    const opts = property.metadata?.["options"];
+    if (Array.isArray(opts)) {
+      return opts;
+    }
+    // Handle JSON string format from OpenBIS metadata
+    if (typeof opts === "string") {
+      try {
+        const parsed = JSON.parse(opts);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  const renderPropertyField = (property: LocalPropertyTypeVariants) => {
+    const value = state.propertyValues[property.code] ?? "";
+    const isDisabled = mode === "view";
+    const widgetType = getWidgetType(property);
+    const options = getOptions(property);
+
+    const handleChange = (newValue: string) => {
+      dispatch({
+        type: "SET_PROPERTY_VALUES",
+        payload: { [property.code]: newValue },
+      });
+    };
+
+    switch (widgetType) {
+      case "dropdown":
+        return (
+          <Select
+            disabled={isDisabled}
+            id={property.code}
+            label={property.label}
+            placeholder={property.description}
+            value={value}
+            onChange={(e) => handleChange(e.target.value)}
+            className="form-field"
+          >
+            {options.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option}
+              </SelectItem>
+            ))}
+          </Select>
+        );
+
+      case "link":
+        return (
+          <ComponentListPropertyEditor
+            dispatch={(permIds: string[]) => {
+              dispatch({
+                type: "SET_PROPERTY_VALUES",
+                payload: { [property.code]: permIds.length > 0 ? permIds[0] : "" },
+              });
+            }}
+            value={value}
+          />
+        );
+
+      case "float":
+        return (
+          <Input
+            disabled={isDisabled}
+            id={property.code}
+            label={property.label}
+            placeholder={property.description}
+            type="number"
+            inputMode="decimal"
+            value={String(value)}
+            onChange={(e) => handleChange(e.target.value)}
+            className="form-field"
+          />
+        );
+
+      case "duration":
+        return (
+          <Input
+            disabled={isDisabled}
+            id={property.code}
+            label={property.label}
+            placeholder="hh:mm:ss"
+            value={String(value)}
+            onChange={(e) => handleChange(e.target.value)}
+            className="form-field"
+          />
+        );
+
+      case "string":
+      default:
+        return (
+          <Input
+            disabled={isDisabled}
+            id={property.code}
+            label={property.label}
+            placeholder={property.description}
+            value={String(value)}
+            onChange={(e) => handleChange(e.target.value)}
+            className="form-field"
+          />
+        );
+    }
   };
 
   return (
-    <>
-      <Tabs value={selectedTab} onChange={handleTabChange}>
-        {Object.keys(state.propertiesSchema).map((propertyGroup, index) => (
-          <Tab
-            key={index}
-            label={propertyGroup}
-          />
-        ))}
-      </Tabs>
-      {Object.entries(state.propertiesSchema).map(([propertyGroup, properties], index) => (
-        <div
-          role="tabpanel"
-          hidden={selectedTab !== index}
-          key={propertyGroup}
-          id={`tabpanel-${index}`}
-          aria-labelledby={`tab-${index}`}
-        >
-          {selectedTab === index && (
-            <Accordion selectionMode="multiple">
-              {properties.map((property) => {
-                return !hiddenPropertyCodes?.includes(property.code) ? (
-                  <AccordionItem
-                    key={accordionKeys[property.code]}
-                    title={property.code}
-                    aria-label={property.code}
-                  >
-                    {property.code === "COMPONENT" ?
-                      <ComponentListPropertyEditor
-                        dispatch={dispatch}
-                      /> :
-                      <Input
-                        disabled={mode === "view"}
-                        id={property.code}
-                        placeholder={property.description}
-                        value={state.propertyValues[property.code]}
-                        onValueChange={(value) =>
-                          dispatch
-                          // {dispatch &&
-                          //   dispatch({ type: "SET_PROPERTY_VALUES", payload: {
-                          //     [property.code]: value
-                          //   }})
-                          // }
-                        }
-                      />
-                    }
-                  </AccordionItem>
-                ) : null;
-              })}
-            </Accordion>
-          )}
-        </div>
-      ))}
-    </>
+    <div className="space-y-4">
+      {allProperties.map((property) => {
+        if (hiddenPropertyCodes?.includes(property.code)) {
+          return null;
+        }
+        return (
+          <div key={property.code}>
+            {renderPropertyField(property)}
+          </div>
+        );
+      })}
+    </div>
   );
 };
