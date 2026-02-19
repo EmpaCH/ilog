@@ -29,6 +29,6 @@
 #     import openbis
 # }
 
-localhost:80 {
+:80 {
     import openbis
 }
