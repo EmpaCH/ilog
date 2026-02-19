@@ -43,7 +43,7 @@ build_image:
 
 deploy:
   stage: deploy
-  image: 29.2.1-alpine3.23
+  image: docker:29.2.1-alpine3.23
   services:
     - docker:dind
   tags:
