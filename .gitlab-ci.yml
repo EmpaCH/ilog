@@ -32,9 +32,10 @@ build_image:
   services:
     - docker:dind
   script:
-    - docker build -t $DOCKER_IMAGE_SHA_TAG .
+    - docker build -t $DOCKER_IMAGE_SHA_TAG  -t $DOCKER_IMAGE_BRANCH_TAG .
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
     - docker push $DOCKER_IMAGE_SHA_TAG
+    - docker push $DOCKER_IMAGE_BRANCH_TAG
     - touch image_built.flag
   tags:
     - dind
@@ -46,25 +47,78 @@ deploy:
   variables:
     GIT_STRATEGY: fetch
     GIT_DEPTH: "0"
+    DEPLOY_OVERLAYS: "dev prod"
   needs:
     - job: build_image
       optional: true
+
   before_script:
     - apk add --no-cache git curl ca-certificates
+    # kustomize
     - curl -sSL https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.7.1/kustomize_v5.7.1_linux_amd64.tar.gz | tar xz
     - mv kustomize /usr/local/bin/
     - kustomize version && git --version
+    # git identity
     - git config --global user.email "ci-bot@gitlab.empa.ch"
     - git config --global user.name "CI Bot"
+    # work on a real branch, not detached HEAD
     - git fetch origin "$CI_COMMIT_REF_NAME"
     - git checkout -B "$CI_COMMIT_REF_NAME" "origin/$CI_COMMIT_REF_NAME"
+
   script:
     - |
+      set -euo pipefail
+
+      REGISTRY="https://${CI_REGISTRY}"
+      REPO_PATH="${CI_PROJECT_PATH}"   # correct for GitLab registry in most setups
+      AUTH="$(printf '%s:%s' "$CI_REGISTRY_USER" "$CI_REGISTRY_PASSWORD" | base64 -w0)"
+
+      SHA_TAG="${CI_COMMIT_SHA}"
+      BRANCH_TAG="${CI_COMMIT_REF_SLUG}"
+
+      manifest_exists() {
+        local tag="$1"
+        curl -fsSI \
+          -H "Authorization: Basic ${AUTH}" \
+          -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+          "${REGISTRY}/v2/${REPO_PATH}/manifests/${tag}" >/dev/null
+      }
+
+      digest_for() {
+        local tag="$1"
+        curl -fsSI \
+          -H "Authorization: Basic ${AUTH}" \
+          -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+          "${REGISTRY}/v2/${REPO_PATH}/manifests/${tag}" \
+        | awk -F': ' 'tolower($1)=="docker-content-digest"{gsub("\r","",$2); print $2}'
+      }
+
+      if manifest_exists "$SHA_TAG"; then
+        SELECTED_TAG="$SHA_TAG"
+        echo "Using commit image: ${CI_REGISTRY_IMAGE}:${SHA_TAG}"
+      elif manifest_exists "$BRANCH_TAG"; then
+        SELECTED_TAG="$BRANCH_TAG"
+        echo "Commit image missing, falling back to branch image: ${CI_REGISTRY_IMAGE}:${BRANCH_TAG}"
+      else
+        echo "ERROR: neither ${SHA_TAG} nor ${BRANCH_TAG} exists in registry" >&2
+        exit 1
+      fi
+
+      DIGEST="$(digest_for "$SELECTED_TAG")"
+      if [ -z "$DIGEST" ]; then
+        echo "ERROR: could not resolve digest for ${SELECTED_TAG}" >&2
+        exit 1
+      fi
+
+      PINNED_IMAGE="${CI_REGISTRY_IMAGE}@${DIGEST}"
+      echo "Resolved immutable image reference: ${PINNED_IMAGE}"
+
       for env in $DEPLOY_OVERLAYS; do
-        echo "→ $env"
-        (cd "deploy/overlays/$env" && \
-          kustomize edit set image "$IMAGE_PATH=$DOCKER_IMAGE_SHA_TAG")
+        echo "→ pinning overlay ${env}"
+        (cd "deploy/overlays/${env}" && \
+          kustomize edit set image "${CI_REGISTRY_IMAGE}=${PINNED_IMAGE}")
       done
-    - git add deploy/overlays/*/kustomization.yaml
-    - git commit -m "Pin ilog to $DOCKER_IMAGE_SHA_TAG [ci skip]" || echo "No changes to commit"
-    - git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:"$CI_COMMIT_REF_NAME"
+
+      git add deploy/overlays/*/kustomization.yaml
+      git commit -m "Pin ilog to ${PINNED_IMAGE} [ci skip]" || echo "No changes to commit"
+      git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:"$CI_COMMIT_REF_NAME"
