@@ -8,18 +8,15 @@ import {
   ModalBody,
   ModalContent,
   ModalHeader,
-  Progress,
 } from "@heroui/react";
 
 import { useEffect, useState } from "react";
 import { ILogProgress, useInitIlog } from "../../apis/shared/useInitIlog";
-import { useGetInit } from "../../apis/shared/useGetInit";
 
 export function InitComponent({ show }: { show: boolean }) {
   const init = useInitIlog();
   const [initDone, setInitDone] = useState(false);
   const [progressList, setProgressList] = useState<ILogProgress[]>([]);
-  const initStatus = useGetInit();
   const [showModal, setShowModal] = useState(show ?? false);
   useEffect(() => {
     setProgressList((old) => [...old, init.message]);

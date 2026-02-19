@@ -91,7 +91,10 @@ export async function getObjectByPermId(
  * Create a new object in the iLog inventory Equipment collection.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param type - The object type.
- * @param name - The object name.
+ * @param properties - The object properties.
+ * @param spacePermId - The space permission ID.
+ * @param projectPermId - The project permission ID.
+ * @param collectionPermId - The collection permission ID.
  */
 export async function createObject(
   api: openbis.OpenBISJavaScriptFacade,

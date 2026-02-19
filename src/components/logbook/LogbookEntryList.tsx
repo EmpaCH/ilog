@@ -1,8 +1,9 @@
-import { useContext, useMemo, useReducer, useState } from "react";
+import { useContext, useMemo, useReducer } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { AuthContext } from "../../context/auth/authContext";
 import { getAllLogbookEntries, deleteLogbookEntry } from "../../apis/logbook/LogbookEntryAPI";
+import { getObjectByPermId } from "../../apis/object/objectAPI";
 import { getCurrentLabID } from "../../apis/shared/environment";
 import openbis from "@openbis/openbis.esm";
 import { List } from "../shared/list";
@@ -12,12 +13,7 @@ import {
   logbookEntryListLocalReducer,
   EMPTY_LOGBOOK_ENTRY_LIST_DEFINITION,
 } from "./LogbookEntryLocalActions";
-import { useGetObjects } from "../../apis/object/useGetObjects";
-import { GroupedHistory, MultiObjectGroupedHistory, ObjectDefinition } from "../../apis/object/commonObject";
-import { reconstructHistory } from "../../apis/object/helpersObjectAPI";
-import { parseZonedDateTime } from "@internationalized/date";
-import { useGetLogbookEntryByPermId } from "../../apis/logbook/useGetLogbookEntryByPermId";
-
+import { LOGBOOK_ENTRY_TYPES } from "../../apis/shared/types";
 
 export const LogbookEntryList = () => {
   const { apiFacade } = useContext(AuthContext);
@@ -28,7 +24,6 @@ export const LogbookEntryList = () => {
     EMPTY_LOGBOOK_ENTRY_LIST_DEFINITION,
   );
 
-  // Fetch manual logbook entries (objects)
   const res = useQuery({
     queryKey: ["getLogbookEntries", labID],
     queryFn: async () => {
@@ -40,56 +35,35 @@ export const LogbookEntryList = () => {
     return res.data ? [...res.data] : [];
   }, [res]);
 
-  // Get change events as from openbis changelog
-  const allObjectsResult = useGetObjects();
-  const [history, setHistory] = useState<MultiObjectGroupedHistory>({});
-
-  useMemo(() => {
-    if (allObjectsResult.status === "success") {
-      const allObjectsResultRes = allObjectsResult.data as openbis.Sample[];
-
-      const allReconstructedHistory: MultiObjectGroupedHistory = {};
-      allObjectsResultRes.forEach((entry) => {
-        const reconstructedHistory: GroupedHistory = {};
-        const objectHistory = entry.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
-        const historyEntries = reconstructHistory(objectHistory);
-
-        for (const timestamp of Object.keys(historyEntries)) {
-          // Create fake logbook object
-          const logbookHistoryEntry = {
-            id: entry.getIdentifier(),
-            code: `CHANGE_${entry.getCode()}`,
-            type: `Auto_LBEntry_${entry.getCode()}`,
-            propertiesSchema: {},
-            propertyValues: {
-              ...entry.getProperties(),
-              DESCRIPTION: ["Description of automatic change"],
-              RESPONSIBLE: ["Automatic"],
-            } as any,
-            validFrom: parseZonedDateTime(timestamp),
-          } as ObjectDefinition;
-
-        //   const objectDefinition = convertOpenBISPropertyHistoryEntryListToObjectDefinition(
-        //     entry,
-        //     historyEntries[timestamp],
-        //   );
-
-        //   const objectTypeTemplate: ObjectTypeDefinition = convertOpenBISSampleTypeToObjectTypeDefinition(
-        //     entry.getType()
-        //   );
-        //   const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
-        //     ([group, propertyTypesGroup]) => {
-        //       return [group, propertyTypesGroup];
-        //     }
-        //   );
-        //   objectDefinition.propertiesSchema = Object.fromEntries(resolvedTypes) as PropertyTypesSchema;
-          reconstructedHistory[timestamp] = logbookHistoryEntry;
-        }
-        allReconstructedHistory[entry.getCode()] = reconstructedHistory;
-      });
-      setHistory(allReconstructedHistory);
+  // Fetch component objects for display (map permId -> name)
+  const componentPermIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const entry of logbookEntries) {
+      const pid = entry.getProperty("COMPONENT");
+      if (pid) ids.add(pid);
     }
-  }, [allObjectsResult.status, allObjectsResult.data]);
+    return Array.from(ids);
+  }, [logbookEntries]);
+
+  const componentsQuery = useQuery({
+    queryKey: ["getObjectsByPermIds", componentPermIds.join(",")],
+    queryFn: async () => {
+      if (!componentPermIds || componentPermIds.length === 0) return {} as Record<string, string>;
+      const map: Record<string, string> = {};
+      await Promise.all(componentPermIds.map(async (permId) => {
+        try {
+          const obj = await getObjectByPermId(apiFacade, permId);
+          if (obj) {
+            map[permId] = obj.getProperty("NAME") || obj.getCode();
+          }
+        } catch (e) {
+          // ignore
+        }
+      }));
+      return map;
+    },
+    enabled: componentPermIds.length > 0 && !!apiFacade,
+  });
 
   const onDelete = async (
     permId: any,
@@ -106,37 +80,13 @@ export const LogbookEntryList = () => {
     });
   };
 
-  const onEdit = async (
+  const onEdit = (
     permId: openbis.SamplePermId,
     code: string,
   ) => {
-    const logbookEntryResult = await useGetLogbookEntryByPermId(permId.getPermId());
-    if (logbookEntryResult.status == "success") {
-      code = logbookEntryResult.data[0].getCode();
-      const logbookEntry = logbookEntries.find((t) => t.getCode() === code);
-      if (logbookEntry) {
-        navigate({
-          to: `/logbook/creator?mode=edit&entrycode=${logbookEntry.getCode()}`,
-        });
-      } else {
-        handleMessage(`Logbook entry with code '${code}' not found.`, false, true);
-      }
-    } else {
-      handleMessage(`Cannot fetch logbook entry with code '${code}'.`, false, true);
-    }
-  };
-
-  const onHistory = async (
-    code: string,
-  ) => {
-    const logbookEntry = logbookEntries.find((t) => t.getCode() === code);
-    if (logbookEntry) {
-      navigate({
-        to: `/logbook/history?entrycode=${logbookEntry.getCode()}`,
-      });
-    } else {
-      handleMessage(`Logbook entry with code '${code}' not found.`, false, true);
-    }
+    navigate({
+      to: `/logbook/creator?mode=edit&logbookEntryCode=${code}`,
+    });
   };
 
   const handleMessage = (
@@ -157,29 +107,15 @@ export const LogbookEntryList = () => {
 
   const columns: Column[] = [
     {
+      key: "code",
+      name: "Code",
+      sorting: true,
+      align: "start",
+      filterable: true,
+    },
+    {
       key: "name",
       name: "Name",
-      sorting: true,
-      align: "start",
-      filterable: true,
-    },
-    {
-      key: "responsible",
-      name: "Responsible",
-      sorting: true,
-      align: "start",
-      filterable: true,
-    },
-    {
-      key: "description",
-      name: "Description",
-      sorting: true,
-      align: "start",
-      filterable: true,
-    },
-    {
-      key: "componentCode",
-      name: "Component Code",
       sorting: true,
       align: "start",
       filterable: true,
@@ -192,8 +128,29 @@ export const LogbookEntryList = () => {
       filterable: true,
     },
     {
+      key: "object",
+      name: "Object",
+      sorting: true,
+      align: "start",
+      filterable: true,
+    },
+    {
+      key: "parentEntry",
+      name: "Parent Entry",
+      sorting: true,
+      align: "start",
+      filterable: true,
+    },
+    {
       key: "validFrom",
       name: "Valid From",
+      sorting: true,
+      align: "start",
+      filterable: true,
+    },
+    {
+      key: "responsible",
+      name: "Responsible",
       sorting: true,
       align: "start",
       filterable: true,
@@ -220,52 +177,33 @@ export const LogbookEntryList = () => {
     "OTHER_LOGENTRY": "rgba(211, 211, 211, 0.5)", // light gray
   };
 
-  const historyType = "CHANGE_PROPERTIES";
-
   const logbookRows: LogbookEntryRow[] = logbookEntries.map(
     (entry: openbis.Sample) => {
-      console.log(entry);
+      // Log entry name: use NAME property, fallback to DESCRIPTION or code
+      const name = entry.getProperty("NAME") || entry.getProperty("DESCRIPTION") || entry.getCode();
+      // Parent object: get first parent's name
+      const parentIds = entry.getParents();
+      const parentEntry = parentIds && parentIds.length > 0 ? parentIds[0].getProperty("NAME") || "" : "";
+      // Log entry type: map code to description
+      const typeCode = entry.getType()?.getCode() || "";
+      const type = Object.values(LOGBOOK_ENTRY_TYPES).find(t => t.code === typeCode)?.description || typeCode;
+      const compPermId = entry.getProperty("COMPONENT") || "";
       return {
         permId: entry.getPermId(),
-        name: entry.getProperty("$NAME") || "",
-        responsible: entry.getProperty("RESPONSIBLE") || "",
-        description: entry.getProperty("DESCRIPTION") || "",
-        componentCode: entry.getProperty("COMPONENT") || "",
-        type: entry.getType()?.getCode() || "",
+        code: entry.getCode(),
+        name,
+        type,
+        object: (componentsQuery.data && componentsQuery.data[compPermId]) ? componentsQuery.data[compPermId] : compPermId,
+        parentEntry,
         validFrom: (entry.getProperty("VALID_FROM") && typeof entry.getProperty("VALID_FROM") === "string" && entry.getProperty("VALID_FROM").includes("T")) ? entry.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
         : "",
-        color: colorMapping[entry.getType()?.getCode()] || "rgba(211, 211, 211, 0.5)", // light gray,
+        responsible: entry.getRegistrator().getPermId().getPermId() || "",
+        color: colorMapping[typeCode] || "rgba(211, 211, 211, 0.5)", // light gray,
       }
     }
   );
 
-  // Transform History to table rows
-  const historyRows: LogbookEntryRow[] = Object.entries(history).flatMap(([objectCode, objectHistory]) => {
-    return Object.entries(objectHistory).flatMap(([timestamp, entry]) => {
-      // Create fake unique permId from code and timestamp
-      const uniqueKey = `${objectCode}-${timestamp}`;
-      // Create a new object with the desired properties
-      // and the fake permId
-      const permId = new openbis.SamplePermId(uniqueKey);
-      return [{
-        permId: permId,
-        name: "-",
-        responsible: entry.propertyValues["RESPONSIBLE"][0] || "",
-        description: entry.propertyValues["DESCRIPTION"][0] || "",
-        componentCode: objectCode,       
-        type: historyType,
-        validFrom: (typeof timestamp === "string" && timestamp.includes("T") && timestamp.includes("."))
-          ? timestamp.replace("T", " ").split(".")[0]
-          : "N/A",
-        color: colorMapping[historyType] || "rgba(211, 211, 211, 0.5)", // light gray,
-        enableModification: false,
-      }];
-    });
-  });
-
-  // Merge logbook entries and history rows
-  const rows: LogbookEntryRow[] = [...logbookRows, ...historyRows];
-
+  const rows: LogbookEntryRow[] = [...logbookRows];
 
   return (
     <>
@@ -273,14 +211,13 @@ export const LogbookEntryList = () => {
       <List
         columns={columns}
         rows={rows}
-        idColumn="name"
+        idColumn="code"
         defaultSortColumn="validFrom"
         defaultSortDirection="descending"
         navigatePath="/logbook/creator"
         // enableHistory={true}
         onDelete={onDelete}
         onEdit={onEdit}
-        onHistory={onHistory}
       />
       <MessageModal
         message={state.deletionMessage}

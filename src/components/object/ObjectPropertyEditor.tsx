@@ -1,37 +1,31 @@
 import React from "react";
-import {
-  Accordion,
-  AccordionItem,
-} from "@heroui/react";
 import { Tabs, Tab } from "@mui/material";
 import { ObjectCreatorState, ObjectCreatorActions } from "./ObjectActions";
 import { SpecificPropertyEditor } from "./SpecificPropertyEditor";
 import { LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
 
-// The props that are received by the component
-// define whether this will be an Object Creator or Editor component
-const creatorModes = ["edit", "view"] as const;
-type CreatorMode = (typeof creatorModes)[number];
 interface ObjectPropertyEditorsProps {
-  mode: CreatorMode;
   state: ObjectCreatorState;
   dispatch?: React.Dispatch<ObjectCreatorActions>;
   hiddenPropertyCodes?: string[];
   currentObjectCode?: string;
   onSelectedComponentsChange?: (propertyCode: string, permIds: string[]) => void;
   currentInstrumentPermId?: string;
+  currentSamplePermId?: string;
   isComponent?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
-  mode,
   state,
   dispatch,
   hiddenPropertyCodes,
   currentObjectCode,
   onSelectedComponentsChange,
   currentInstrumentPermId,
+  currentSamplePermId,
   isComponent,
+  isReadOnly,
 }) => {
   const [selectedTab, setSelectedTab] = React.useState(0);
 
@@ -65,19 +59,21 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
             aria-labelledby={`tab-${index}`}
           >
             {selectedTab === index && (
-              <Accordion selectionMode="multiple">
+              <div style={{ marginTop: "1rem"}}>
                 {properties
                   .filter((property) => !hiddenPropertyCodes?.includes(property.code))
                   .map((property) => (
-                    <AccordionItem
+                    <div
                       key={property.code}
-                      title={property.code}
                       aria-label={property.code}
+                      className="mb-4"
                     >
+                      <p style={{ fontWeight: "bold", textAlign: "left"}}>
+                        {property.code}
+                      </p>
                       <SpecificPropertyEditor
                         propertyValue={state.propertyValues[property.code]}
                         propertyDefinition={property as LocalPropertyTypeVariants}
-                        mode={mode}
                         onValueChange={(value) => {
                           handleValueChange(property.code, value);
                         }}
@@ -87,11 +83,13 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
                           onSelectedComponentsChange?.(property.code, permIds);
                         }}
                         currentInstrumentPermId={currentInstrumentPermId}
+                        currentSamplePermId={currentSamplePermId}
                         isComponent={isComponent}
+                        isReadOnly={isReadOnly}
                       />
-                    </AccordionItem>
+                    </div>
                   ))}
-              </Accordion>
+              </div>
             )}
           </div>
         )

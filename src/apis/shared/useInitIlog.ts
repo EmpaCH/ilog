@@ -6,7 +6,6 @@ import { useCreateIlogTypeProperty, useCreateIlogLogbookProperty } from "./useCr
 import { useCreateSpace } from "../space/useCreateSpace";
 import { useCreateProject } from "../project/useCreateProject";
 import {
-  ILOG_BASE_TYPES_PROPERTY,
   ILOG_BASE_TYPES_VOCABULARY,
   LOGBOOK_ENTRY_TYPE_DEFINITION,
   LOGBOOK_ENTRY_TYPES,
@@ -24,7 +23,6 @@ import { fetchElnSettings } from "../eln/useGetElnSettings";
 import { useUpdateElnSettings } from "../eln/useUpdateElnSettings";
 import { useCreateObjectType } from "../type/useCreateObjectType";
 import { useCreateVocabulary } from "../vocabulary/useCreateVocabulary";
-import { useCreatePropertyType } from "../propertyType/useCreatePropertyType";
 import { useState } from "react";
 import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "../type/useGetAllObjectTypes";
 import { useGetObjectType } from "../type/useGetObjectType";
@@ -87,9 +85,6 @@ export const useInitIlog = () => {
   const updateElnSettings = useUpdateElnSettings();
   const createObjects = useCreateObjectType();
   const createVoc = useCreateVocabulary(ILOG_BASE_TYPES_VOCABULARY);
-  // const iLogVariantPropertyTypeCreation = useCreatePropertyType(
-  //   ILOG_BASE_TYPES_PROPERTY
-  // );
 
   const objectTypeChecks = new Map(
     [
@@ -163,25 +158,12 @@ export const useInitIlog = () => {
         await createVoc.mutateAsync();
         console.log("iLog vocabulary initialized.");
 
-        // emitMessage(
-        //   "Initializing iLog variant property type...",
-        //   createVoc.status
-        // );
-        // await iLogVariantPropertyTypeCreation.mutateAsync();
-
-        // console.log("iLog variant property type initialized.");
-        // emitMessage(
-        //   "Initializing default types...",
-        //   iLogVariantPropertyTypeCreation.status
-        // );
-
-        for (const [objectTypeDefinition, requestResult] of objectTypeChecks) {
-          if (await requestResult.refetch().then(res => res.data) === undefined) {
-            await createObjects.mutateAsync({ definition: objectTypeDefinition });
-            emitMessage(`${objectTypeDefinition.code} type initialized.`, createObjects.status);
-          }
-        }
-
+        // for (const [objectTypeDefinition, requestResult] of objectTypeChecks) {
+        //   if (await requestResult.refetch().then(res => res.data) === undefined) {
+        //     await createObjects.mutateAsync({ definition: objectTypeDefinition });
+        //     emitMessage(`${objectTypeDefinition.code} type initialized.`, createObjects.status);
+        //   }
+        // }
       }
     },
     onSuccess: () => {

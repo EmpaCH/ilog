@@ -1,19 +1,22 @@
 {
     debug
     	log default {
-		output stdout
-		format json
-        level {$CADDY_LOG_LEVEL}
+            output stdout
+            format json
+            level {$CADDY_LOG_LEVEL}
         }
-        
 }
 
 (openbis) {
-    
     log default
     handle /openbis/* {
     reverse_proxy {$OPENBIS_URL} {
-        header_up Host {upstream_hostport}
+            header_up Host {upstream_hostport}
+        }
+    }
+    handle /datastore_server/* {
+    reverse_proxy {$OPENBIS_DSS_URL} {
+            header_up Host {upstream_hostport}
         }
     }
     handle {
@@ -25,7 +28,6 @@
 localhost:443 {
     import openbis
 }
-
 
 localhost:80 {
     import openbis

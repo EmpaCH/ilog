@@ -9,6 +9,7 @@ import {
   LogbookEntryDefinition,
   ReconstructedHistory,
 } from "./commonLogbookEntry";
+import { stripVocabularyName } from "../shared/common";
 
 /**
  * Creates an empty LogbookEntryDefinition with the current timestamp.
@@ -29,24 +30,50 @@ export function createEmptyLogbookEntryDefinition(): LogbookEntryDefinition {
  * Converts an openBIS Sample and its list of latest property history entries to a local LogbookEntryDefinition.
  * @param sample - The openBIS Sample to convert.
  * @param history - The openBIS PropertyHistoryEntry[] to convert.
- * @param validFrom? - If provided, overwrites the validFrom property of the LogbookEntryDefinition.
+ * @param timestamp? - If provided, uses this as the validFrom timestamp. Otherwise falls back to current time.
  * @returns The corresponding local LogbookEntryDefinition.
  */
 export function convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(
   sample: openbis.Sample,
   history: openbis.PropertyHistoryEntry[],
-  validFrom?: ZonedDateTime,
+  timestamp?: number,
 ): LogbookEntryDefinition {
   const transformedHistory = history.reduce((acc: { [key: string]: any }, curr) => {
-    acc[curr.getPropertyName()] = curr.getPropertyValue();
+    const propertyName = curr.getPropertyName();
+    
+    // Skip VALID_FROM - it's metadata for the timestamp, not a displayable property
+    if (propertyName === "VALID_FROM") {
+      return acc;
+    }
+    
+    let propertyValue = curr.getPropertyValue();
+    // Strip vocabulary name from the value if present
+    if (typeof propertyValue === 'string') {
+      propertyValue = stripVocabularyName(propertyValue);
+    }
+    acc[curr.getPropertyName()] = propertyValue;
     return acc;
   }, {});
+
+  // Use the getValidFrom() from the first entry - all entries in a group have the same getValidFrom()
+  let validFrom: ZonedDateTime;
+  if (history.length > 0 && history[0].getValidFrom()) {
+    try {
+      const dateObj = history[0].getValidFrom();
+      // Parse the date string directly - it should already have timezone info
+      validFrom = parseZonedDateTime(dateObj.toISOString());
+    } catch (e) {
+      validFrom = now(getLocalTimeZone());
+    }
+  } else {
+    validFrom = now(getLocalTimeZone());
+  }
 
   return {
     id: sample.getIdentifier(),
     type: sample.getType().getCode(),
     code: sample.getCode(),
-    validFrom: validFrom ?? parseZonedDateTime(transformedHistory["VALID_FROM"]),
+    validFrom: validFrom,
     propertiesSchema: {},
     propertyValues: transformedHistory,
   };
@@ -57,47 +84,89 @@ export function convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(
  *
  * This function takes a list of property history entries and reconstructs the
  * state of the logbook entry at different points in time. It returns an object where
- * the keys are timestamps and the values are the reconstructed states of the logbook entry at those timestamps.
+ * the keys are timestamps in milliseconds and the values are the reconstructed states of the logbook entry at those timestamps.
+ *
+ * The history always starts with the registration date as the initial state,
+ * followed by any VALID_FROM entries that represent subsequent modifications.
  *
  * @param history - The list of property history entries.
- * @returns An object where the keys are timestamps and the values are the reconstructed states of the logbook entry.
+ * @param registrationDate - The entry's registration date in milliseconds. Used as the initial state timestamp.
+ * @returns An object where the keys are timestamps in milliseconds and the values are the reconstructed states of the logbook entry.
  */
 export function reconstructHistory(
   history: openbis.PropertyHistoryEntry[],
+  registrationDate: number,
 ): ReconstructedHistory {
-  // Create array with entries where propertyName == "VALID_FROM" and sort by propertyValue
-  const validFromEntries = history.filter(
-    entry => entry.getPropertyName() === "VALID_FROM"
-  ).sort(
-    (a, b) => a.getPropertyValue() < b.getPropertyValue() ? -1 : 1
-  );
+  const validFromDict: { [key: string]: openbis.PropertyHistoryEntry[] } = {};
 
-  // Create a dictionary where key is the propertyValue of each "VALID_FROM" entry
-  // and value is an array of all entries with that "VALID_FROM" entry's validFrom timestamp
-  const validFromDict = validFromEntries.reduce((acc: { [key: string]: openbis.PropertyHistoryEntry[] }, entry) => {
-    const key = entry.getPropertyValue();
-    if (!acc[key]) {
-      acc[key] = [];
+  // Step 1: Group all history entries by their OpenBIS modification time
+  const entriesByTime = new Map<number, openbis.PropertyHistoryEntry[]>();
+  
+  history.forEach(entry => {
+    const time = entry.getValidFrom() as number;
+    if (!entriesByTime.has(time)) {
+      entriesByTime.set(time, []);
     }
-    acc[key] = history.filter(
-      propEntry => propEntry.getValidFrom().toString() === entry.getValidFrom().toString()
-    );
-    return acc;
-  }, {});
+    entriesByTime.get(time)!.push(entry);
+  });
 
-  // Traverse forward in time and complete the validFromDict dictionary
-  const keys = Object.keys(validFromDict);
-  for (let i = 1; i < keys.length; i++) {
-    const previousKey = keys[i - 1];
-    const currentKey = keys[i];
-    const previousArray = validFromDict[previousKey];
-    const currentArray = validFromDict[currentKey];
+  // Step 2: For each modification time, extract the VALID_FROM value
+  const timeToValidFrom = new Map<number, number>();
+  
+  entriesByTime.forEach((entries, time) => {
+    // Look for VALID_FROM property at this time
+    const validFromEntry = entries.find(e => e.getPropertyName() === "VALID_FROM");
+    
+    if (validFromEntry) {
+      // An explicit VALID_FROM was set
+      const validFromValue = validFromEntry.getPropertyValue();
+      if (validFromValue) {
+        try {
+          const ms = new Date(validFromValue).getTime();
+          if (!isNaN(ms)) {
+            timeToValidFrom.set(time, ms);
+            return;
+          }
+        } catch (e) {
+          // Fall through to default
+        }
+      }
+    }
+    
+    // No VALID_FROM property found or parsing failed - use the modification time as-is
+    timeToValidFrom.set(time, time);
+  });
 
-    previousArray.forEach((entry, index) => {
-      if (!currentArray[index]) {
-        currentArray[index] = entry;
+  // Step 3: Collect all unique VALID_FROM timestamps and sort them
+  const timestamps = new Set(Array.from(timeToValidFrom.values()));
+  const sortedTimestamps = Array.from(timestamps).sort((a, b) => a - b);
+
+  // Step 4: For each VALID_FROM timestamp, find the properties modified at that logical point
+  sortedTimestamps.forEach((targetValidFrom) => {
+    const timestampStr = targetValidFrom.toString();
+    const propertyMap = new Map<string, openbis.PropertyHistoryEntry>();
+    
+    // Find which OpenBIS modification time corresponds to this VALID_FROM
+    timeToValidFrom.forEach((validFrom, time) => {
+      if (validFrom === targetValidFrom) {
+        // Get all entries modified at this OpenBIS time
+        const entriesAtTime = entriesByTime.get(time) || [];
+        
+        entriesAtTime.forEach(entry => {
+          // Skip the VALID_FROM property itself
+          if (entry.getPropertyName() !== "VALID_FROM") {
+            const propertyName = entry.getPropertyName();
+            propertyMap.set(propertyName, entry);
+          }
+        });
       }
     });
-  }
+    
+    // Only add to dict if we have properties for this timestamp
+    if (propertyMap.size > 0) {
+      validFromDict[timestampStr] = Array.from(propertyMap.values());
+    }
+  });
+
   return validFromDict;
-};
+}

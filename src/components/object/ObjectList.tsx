@@ -1,4 +1,5 @@
-import { useMemo, useReducer, useState } from "react";
+import { useMemo, useReducer, useState, useEffect, useContext } from "react";
+import { AuthContext } from "../../context/auth/authContext";
 import { useNavigate } from "@tanstack/react-router";
 import { useGetObjects } from "../../apis/object/useGetObjects";
 import { useDeleteObject } from "../../apis/object/useDeleteObject";
@@ -18,13 +19,16 @@ import {
   logbookCollectionName,
 } from "../../apis/shared/environment";
 import openbis from "@openbis/openbis.esm";
+import { getSampleDatasets, getDatasetImageFilenameFromObject } from "../../apis/dataset/datasetAPI";
 
 export const ObjectList = () => {
+  const { apiFacade } = useContext(AuthContext);
   const allObjectsResult = useGetObjects();
   const deleteObjectResult = useDeleteObject();
   const navigate = useNavigate();
 
   const [objects, setObjects] = useState<openbis.Sample[]>([]);
+  const [previewImages, setPreviewImages] = useState<{ [permId: string]: string | null }>({});
   const [state, dispatch] = useReducer(objectListLocalReducer,
     EMPTY_OBJECT_LIST_DEFINITION,
   );
@@ -34,6 +38,47 @@ export const ObjectList = () => {
       setObjects(allObjectsResult.data);
     }
   }, [allObjectsResult.status, allObjectsResult.data]);
+
+  // Load preview images for all objects
+  useEffect(() => {
+    const fetchImages = async () => {
+      if (objects.length === 0) return;
+      const newPreviewImages: { [permId: string]: string | null } = {};
+      // Get session token from apiFacade (same as ObjectCreator)
+      const sessionToken = (apiFacade as any)?._private?.sessionToken;
+      for (const obj of objects) {
+        try {
+          // Use apiFacade instead of openbis for session context
+          const datasets = await getSampleDatasets(apiFacade, obj.getPermId().getPermId());
+          const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
+          if (elnPreviewDataset) {
+            const datasetPermId = elnPreviewDataset.getPermId().getPermId();
+            // Try to get the filename
+            const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
+            if (filename && sessionToken) {
+              // Construct URL as in ObjectCreator
+              const encodedFilename = encodeURIComponent(filename);
+              const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
+              newPreviewImages[obj.getPermId().getPermId()] = url;
+            } else if (filename) {
+              // fallback if no session token
+              const encodedFilename = encodeURIComponent(filename);
+              newPreviewImages[obj.getPermId().getPermId()] = `/datastore_server/${datasetPermId}/original/${encodedFilename}`;
+            } else {
+              // fallback to directory
+              newPreviewImages[obj.getPermId().getPermId()] = `/datastore_server/${datasetPermId}/original/`;
+            }
+          } else {
+            newPreviewImages[obj.getPermId().getPermId()] = null;
+          }
+        } catch (e) {
+          newPreviewImages[obj.getPermId().getPermId()] = null;
+        }
+      }
+      setPreviewImages(newPreviewImages);
+    };
+    fetchImages();
+  }, [objects, apiFacade]);
 
   const onDelete = async (
     permId: any,
@@ -83,6 +128,19 @@ export const ObjectList = () => {
     }
   };
 
+  const onView = async (
+    code: string
+  ) => {
+    const object = objects.find((t) => t.getCode() === code);
+    if (object) {
+      navigate({
+        to: `/objects/creator?mode=view&objectcode=${object.getCode()}`,
+      });
+    } else {
+      handleMessage(`Object with code '${code}' not found.`, false, true);
+    }
+  };
+
   const onHistory = async (
     code: string,
   ) => {
@@ -123,6 +181,12 @@ export const ObjectList = () => {
 
   const columns: Column[] = [
     {
+      key: "preview",
+      name: "Preview",
+      sorting: false,
+      align: "start",
+    },
+    {
       key: "name",
       name: "Name",
       sorting: true,
@@ -158,8 +222,10 @@ export const ObjectList = () => {
     (obj: openbis.Sample) => {
       const metadata = obj.getType().getMetaData();
       const collectionType = metadata["collectionType"];
-      
+      const permId = obj.getPermId().getPermId();
+      // Only pass the image URL string, not a React element
       return {
+        preview: previewImages[permId] || "",
         permId: obj.getPermId(),
         name: obj.getProperty("NAME") || obj.getCode(),
         code: obj.getCode(),
@@ -182,6 +248,7 @@ export const ObjectList = () => {
         onDelete={onDelete}
         onEdit={onEdit}
         onHistory={onHistory}
+        onView={onView}
       />
       <MessageModal
         message={state.deletionMessage}

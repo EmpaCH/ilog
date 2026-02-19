@@ -26,13 +26,11 @@ export interface Row {
   [key: string]: any;
 }
 
-
 export interface LogbookEntryRow {
   permId: openbis.SamplePermId;
+  code: string;
   name: string;
   responsible: string;
-  description: string;
-  componentCode: string;
   type: string;
   validFrom: string;
   color?: string;

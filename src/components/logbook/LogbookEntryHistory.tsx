@@ -3,14 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 import { useGetAllLogbookEntries } from "../../apis/logbook/useGetAllLogbookEntries";
 import openbis from "@openbis/openbis.esm";
 import { Accordion, AccordionItem, Button, Card, CardBody, Divider } from "@heroui/react";
-import { parseZonedDateTime } from "@internationalized/date";
 import {
   reconstructHistory,
   convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition,
 } from "../../apis/logbook/helpersLogbookEntryAPI";
 import { GroupedHistory } from "../../apis/logbook/commonLogbookEntry";
 import { iLogID } from "../../apis/shared/environment";
-import { iLogBaseTypesPropertyCode } from "../../apis/shared/types";
 import { LogbookEntryPropertyEditor } from "./LogbookEntryPropertyEditor";
 import {
   PropertyTypesSchema,
@@ -35,13 +33,15 @@ export const LogbookEntryHistory: React.FC<LogbookEntryHistoryProps> = ({ logboo
 
       if (logbookEntry) {
         const entryHistory = logbookEntry.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
-        const reconstructedHistory = reconstructHistory(entryHistory);
+        const registrationDate = logbookEntry.getRegistrationDate();
+        const reconstructedHistory = reconstructHistory(entryHistory, registrationDate);
 
         const groupedHistory: GroupedHistory = {};
         for (const timestamp of Object.keys(reconstructedHistory)) {
           const logbookEntryDefinition = convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(
             logbookEntry,
             reconstructedHistory[timestamp],
+            Number(timestamp),
           );
 
           const entryTypeTemplate: ObjectTypeDefinition = convertOpenBISSampleTypeToObjectTypeDefinition(
@@ -60,15 +60,26 @@ export const LogbookEntryHistory: React.FC<LogbookEntryHistoryProps> = ({ logboo
     }
   }, [logbookEntryCode, allEntriesResult.status, allEntriesResult.data]);
 
-  const displayDateTime = (timestamp: string) => {
+  const displayDateTime = (timestampMs: number) => {
     const displayNumber = (num: number) => num < 10 ? `0${num}` : num.toString();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    const parsedDate = parseZonedDateTime(timestamp);
-    return (
-      `${displayNumber(parsedDate.day)} ${monthNames[parsedDate.month - 1]} ${parsedDate.year}, ` +
-      `${displayNumber(parsedDate.hour)}:${displayNumber(parsedDate.minute)}`
-    );
+    try {
+      // Convert milliseconds to ISO 8601 string and parse
+      const date = new Date(timestampMs);
+      const day = date.getUTCDate();
+      const month = date.getUTCMonth();
+      const year = date.getUTCFullYear();
+      const hour = date.getUTCHours();
+      const minute = date.getUTCMinutes();
+      
+      return (
+        `${displayNumber(day)} ${monthNames[month]} ${year}, ` +
+        `${displayNumber(hour)}:${displayNumber(minute)}`
+      );
+    } catch {
+      return new Date(timestampMs).toISOString();
+    }
   };
 
   return (
@@ -80,16 +91,18 @@ export const LogbookEntryHistory: React.FC<LogbookEntryHistoryProps> = ({ logboo
         selectionMode="multiple"
       >
         {Object.keys(history).map((timestamp) => {
+          const timestampMs = Number(timestamp);
           return (
             <AccordionItem
               key={timestamp}
-              title={displayDateTime(timestamp)}
+              title={displayDateTime(timestampMs)}
             >
               <Card>
                 <CardBody>
                   <LogbookEntryPropertyEditor
                     mode="view"
                     state={history[timestamp]}
+                    dispatch={() => {}}
                     hiddenPropertyCodes={[
                       iLogID,
                       // iLogBaseTypesPropertyCode,

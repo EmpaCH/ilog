@@ -81,9 +81,13 @@ function convertPropertyTypesSchemaToPropertyCreations(
   // Convert each property in the schema to a PropertyTypeCreation
   const creations = Object.entries(schema)
     .flatMap(([group, properties]) => {
-      return properties.map((prop) =>
-        prop ? convertPropertyTypeToCreation(prop) : null
-      );
+      return properties.map((prop) => {
+        // Skip reference properties - they don't need creation operations
+        if (prop && prop.type === "reference") {
+          return null;
+        }
+        return prop ? convertPropertyTypeToCreation(prop) : null;
+      });
     })
     .flatMap((el) => (el ? [el] : []));
   return creations ?? [];
@@ -99,9 +103,13 @@ function convertPropertyTypeSchemaToPropertyUpdates(
 ) {
   const updates = Object.entries(schema)
     .flatMap(([group, properties]) => {
-      return properties.map((prop) =>
-        prop ? convertPropertyTypeToUpdate(prop) : null
-      );
+      return properties.map((prop) => {
+        // Skip reference properties - they cannot be updated
+        if (prop && prop.type === "reference") {
+          return null;
+        }
+        return prop ? convertPropertyTypeToUpdate(prop) : null;
+      });
     })
     .flatMap((el) => (el ? [el] : []));
   return updates ?? [];
@@ -215,7 +223,7 @@ export function convertObjectTypeDefinitionToOperations(
     sampleTypeCreation.setPropertyAssignments(assignmentCreations);
     sampleTypeCreation.setDescription(objectDefinition.description);
     sampleTypeCreation.setListable(true);
-    let metadata: { collectionType: string; baseType?: string } = {
+    let metadata: { collectionType: string; baseType?: string; groupOrder?: string[] } = {
       // type: objectDefinition.code,
       collectionType: objectDefinition.collectionType,
     }
@@ -223,6 +231,12 @@ export function convertObjectTypeDefinitionToOperations(
       metadata = {
         ...metadata,
         baseType: objectDefinition.baseType,
+      };
+    }
+    if (objectDefinition.groupOrder) {
+      metadata = {
+        ...metadata,
+        groupOrder: objectDefinition.groupOrder,
       };
     }
     sampleTypeCreation.setMetaData(metadata);
@@ -289,6 +303,11 @@ export function convertPropertyTypesSchemaToUpdateOperations(
   const updates = Object.entries(schema)
     .flatMap(([section, properties]) => {
       return properties.map((prop: any, index) => {
+        // Skip reference properties - they cannot be updated
+        if (prop.type === "reference") {
+          return null;
+        }
+
         // Compare with existing property
         const existingPropertyType = existingPropertyTypes.find(
           (assignment) => assignment.code == getPropertyTypeId(prop)
@@ -360,10 +379,37 @@ export function convertObjectTypeDefinitionToUpdateOperations(
   update.setListable(true);
 
   const assignmentUpdates = new openbis.PropertyAssignmentListUpdateValue();
-  const assignments = convertPropertyTypesSchemaToAssignmentCreations(
+  
+  // When updating a type with a parent type, we need to exclude inherited properties
+  // from the assignments, because the backend already has them from the parent
+  let assignmentsToSet = convertPropertyTypesSchemaToAssignmentCreations(
     objectDefinition.propertyTypes as PropertyTypesSchema
   );
-  assignmentUpdates.set(assignments);
+
+  // If this type has a parent type, filter out inherited properties
+  if (objectDefinition.baseType) {
+    const parentType = existingObjectTypes.find(
+      (type) => type.getCode() === objectDefinition.baseType
+    );
+    
+    if (parentType) {
+      const parentPropertyCodes = new Set(
+        parentType.getPropertyAssignments().map((pa) => pa.getPropertyType().getCode())
+      );
+      
+      // Only include assignments for properties not in parent
+      assignmentsToSet = assignmentsToSet.filter((assignment) => {
+        const propId = assignment.getPropertyTypeId();
+        const propCode = propId.getPermId ? propId.getPermId() : propId.toString();
+        return !parentPropertyCodes.has(propCode);
+      });
+      
+      console.log("Filtered inherited properties. Keeping", assignmentsToSet.length, "assignments out of", 
+        convertPropertyTypesSchemaToAssignmentCreations(objectDefinition.propertyTypes as PropertyTypesSchema).length);
+    }
+  }
+
+  assignmentUpdates.set(assignmentsToSet);
   const actions = assignmentUpdates.getActions();
   update.setPropertyAssignmentActions(actions);
 

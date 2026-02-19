@@ -118,11 +118,6 @@ export const PropertyEditor = ({
     onEdit(stateToPass as LocalPropertyTypeVariants);
   }, [stateToPass]);
 
-  // const wrappedDispatch = (action: PropertyTypeEditorActions) => {
-  //   dispatch(action);
-  //   //onEdit(state as PropertyType);
-  // };
-
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       const form = (event.target as HTMLInputElement).form;

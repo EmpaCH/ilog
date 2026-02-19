@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Accordion, AccordionItem } from "@heroui/react";
 import { PropertyEditor } from "./PropertyEditor";
 import { Icon, Tabs, Tab } from "@mui/material";
@@ -31,8 +31,7 @@ export type GroupedPropertyEditorsEvents =
     }
   | { type: "ADD_GROUP"; payload: {} }
   | { type: "RENAME_GROUP"; payload: { oldGroup: string; newGroup: string } }
-  | { type: "REMOVE_GROUP"; payload: { group: string } }
-  | { type: "REORDER_GROUPS"; payload: { fromIndex: number; toIndex: number } };
+  | { type: "REMOVE_GROUP"; payload: { group: string } };
 
 // The props that are received by the component
 export interface GroupedPropertyEditorsProps {
@@ -40,7 +39,9 @@ export interface GroupedPropertyEditorsProps {
   lockedPropertyCodes: string[];
   lockedGroups: string[];
   onEvent: (event: GroupedPropertyEditorsEvents) => void;
-  mode?: "create" | "edit";
+  mode?: "create" | "edit" | "view";
+  isViewOnly?: boolean;
+  isEditMode?: boolean;
 }
 
 //The state of the component
@@ -103,6 +104,8 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   lockedGroups,
   onEvent,
   mode,
+  isViewOnly,
+  isEditMode: isEditModeProp,
 }) => {
   const keys = Object.fromEntries(
     Object.entries(schema).flatMap(([propertyGroup, properties]) => {
@@ -127,22 +130,6 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   const [propertySearchInput, setPropertySearchInput] = useState<string>("");
   const [addPropertyError, setAddPropertyError] = useState<string>("");
 
-  // Track original properties to only lock those in edit mode
-  const [originalPropertyCodes, setOriginalPropertyCodes] = useState<Set<string>>(
-    () => new Set(Object.values(schema).flat().map((p) => p.code))
-  );
-
-  // Track properties with locked codes (originals + reused existing ones)
-  const [propertiesWithLockedCodes, setPropertiesWithLockedCodes] = useState<Set<string>>(
-    () => new Set(Object.values(schema).flat().map((p) => p.code))
-  );
-
-  // Track reused existing properties (should be fully locked, not just code)
-  const [reusedExistingProperties, setReusedExistingProperties] = useState<Set<string>>(new Set());
-
-  // In edit mode, lock editing of all existing properties but allow add/delete
-  const isEditMode = mode === "edit";
-
   // Get properties not already in the schema
   const availableProperties = existingPropertyTypes.filter(
     (prop) => !Object.values(schema).flat().some((p) => p.code === prop.code)
@@ -158,33 +145,18 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   const handleConfirmAddProperty = () => {
     // Use propertySearchInput which now contains either typed or selected value
     const propertyCode = propertySearchInput.trim();
-    
-    // Require at least one value
+
     if (!propertyCode) {
       setAddPropertyError("Please select an existing property or type a new property name");
       return;
     }
-    
-    // Check if value matches an existing property
-    const matchingExistingProperty = existingPropertyTypes.find(
-      (prop) => prop.code === propertyCode
-    );
-    
-    if (matchingExistingProperty) {
-      // Using existing property - fully lock it
-      setReusedExistingProperties((prev) => new Set([...prev, propertyCode]));
-      setPropertiesWithLockedCodes((prev) => new Set([...prev, propertyCode]));
-    } else {
-      // New property - only lock the code
-      setPropertiesWithLockedCodes((prev) => new Set([...prev, propertyCode]));
-    }
-    
+
     onEvent({
       type: "ADD_PROPERTY",
       payload: { group: selectedPropertyGroup, code: propertyCode },
     });
     dispatch({ type: "ADD_PROPERTY", payload: { code: propertyCode, group: selectedPropertyGroup } });
-    
+
     setShowAddPropertyModal(false);
     setSelectedPropertyGroup("");
     setPropertySearchInput("");
@@ -223,6 +195,14 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   
   const [selectedTab, setSelectedTab] = React.useState(0);
 
+  // Reset selectedTab to 0 if the number of groups changes or selectedTab is out of bounds
+  useEffect(() => {
+    const groupCount = Object.keys(schema).length;
+    if (selectedTab >= groupCount) {
+      setSelectedTab(0);
+    }
+  }, [Object.keys(schema).length, selectedTab]);
+
   const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
     setSelectedTab(newValue);
   };
@@ -240,64 +220,59 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           key={`tab-${propertyGroup}-${index}`}
           label={
             <div
-          contentEditable={!lockedGroups.includes(propertyGroup)}
-          suppressContentEditableWarning={true}
-          onBlur={(e) => {
-            const newTitle = e.currentTarget.textContent || propertyGroup;
-            if (newTitle !== propertyGroup) {
-              onEvent({
-            type: "RENAME_GROUP",
-            payload: { newGroup: newTitle, oldGroup: propertyGroup },
-              });
-            }
-          }}
-          style={{
-            padding: "0 10px",
-            borderBottom: lockedGroups.includes(propertyGroup)
-              ? "none"
-              : "1px dashed #ccc",
-            cursor: lockedGroups.includes(propertyGroup)
-              ? "default"
-              : "text",
-            color: isDuplicate ? "red" : "inherit",
-          }}
+              contentEditable={!lockedGroups.includes(propertyGroup) && !isViewOnly}
+              suppressContentEditableWarning={true}
+              onBlur={(e) => {
+                if (isViewOnly) return;
+                const newTitle = e.currentTarget.textContent || propertyGroup;
+                if (newTitle !== propertyGroup) {
+                  onEvent({
+                    type: "RENAME_GROUP",
+                    payload: { newGroup: newTitle, oldGroup: propertyGroup },
+                  });
+                }
+              }}
+              style={{
+                padding: "0 10px",
+                borderBottom: lockedGroups.includes(propertyGroup)
+                  ? "none"
+                  : "1px dashed #ccc",
+                cursor: lockedGroups.includes(propertyGroup) || isViewOnly
+                  ? "default"
+                  : "text",
+                color: isDuplicate ? "red" : "inherit",
+              }}
             >
-          {propertyGroup}
+              {propertyGroup}
             </div>
           }
-          draggable={!lockedGroups.includes(propertyGroup)}
+          draggable={false}
           onDragStart={(e) => {
-            e.dataTransfer.setData("text/plain", index.toString());
+            e.preventDefault();
           }}
           onDrop={(e) => {
-            const fromIndex = parseInt(e.dataTransfer.getData("text/plain"), 10);
-            const toIndex = index;
-            if (fromIndex !== toIndex) {
-              onEvent({
-                type: "REORDER_GROUPS",
-                payload: { fromIndex: fromIndex, toIndex: toIndex },
-              });
-            }
             e.preventDefault();
           }}
           onDragOver={(e) => e.preventDefault()}
         />
           );
         })}
-        <Tab
-          key="add-group-tab"
-          label="+ Add Group"
-          onClick={() => {
-            const newGroup = `group${state.groupCount + 1}`;
-            onEvent({
-              type: "ADD_GROUP",
-              payload: { group: newGroup },
-            });
-            dispatch({ type: "ADD_GROUP" });
-            setSelectedTab(Object.keys(schema).length); // Switch to the new tab
-          }}
-          style={{ backgroundColor: "#f0f0f0" }} // Add grey background
-        />
+        {!isViewOnly && (
+          <Tab
+            key="add-group-tab"
+            label="+ Add Group"
+            onClick={() => {
+              const newGroup = `group${state.groupCount + 1}`;
+              onEvent({
+                type: "ADD_GROUP",
+                payload: { group: newGroup },
+              });
+              dispatch({ type: "ADD_GROUP" });
+              setSelectedTab(Object.keys(schema).length); // Switch to the new tab
+            }}
+            style={{ backgroundColor: "#f0f0f0", cursor: "pointer" }}
+          />
+        )}
       </Tabs>
       {Object.entries(schema).map(([propertyGroup, properties], index) => (
         <div
@@ -315,6 +290,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                     key={state.accordionItemKeyMapping[property.code] || `${propertyGroup}-${property.code}-${propertyIndex}`}
                     title={property.code}
                     startContent={
+                      isViewOnly ? null : (
                         lockedPropertyCodes.includes(property.code) ? (
                           <Icon
                             style={{
@@ -331,15 +307,15 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                           </Icon>
                         ) : (
                           <div
-                            onClick={() =>
+                            onClick={() => {
                               onEvent({
                                 type: "REMOVE_PROPERTY",
                                 payload: {
                                   group: propertyGroup,
                                   property: property,
                                 },
-                              })
-                            }
+                              });
+                            }}
                             style={{
                               display: "flex",
                               justifyContent: "center",
@@ -354,77 +330,83 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
                             <DeleteIcon style={{ color: "white" }} />
                           </div>
                         )
+                      )
                     }
                   >
                     <PropertyEditor
-                      onEdit={(newProperty) =>
+                      onEdit={(newProperty) => {
+                        if (isViewOnly) return;
                         handlePropertyChanges(
                           propertyGroup,
                           property,
                           newProperty
                         )
-                      }
-                      locked={lockedPropertyCodes.includes(property.code) || (isEditMode && originalPropertyCodes.has(property.code)) || reusedExistingProperties.has(property.code)}
-                      lockedCode={(isEditMode && propertiesWithLockedCodes.has(property.code)) || reusedExistingProperties.has(property.code)}
+                      }}
+                      locked={isViewOnly || lockedPropertyCodes.includes(property.code)}
+                      lockedCode={lockedPropertyCodes.includes(property.code)}
                       propertyTypeDefinitions={property as LocalPropertyTypeVariants}
                     />
                   </AccordionItem>
                 ))}
               </Accordion>
 
-              <Button
-                isIconOnly
-                onPress={() => {
-                  handleOpenAddPropertyModal(propertyGroup);
-                }}
-                color="primary"
-              >
-                <Icon
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <AddIcon />
-                </Icon>
-              </Button>
-                {lockedGroups.includes(propertyGroup) || properties.some((property) =>
-                lockedPropertyCodes.includes(property.code)
-                ) ? (
-                <Button
-                  color="warning"
-                  style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  cursor: "not-allowed",
-                  opacity: 0.5,
-                  }}
-                  disabled
-                >
-                  <LockIcon /> Locked Group
-                </Button>
-                ) : (
-                <Button
-                  onPress={() => {
-                  onEvent({
-                    type: "REMOVE_GROUP",
-                    payload: { group: propertyGroup },
-                  });
-                  setSelectedTab(0);
-                  }}
-                  color="danger"
-                  style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  cursor: "pointer",
-                  }}
-                >
-                  <DeleteIcon /> Delete Group
-                </Button>
-                )}
+              {!isViewOnly && (
+                <>
+                  <Button
+                    isIconOnly
+                    onPress={() => {
+                      handleOpenAddPropertyModal(propertyGroup);
+                    }}
+                    color="primary"
+                  >
+                    <Icon
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <AddIcon />
+                    </Icon>
+                  </Button>
+                  {lockedGroups.includes(propertyGroup) || properties.some((property) =>
+                    lockedPropertyCodes.includes(property.code)
+                  ) ? (
+                    <Button
+                      color="warning"
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        cursor: "not-allowed",
+                        opacity: 0.5,
+                      }}
+                      disabled
+                    >
+                      <LockIcon /> Locked Group
+                    </Button>
+                  ) : (
+                    <Button
+                      onPress={() => {
+                        onEvent({
+                          type: "REMOVE_GROUP",
+                          payload: { group: propertyGroup },
+                        });
+                        setSelectedTab(0);
+                      }}
+                      color="danger"
+                      style={{
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <DeleteIcon /> Delete Group
+                    </Button>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>
