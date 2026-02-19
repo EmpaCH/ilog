@@ -25,9 +25,9 @@
     }
 }
 
-localhost:443 {
-    import openbis
-}
+# localhost:443 {
+#     import openbis
+# }
 
 localhost:80 {
     import openbis
