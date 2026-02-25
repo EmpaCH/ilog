@@ -123,7 +123,8 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
           delete propertyTypes[oldGroup];
           // Rebuild propertyTypes to preserve order, replacing oldGroup with newGroup in the same position
           const groupOrder = Object.keys(propertyTypes);
-          draft.schema.propertyTypes = groupOrder.reduce((acc: PropertyTypesSchema, key: string) => {
+          // Use a loose accumulator type so we can assign either kind of schema
+          draft.schema.propertyTypes = groupOrder.reduce((acc: any, key: string) => {
             acc[key] = propertyTypes[key];
             return acc;
           }, {});

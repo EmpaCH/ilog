@@ -43,16 +43,26 @@ function Login() {
       setShowError(true);
       setErrorMessage(error?.message || 'Login failed');
     }
-  };  return (
-    <div className="main-div">
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col justify-between">
+      <header className="w-full flex items-center justify-between p-4">
+        <div className="flex items-end gap-3">
+          <img src="/openbis_logo.png" alt="openBIS logo" className="h-10 logo-margin"/>
+          <div className="text-2xl font-bold">iLog</div>
+        </div>
+        <img src="/company_logo.png" alt="Company logo" className="h-16" />
+      </header>
       <div className="login-div">
-        <h2>Log In</h2>
-        
+        <h2 className="mb-4">Log In</h2>
+
         {/* Login method toggle */}
-        <div className="mb-4">
+        <div className="mb-6">
+          <span className="text-sm mr-4">Select Login Method:</span>
           <Button
             color={loginMethod === 'credentials' ? 'primary' : 'default'}
-            variant={loginMethod === 'credentials' ? 'solid' : 'bordered'}
+            variant={loginMethod === 'credentials' ? 'solid' : 'ghost'}
             size="sm"
             onPress={() => setLoginMethod('credentials')}
             className="mr-2"
@@ -61,7 +71,7 @@ function Login() {
           </Button>
           <Button
             color={loginMethod === 'token' ? 'primary' : 'default'}
-            variant={loginMethod === 'token' ? 'solid' : 'bordered'}
+            variant={loginMethod === 'token' ? 'solid' : 'ghost'}
             size="sm"
             onPress={() => setLoginMethod('token')}
           >

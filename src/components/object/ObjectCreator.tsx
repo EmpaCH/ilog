@@ -54,6 +54,7 @@ import {
 } from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
+import { MessageModal } from "../shared/messageModal";
 
 // define whether this will be an Object Creator or Editor component
 const creatorModes = ["create", "edit", "view"] as const;
@@ -340,16 +341,14 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
 
   const onSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    
+
     // Prevent form submission in view mode
     if (mode === "view" && !isEditMode) {
       return;
     }
-    
-    localDispatch({ type: "CLEAR" });
+    localDispatch({ type: "SET_LOADING", payload: true });
 
     if (mode === "edit") {
-
       const isInstrument = state.collection === instrumentCollectionID;
       if (isInstrument) {
         // Use the enhanced update for instruments to handle component locations
@@ -363,7 +362,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           previousProperties: originalPropertyValues,
         }, {
           onError: (err) => {
-            onError(err.message);
+            handleMessage(err.message, false, true);
+            localDispatch({ type: "SET_LOADING", payload: false });
           },
           onSuccess: async () => {
             // If we have selected components, update their locations
@@ -373,12 +373,12 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 if (instrumentPermId) {
                   await updateComponentLocations(instrumentPermId);
                 }
-                onSuccess("Instrument updated successfully! Component locations have been updated.");
+                handleMessage("Instrument updated successfully! Component locations have been updated.", true, true);
               } catch (err: any) {
-                onError("Instrument updated but failed to update component locations: " + err.message);
+                handleMessage("Instrument updated but failed to update component locations: " + err.message, false, true);
               }
             } else {
-              onSuccess("Instrument updated successfully!");
+              handleMessage("Instrument updated successfully!", true, true);
             }
             setTimeout(() => {
               onBack();
@@ -396,10 +396,11 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           },
         }, {
           onError: (err) => {
-            onError(err.message);
+            handleMessage(err.message, false, true);
+            localDispatch({ type: "SET_LOADING", payload: false });
           },
           onSuccess: () => {
-            onSuccess("Object updated successfully!");
+            handleMessage("Object updated successfully!", true, true);
             setTimeout(() => {
               onBack();
             }, 2000);
@@ -417,7 +418,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         },
       }, {
         onError: (err) => {
-          onError(err.message);
+          handleMessage(err.message, false, true);
+          localDispatch({ type: "SET_LOADING", payload: false });
         },
         onSuccess: async () => {
           try {
@@ -451,12 +453,14 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 // Upload image if one is selected
                 if (selectedImageFile && apiFacade) {
                   await uploadImageToObject(newObject.getPermId().getPermId(), selectedImageFile);
-                  onSuccess("Object created successfully with component locations updated and image uploaded!");
+                  handleMessage("Object created successfully with component locations updated and image uploaded!", true, true);
+                  onClear(2000);
                 } else {
-                  onSuccess("Object created successfully with component locations updated!");
+                  handleMessage("Object created successfully with component locations updated!", true, true);
+                  onClear(2000);
                 }
               } else {
-                onError("Object created but could not be located for image upload");
+                handleMessage("Object created but could not be located for image upload", false, true);
               }
             } else {
               // Find the most recently created object of this type
@@ -477,61 +481,41 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                   const timestampB = b.getPermId().getPermId().split('-')[0];
                   return timestampB.localeCompare(timestampA); // Descending order (newest first)
                 });
-                
-                sortedObjects.forEach((obj, index) => {
-                  const timestamp = obj.getPermId().getPermId().split('-')[0];
-                  console.log(`Object ${index}: ${obj.getCode()} - PermId: ${obj.getPermId().getPermId()} - Timestamp: ${timestamp}`);
-                });
 
                 const newObject = sortedObjects[0]; // Get the first object (most recently created)
                 if (newObject && selectedImageFile && apiFacade) {
                   try {
                     const datasetId = await uploadImageToObject(newObject.getPermId().getPermId(), selectedImageFile);
-                    onSuccess("Object created successfully and image uploaded with dataset ID: " + datasetId);
+                    handleMessage("Object created successfully and image uploaded with dataset ID: " + datasetId, true, true);
+                    onClear(2000);
                   } catch (uploadError) {
-                    onError("Object created but image upload failed: " + uploadError);
+                    handleMessage("Object created but image upload failed: " + uploadError, false, true);
                   }
                 } else if (newObject) {
-                  onSuccess("Object created successfully!");
+                  handleMessage("Object created successfully!", true, true);
+                  onClear(2000);
                 } else {
-                  onError("Object created but could not be located");
+                  handleMessage("Object created but could not be located", false, true);
                 }
               } else {
-                onError("Object created but could not be located");
+                handleMessage("Object created but could not be located", false, true);
               }
             }
-
-            // Navigate back after a short delay
-            setTimeout(() => {
-              onBack();
-            }, 2000);
           } catch (err: any) {
-            onError("Object created but failed to complete additional operations: " + err.message);
+            handleMessage("Object created but failed to complete additional operations: " + err.message, false, true);
+          } finally {
+            localDispatch({ type: "SET_LOADING", payload: false });
           }
         },
       });
     }
   }
 
-  const onError = (msg: string) => {
-    localDispatch({ type: "SET_MESSAGE", payload: msg.split(" (Context:")[0] });
-    localDispatch({ type: "SET_MESSAGE_COLOR", payload: "error-message" });
-    localDispatch({ type: "SET_SHOW_MESSAGE", payload: true });
-    localDispatch({ type: "SET_LOADING", payload: false });
-  };
-
-  const onSuccess = (msg: string) => {
-    localDispatch({ type: "SET_MESSAGE", payload: msg });
-    localDispatch({ type: "SET_MESSAGE_COLOR", payload: "success-message" });
-    localDispatch({ type: "SET_SHOW_MESSAGE", payload: true });
-  };
-
   const onClear = (ms: number) => {
     if (mode === "edit") {
       dispatch({ type: "RESET", payload: objectTemplate });
     } else {
       dispatch({ type: "CLEAR" });
-      localDispatch({ type: "SET_LOADING", payload: false });
       setTimeout(() => {
         localDispatch({ type: "CLEAR" });
       }, ms);
@@ -544,300 +528,309 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     navigate({ to: "/objects" });
   };
 
+  const handleMessage = (
+    msg: string,
+    isSuccess: boolean,
+    showMsg: boolean,
+  ) => {
+    localDispatch({ type: "SET_MESSAGE", payload: msg });
+    localDispatch({ type: "SET_IS_SUCCESS", payload: isSuccess });
+    localDispatch({ type: "SET_SHOW_MESSAGE", payload: showMsg });
+
+    setTimeout(() => {
+      localDispatch({ type: "CLEAR" });
+    }, 3000);
+  };
+
   return (
-    <div>
-      <h2>{mode === "create" ? "Create Object" : mode === "edit" ? "Edit Object" : "View Object"}</h2>
-      <form onSubmit={onSubmit}>
-        <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row gap-8 bg-white rounded-lg shadow p-6 mb-8">
-          <div className="flex-1 min-w-[260px] max-w-[25rem]">
-            <div className="mb-4">
-              <div className="flex gap-3" style={{ alignItems: "baseline"}}>
-                <p className="text-lg font-semibold text-left">Preview</p>
-                {selectedImageFile ? (
-                  <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
-                    {selectedImageFile.name}
-                  </span>
-                ) : existingImageDataset ? (
-                  <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
-                    {existingImageDataset.filename}
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-400">No image selected</span>
-                )}
+    <>
+      <div>
+        <h2>{mode === "create" ? "Create Object" : mode === "edit" ? "Edit Object" : "View Object"}</h2>
+        <form onSubmit={onSubmit}>
+          <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row gap-8 bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex-1 min-w-[260px] max-w-[25rem]">
+              <div className="mb-4">
+                <div className="flex gap-3" style={{ alignItems: "baseline"}}>
+                  <p className="text-lg font-semibold text-left">Preview</p>
+                  {selectedImageFile ? (
+                    <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
+                      {selectedImageFile.name}
+                    </span>
+                  ) : existingImageDataset ? (
+                    <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
+                      {existingImageDataset.filename}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-gray-400">No image selected</span>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "1rem" }}>
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                key={selectedImageFile ? 'with-file' : 'no-file'}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  setSelectedImageFile(file || null);
-                }}
-                className="hidden"
-                id="image-upload"
-                disabled={!isEditMode}
-              />
-              <label htmlFor="image-upload" className={isEditMode ? "cursor-pointer" : "cursor-default"}>
-                {selectedImageFile ? (
-                  <div className="space-y-2">
-                    <img
-                      src={URL.createObjectURL(selectedImageFile)}
-                      alt="Preview"
-                      className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
-                    />
-                    {isEditMode && (
-                      <div className="flex gap-2 justify-center">
-                        <p className="text-xs text-blue-600 hover:text-blue-800">
-                          Click to change image
-                        </p>
-                        <span className="text-xs text-gray-400">•</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setSelectedImageFile(null);
-                          }}
-                          className="text-xs text-red-600 hover:text-red-800 underline"
-                        >
-                          Remove image
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : existingImageDataset ? (
-                  <div className="space-y-2">
-                    <img
-                      src={existingImageDataset.url}
-                      alt="Preview"
-                      className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
-                    />
-                    {isEditMode && (
-                      <div className="flex gap-2 justify-center">
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          style={{ display: "none" }}
-                          onChange={async (e) => {
-                            const file = e.currentTarget.files?.[0];
-                            if (file && openbisSample && apiFacade && existingImageDataset) {
-                              try {
-                                // Delete the old image
-                                await deleteDataset(apiFacade, existingImageDataset.datasetId);
-                                // Upload the new image
-                                const newDatasetPermId = await uploadImageToObject(
-                                  openbisSample.getPermId().getPermId(),
-                                  file
-                                );
-                                // Reload the new image preview
-                                const datasets = await getSampleDatasets(apiFacade, openbisSample.getPermId().getPermId());
-                                const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
-                                if (elnPreviewDataset) {
-                                  const datasetPermId = elnPreviewDataset.getPermId().getPermId();
-                                  const sessionToken = (apiFacade as any)?._private?.sessionToken;
-                                  if (sessionToken) {
-                                    const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
-                                    if (filename) {
-                                      const encodedFilename = encodeURIComponent(filename);
-                                      const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
-                                      setExistingImageDataset({
-                                        url: url,
-                                        filename: filename,
-                                        datasetId: datasetPermId
-                                      });
+              <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "1rem" }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  key={selectedImageFile ? 'with-file' : 'no-file'}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setSelectedImageFile(file || null);
+                  }}
+                  className="hidden"
+                  id="image-upload"
+                  disabled={!isEditMode}
+                />
+                <label htmlFor="image-upload" className={isEditMode ? "cursor-pointer" : "cursor-default"}>
+                  {selectedImageFile ? (
+                    <div className="space-y-2">
+                      <img
+                        src={URL.createObjectURL(selectedImageFile)}
+                        alt="Preview"
+                        className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
+                      />
+                      {isEditMode && (
+                        <div className="flex gap-2 justify-center">
+                          <p className="text-xs text-blue-600 hover:text-blue-800">
+                            Click to change image
+                          </p>
+                          <span className="text-xs text-gray-400">•</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setSelectedImageFile(null);
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 underline"
+                          >
+                            Remove image
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : existingImageDataset ? (
+                    <div className="space-y-2">
+                      <img
+                        src={existingImageDataset.url}
+                        alt="Preview"
+                        className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
+                      />
+                      {isEditMode && (
+                        <div className="flex gap-2 justify-center">
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: "none" }}
+                            onChange={async (e) => {
+                              const file = e.currentTarget.files?.[0];
+                              if (file && openbisSample && apiFacade && existingImageDataset) {
+                                try {
+                                  // Delete the old image
+                                  await deleteDataset(apiFacade, existingImageDataset.datasetId);
+                                  // Upload the new image
+                                  await uploadImageToObject(openbisSample.getPermId().getPermId(), file);
+                                  // Reload the new image preview
+                                  const datasets = await getSampleDatasets(apiFacade, openbisSample.getPermId().getPermId());
+                                  const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
+                                  if (elnPreviewDataset) {
+                                    const datasetPermId = elnPreviewDataset.getPermId().getPermId();
+                                    const sessionToken = (apiFacade as any)?._private?.sessionToken;
+                                    if (sessionToken) {
+                                      const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
+                                      if (filename) {
+                                        const encodedFilename = encodeURIComponent(filename);
+                                        const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
+                                        setExistingImageDataset({
+                                          url: url,
+                                          filename: filename,
+                                          datasetId: datasetPermId
+                                        });
+                                      }
                                     }
                                   }
+                                  // Reset file input
+                                  if (fileInputRef.current) {
+                                    fileInputRef.current.value = "";
+                                  }
+                                } catch (error) {
+                                  console.error("Failed to replace image:", error);
                                 }
-                                // Reset file input
-                                if (fileInputRef.current) {
-                                  fileInputRef.current.value = "";
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          >
+                            Replace image
+                          </button>
+                          <span className="text-xs text-gray-400">•</span>
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (apiFacade && existingImageDataset) {
+                                try {
+                                  await deleteDataset(apiFacade, existingImageDataset.datasetId);
+                                  setExistingImageDataset(null);
+                                } catch (error) {
+                                  console.error("Failed to delete dataset:", error);
                                 }
-                              } catch (error) {
-                                console.error("Failed to replace image:", error);
                               }
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-xs text-blue-600 hover:text-blue-800 underline"
-                        >
-                          Replace image
-                        </button>
-                        <span className="text-xs text-gray-400">•</span>
-                        <button
-                          type="button"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (apiFacade && existingImageDataset) {
-                              try {
-                                await deleteDataset(apiFacade, existingImageDataset.datasetId);
-                                setExistingImageDataset(null);
-                              } catch (error) {
-                                console.error("Failed to delete dataset:", error);
-                              }
-                            }
-                          }}
-                          className="text-xs text-red-600 hover:text-red-800 underline"
-                        >
-                          Remove image
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">
-                      {isEditMode ? "Click to select a preview image" : "No preview image"}
-                    </p>
-                    {isEditMode && (
-                      <p className="text-xs text-gray-500">
-                        Single image only - Optional
+                            }}
+                            className="text-xs text-red-600 hover:text-red-800 underline"
+                          >
+                            Remove image
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">
+                        {isEditMode ? "Click to select a preview image" : "No preview image"}
                       </p>
-                    )}
-                  </div>
-                )}
-              </label>
-            </div>
-          </div>
-          <div className="flex-1 min-w-[260px] max-w-xl flex flex-col gap-4 justify-start">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-row items-center gap-4">
-                <Checkbox
-                  isSelected={isValidFromSelected}
-                  onValueChange={setIsValidFromSelected}
-                  isDisabled={mode === "view" && !isEditMode}
-                />
-                <DatePicker
-                  isRequired
-                  isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
-                  id="validFrom"
-                  label="Valid From"
-                  className="form-field max-w-[180px]"
-                  labelPlacement="outside-left"
-                  showMonthAndYearPickers
-                  granularity="day"
-                  value={state.validFrom}
-                  onChange={(value) => {
-                    dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
-                  }}
-                />
-                <TimeInput
-                  isRequired
-                  isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
-                  aria-label="Time"
-                  className="form-field"
-                  granularity="second"
-                  hourCycle={24}
-                  value={state.validFrom}
-                  onChange={(value) => {
-                    dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
-                  }}
-                />
-                <Button
-                  isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
-                  radius="full"
-                  size="sm"
-                  color="primary"
-                  variant="faded"
-                  onPress={() =>
-                    dispatch({ type: "SET_VALID_FROM", payload: now(getLocalTimeZone()) })
-                  }
-                >
-                  Now
-                </Button>
+                      {isEditMode && (
+                        <p className="text-xs text-gray-500">
+                          Single image only - Optional
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </label>
               </div>
-              <Divider className="my-2" />
-              <RadioGroup
-                isRequired
-                isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
-                label="What is the base type of this object?"
-                orientation="horizontal"
-                style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
-                value={state.collection}
-                onValueChange={(value) => {
-                  dispatch({ type: "SET_COLLECTION", payload: value })
-                }}
-              >
-                <Radio value={instrumentCollectionID}>Instrument</Radio>
-                <Radio value={componentCollectionID}>Component</Radio>
-              </RadioGroup>
-              {mode === "edit" ? (
-                <Input
-                  isReadOnly
-                  id="type"
-                  label="Type"
-                  value={state.type}
-                  className="form-field"
-                />
-              ) : (
-                <Autocomplete
+            </div>
+            <div className="flex-1 min-w-[260px] max-w-xl flex flex-col gap-4 justify-start">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-row items-center gap-4">
+                  <Checkbox
+                    isSelected={isValidFromSelected}
+                    onValueChange={setIsValidFromSelected}
+                    isDisabled={mode === "view" && !isEditMode}
+                  />
+                  <DatePicker
+                    isRequired
+                    isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
+                    id="validFrom"
+                    label="Valid From"
+                    className="form-field max-w-[180px]"
+                    labelPlacement="outside-left"
+                    showMonthAndYearPickers
+                    granularity="day"
+                    value={state.validFrom}
+                    onChange={(value) => {
+                      dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
+                    }}
+                  />
+                  <TimeInput
+                    isRequired
+                    isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
+                    aria-label="Time"
+                    className="form-field"
+                    granularity="second"
+                    hourCycle={24}
+                    value={state.validFrom}
+                    onChange={(value) => {
+                      dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
+                    }}
+                  />
+                  <Button
+                    isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
+                    radius="full"
+                    size="sm"
+                    color="primary"
+                    variant="faded"
+                    onPress={() =>
+                      dispatch({ type: "SET_VALID_FROM", payload: now(getLocalTimeZone()) })
+                    }
+                  >
+                    Now
+                  </Button>
+                </div>
+                <Divider className="my-2" />
+                <RadioGroup
                   isRequired
-                  isReadOnly={mode === "view" && !isEditMode}
-                  id="type"
-                  label="Type"
-                  placeholder="Type to search..."
-                  className="form-field"
-                  defaultItems={objectTypesFilteredByCollection}
-                  items={objectTypesFilteredByCollection}
-                  onInputChange={(value) => {
-                    localDispatch({ type: "SET_SEARCH_TERM", payload: value });
-                  }}
-                  selectedKey={state.type || ""}
-                  onSelectionChange={(value) => {
-                    const newType = value?.toString() ?? "";
-                    dispatch({ type: "SET_TYPE", payload: newType });
-                    createObjectSchemaBasedOnType(newType, "create");
+                  isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
+                  label="What is the base type of this object?"
+                  orientation="horizontal"
+                  style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
+                  value={state.collection}
+                  onValueChange={(value) => {
+                    dispatch({ type: "SET_COLLECTION", payload: value })
                   }}
                 >
-                  {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
-                </Autocomplete>
-              )}
+                  <Radio value={instrumentCollectionID}>Instrument</Radio>
+                  <Radio value={componentCollectionID}>Component</Radio>
+                </RadioGroup>
+                {mode === "edit" ? (
+                  <Input
+                    isReadOnly
+                    id="type"
+                    label="Type"
+                    value={state.type}
+                    className="form-field"
+                  />
+                ) : (
+                  <Autocomplete
+                    isRequired
+                    isReadOnly={mode === "view" && !isEditMode}
+                    id="type"
+                    label="Type"
+                    placeholder="Type to search..."
+                    className="form-field"
+                    defaultItems={objectTypesFilteredByCollection}
+                    items={objectTypesFilteredByCollection}
+                    onInputChange={(value) => {
+                      localDispatch({ type: "SET_SEARCH_TERM", payload: value });
+                    }}
+                    selectedKey={state.type || ""}
+                    onSelectionChange={(value) => {
+                      const newType = value?.toString() ?? "";
+                      dispatch({ type: "SET_TYPE", payload: newType });
+                      createObjectSchemaBasedOnType(newType, "create");
+                    }}
+                  >
+                    {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
+                  </Autocomplete>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="md-size-div">
-          {state.type !== "" ? (
-            <ObjectPropertyEditor
-              state={state}
-              dispatch={dispatch}
-              hiddenPropertyCodes={[
-                iLogID,
-                // iLogBaseTypesPropertyCode,
-                "VALID_FROM",
-              ]}
-              currentObjectCode={objectCode}
-              onSelectedComponentsChange={(propertyCode, permIds) => {
-                setSelectedComponentsByProperty((prev) => ({
-                  ...prev,
-                  [propertyCode]: permIds,
-                }));
-              }}
-              currentInstrumentPermId={(openbisSample || newlyCreatedObject)?.getPermId().getPermId()}
-              currentSamplePermId={(openbisSample || newlyCreatedObject)?.getPermId().getPermId()}
-              isComponent={state.collection === componentCollectionID}
-              isReadOnly={mode === "view" && !isEditMode}
-            />) : (
-            <p className="text-gray-500">
-              Please select a type.
-            </p>
-          )}
-          {localState.showMessage && (
-            <div style={{ marginBottom: "15px" }} className={localState.messageColor}>
-              {localState.message}
-            </div>
-          )}
-          <div className="items-center">
+          <div className="md-size-div">
+            {state.type !== "" ? (
+              <ObjectPropertyEditor
+                state={state}
+                dispatch={dispatch}
+                hiddenPropertyCodes={[
+                  iLogID,
+                  // iLogBaseTypesPropertyCode,
+                  "VALID_FROM",
+                ]}
+                currentObjectCode={objectCode}
+                onSelectedComponentsChange={(propertyCode, permIds) => {
+                  setSelectedComponentsByProperty((prev) => ({
+                    ...prev,
+                    [propertyCode]: permIds,
+                  }));
+                }}
+                currentInstrumentPermId={(openbisSample || newlyCreatedObject)?.getPermId().getPermId()}
+                currentSamplePermId={(openbisSample || newlyCreatedObject)?.getPermId().getPermId()}
+                isComponent={state.collection === componentCollectionID}
+                isReadOnly={mode === "view" && !isEditMode}
+              />) : (
+              <p className="text-gray-500">
+                Please select a type.
+              </p>
+            )}
+          </div>
+          <Divider className="my-4" />
+          <div className="flex items-center justify-center" style={{ minHeight: "4rem" }}>
             <Button
               type="button"
               color="default"
-              className="mx-2 mb-2"
+              className="mx-2"
               onPress={onBack}
             >
               Back
@@ -846,7 +839,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
               <Button
                 type="button"
                 color="primary"
-                className="mx-2 mb-2"
+                className="mx-2"
                 onPress={() => setIsEditMode(true)}
               >
                 Edit
@@ -857,31 +850,38 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 <Button
                   type="button"
                   color="danger"
-                  className="mx-2 mb-2"
+                  className="mx-2"
+                  isDisabled={localState.loading || objectCreation.isPending || objectUpdate.isPending || objectUpdateWithComponents.isPending}
                   onPress={() => {
                     if (mode === "view") {
                       setIsEditMode(false);
+                    } else if (mode === "edit") {
+                      window.location.reload();
                     } else {
                       onClear(0);
                     }
                   }}
                 >
-                  {mode === "view" ? "Cancel" : "Clear"}
+                  {mode === "view" ? "Cancel" : mode === "edit" ? "Reset" : "Clear"}
                 </Button>
                 <Button
                   type="submit"
                   color="primary"
-                  className="mx-2 mb-2"
-                  isLoading={localState.loading}
-                  style={{ marginTop: "15px" }}
+                  className="mx-2"
+                  isLoading={localState.loading || objectCreation.isPending || objectUpdate.isPending || objectUpdateWithComponents.isPending}
                 >
                   {mode === "create" ? "Create" : "Update"}
                 </Button>
               </>
             )}
           </div>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+      <MessageModal
+        message={localState.message}
+        isOpen={localState.showMessage}
+        isSuccess={localState.isSuccess}
+      />
+    </>
   );
 }

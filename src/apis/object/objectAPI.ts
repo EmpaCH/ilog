@@ -2,13 +2,6 @@ import openbis from "@openbis/openbis.esm";
 import { iLogID } from "../shared/common";
 import { componentCollectionID, instrumentCollectionID } from "../shared/environment";
 
-// TODO
-// 1.Look for templates in the settings
-// 2.Export async function createInheritedType(api: openbis.OpenBISJavaScriptFacade, baseType: string, ):
-//   Search for a type of type baseType and copy all property assignments into the new type.
-//   Use a set to keep the list of assignments to make sure that they are unique between the base type and the derived type
-//   Probably we can use some internal field to keep track of the inheritance relationships on the openbis 
-//   Maybe we create a very base type in openbis which has some hidden fields that we use to track the inheritance
 
 /**
  * Get all objects from the iLog inventory Equipment collection.

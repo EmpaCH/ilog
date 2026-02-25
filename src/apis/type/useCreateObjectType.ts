@@ -81,7 +81,6 @@ export const useCreateObjectType = () => {
         const objectTypes = freshObjectTypesResult.data;
         const propertyTypes = freshPropertyTypesResult.data;
         const propertyAssignments = freshPropertyAssignmentsResult.data;
-        console.log("objectTypes", objectTypes);
         const operations = convertObjectTypeDefinitionToOperations(
           definition,
           propertyTypes,
@@ -91,7 +90,6 @@ export const useCreateObjectType = () => {
         const props = new openbis.SynchronousOperationExecutionOptions();
         props.setExecuteInOrder(true);
         const ops = convertCreationsToOperations(operations);
-        console.log("Starting to create object type", definition, ops);
         await apiFacade.executeOperations(ops, props);
       }
     },

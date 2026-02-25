@@ -13,15 +13,12 @@ export class OpenBISApiFacade {
   private constructor() {}
 
   public static getInstance(url: string): openbis.openbis {
-    console.log("Getting instance with URL:", url);
     if (url === undefined || url === null) {
       throw new Error("URL cannot be null or undefined");
     }
     if (OpenBISApiFacade.instances.get(url) === undefined) {
-      console.log("Creating new instance with URL:", url);
       OpenBISApiFacade.instances.set(url, new openbis.openbis(url));
     }
-    console.log("Returning instance with URL:", url);
     const current = OpenBISApiFacade.instances.get(url) as openbis.openbis;
     return current;
   }
@@ -33,14 +30,11 @@ export const USER_KEY = "user";
 export const openBISHookFactory = (url: string) => {
   return () => {
     const apiFacade = OpenBISApiFacade.getInstance(url);
-    console.log(apiFacade);
 
     // @ts-ignore
     apiFacade._private.log = () => {};
     const id = new Date();
-    const idLogger = (...msgs: any) => {
-      console.log(`Facade created at ${id}, ${msgs}`);
-    };
+    const idLogger = (...msgs: any) => {};
     idLogger(`${id}, Creating hook with URL:`, url);
 
     const storedToken = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;

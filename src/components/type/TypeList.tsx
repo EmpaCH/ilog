@@ -9,34 +9,35 @@ import { useDeleteObjectType } from "../../apis/type/useDeleteObjectType";
 
 export const TypeList = () => {
   const navigate = useNavigate();
-  const [deletionMessage, setDeletionMessage] = useState("");
+  const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const res = useGetAllObjectTypes();
-
-  const types = res.data ? [...res.data] : [];
-  
   const deletion = useDeleteObjectType();
-  const onDelete = async (permId: any, code: string) => {
-    await deletion.mutateAsync(permId.permId);
-    if (deletion.isSuccess) {
-      setDeletionMessage(`'${code}' deleted successfully.`);
+  const types = res.data ? [...res.data] : [];
+
+  const onDelete = async (
+    permId: openbis.EntityTypePermId | openbis.SamplePermId,
+    code: string,
+  ) => {
+    try {
+      await deletion.mutateAsync(permId.getPermId());
+      setMessage(`Type '${code}' deleted successfully.`);
       setIsSuccess(true);
-      setShowMessage(true);
-    }
-    if (deletion.isError) {
-      setDeletionMessage(deletion.error.message.replace(/\s*\([^)]*\)/g, ""));
+    } catch (err: any) {
+      const msg = err?.message || (typeof err === "string" ? err : "Unknown error");
+      setMessage(msg.replace(/\s*\([^)]*\)/g, ""));
       setIsSuccess(false);
+    } finally {
       setShowMessage(true);
+      setTimeout(() => {
+        setShowMessage(false);
+      }, 3000);
     }
-    setTimeout(() => {
-      setShowMessage(false);
-    }, 3000);
   };
 
   const onEdit = async (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
-    code: string
+    code: string,
   ) => {
     const type = types.find((t) => t.getCode() === code);
     if (type) {
@@ -44,7 +45,7 @@ export const TypeList = () => {
         to: `/types/creator?mode=edit&objecttypecode=${type.getCode()}`,
       });
     } else {
-      setDeletionMessage(`Type with code "${code}" not found.`);
+      setMessage(`Type with code '${code}' not found.`);
       setIsSuccess(false);
       setShowMessage(true);
       setTimeout(() => {
@@ -54,7 +55,7 @@ export const TypeList = () => {
   };
 
   const onView = async (
-    code: string
+    code: string,
   ) => {
     const type = types.find((t) => t.getCode() === code);
     if (type) {
@@ -62,7 +63,7 @@ export const TypeList = () => {
         to: `/types/creator?mode=view&objecttypecode=${type.getCode()}`,
       });
     } else {
-      setDeletionMessage(`Type with code "${code}" not found.`);
+      setMessage(`Type with code '${code}' not found.`);
       setIsSuccess(false);
       setShowMessage(true);
       setTimeout(() => {
@@ -77,35 +78,39 @@ export const TypeList = () => {
       name: "Code",
       sorting: true,
       align: "start",
+      filterable: true,
     },
     {
       key: "prefix",
       name: "Prefix",
       sorting: true,
       align: "start",
+      filterable: true,
     },
     {
-      key: "collectionType",
-      name: "Collection Type",
+      key: "baseType",
+      name: "Base Type",
       sorting: true,
       align: "start",
+      filterable: true,
     },
     {
       key: "btns",
       name: "",
       sorting: false,
       align: "end",
+      filterable: false,
     },
   ];
 
   const rows: TypeRow[] = types.map((type: openbis.SampleType) => {
     const metadata = type.getMetaData();
-    
+
     return {
       permId: type.getPermId(),
       code: type.getCode(),
       prefix: type.getGeneratedCodePrefix(),
-      collectionType: metadata["collectionType"] || "Unknown",
+      baseType: metadata["collectionType"] || "Unknown",
     };
   });
 
@@ -115,15 +120,14 @@ export const TypeList = () => {
       <List
         columns={columns}
         rows={rows}
-        defaultSortColumn="code"
-        searchColumn="code"
+        idColumn="code"
         navigatePath="/types/creator"
         onDelete={onDelete}
         onEdit={onEdit}
         onView={onView}
       />
       <MessageModal
-        message={deletionMessage}
+        message={message}
         isOpen={showMessage}
         isSuccess={isSuccess}
       />
