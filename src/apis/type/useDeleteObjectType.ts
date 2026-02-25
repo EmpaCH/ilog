@@ -7,7 +7,7 @@ import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "./useGetAllObjectTypes";
 export const DELETE_OBJECT_TYPE_MUTATION_KEY = "DELETE_OBJECT_TYPE_MUTATION_KEY";
 
 export const useDeleteObjectType = () => {
-  const { apiFacade, isAuthenticated } = useContext(AuthContext);
+  const { apiFacade } = useContext(AuthContext);
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -15,7 +15,6 @@ export const useDeleteObjectType = () => {
     mutationFn: async (typeId: string) => {
       const stdo = new openbis.SampleTypeDeletionOptions();
       stdo.setReason("Type no longer needed.");
-      console.log("useDeleteObjectType", typeId, isAuthenticated);
       await apiFacade.deleteSampleTypes([new openbis.EntityTypePermId(typeId)], stdo);
     },
     onSuccess: () => {

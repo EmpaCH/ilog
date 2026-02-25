@@ -81,7 +81,6 @@ export const LogbookEntryList = () => {
   };
 
   const onEdit = (
-    permId: openbis.SamplePermId,
     code: string,
   ) => {
     navigate({
@@ -106,13 +105,6 @@ export const LogbookEntryList = () => {
   const btnsColumnName = "btns";
 
   const columns: Column[] = [
-    {
-      key: "code",
-      name: "Code",
-      sorting: true,
-      align: "start",
-      filterable: true,
-    },
     {
       key: "name",
       name: "Name",
@@ -165,16 +157,16 @@ export const LogbookEntryList = () => {
   ];
 
   const colorMapping: Record<string, string> = {
-    "CHANGE_PROPERTIES": "rgba(173, 216, 230, 0.5)", // light blue
-    "MAINTENANCE_LOGENTRY": "rgba(144, 238, 144, 0.5)", // light green
-    "ERRORS_AND_PROBLEMS_LOGENTRY": "rgba(255, 182, 193, 0.5)", // light red (pinkish)
-    "CALIBRATION_OPTIMIZATION_LOGENTRY": "rgba(255, 165, 0, 0.5)", // light orange
-    "CRYOGEN_FILLING_LOGBENTRY": "rgba(216, 191, 216, 0.5)", // light purple
-    "DEGASING_LOGENTRY": "rgba(255, 192, 203, 0.5)", // light pink
-    "CLEANING_LOGENTRY": "rgba(255, 255, 224, 0.5)", // light yellow
-    "BAKEOUT_LOGENTRY": "rgba(222, 184, 135, 0.5)", // light brown
-    "COMMENT_LOGENTRY": "rgba(211, 211, 211, 0.5)", // light gray
-    "OTHER_LOGENTRY": "rgba(211, 211, 211, 0.5)", // light gray
+    "CHANGE_PROPERTIES": "rgba(173, 216, 230, 0.5)",                // light blue
+    "MAINTENANCE_LOGENTRY": "rgba(144, 238, 144, 0.5)",             // light green
+    "ERRORS_AND_PROBLEMS_LOGENTRY": "rgba(255, 182, 193, 0.5)",     // light red (pinkish)
+    "CALIBRATION_OPTIMIZATION_LOGENTRY": "rgba(255, 165, 0, 0.5)",  // light orange
+    "CRYOGEN_FILLING_LOGBENTRY": "rgba(216, 191, 216, 0.5)",        // light purple
+    "DEGASING_LOGENTRY": "rgba(255, 192, 203, 0.5)",                // light pink
+    "CLEANING_LOGENTRY": "rgba(255, 255, 224, 0.5)",                // light yellow
+    "BAKEOUT_LOGENTRY": "rgba(222, 184, 135, 0.5)",                 // light brown
+    "COMMENT_LOGENTRY": "rgba(211, 211, 211, 0.5)",                 // light gray
+    "OTHER_LOGENTRY": "rgba(211, 211, 211, 0.5)",                   // light gray
   };
 
   const logbookRows: LogbookEntryRow[] = logbookEntries.map(
@@ -188,6 +180,7 @@ export const LogbookEntryList = () => {
       const typeCode = entry.getType()?.getCode() || "";
       const type = Object.values(LOGBOOK_ENTRY_TYPES).find(t => t.code === typeCode)?.description || typeCode;
       const compPermId = entry.getProperty("COMPONENT") || "";
+
       return {
         permId: entry.getPermId(),
         code: entry.getCode(),
@@ -195,10 +188,11 @@ export const LogbookEntryList = () => {
         type,
         object: (componentsQuery.data && componentsQuery.data[compPermId]) ? componentsQuery.data[compPermId] : compPermId,
         parentEntry,
-        validFrom: (entry.getProperty("VALID_FROM") && typeof entry.getProperty("VALID_FROM") === "string" && entry.getProperty("VALID_FROM").includes("T")) ? entry.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
-        : "",
+        validFrom: (entry.getProperty("VALID_FROM") && typeof entry.getProperty("VALID_FROM") === "string" && entry.getProperty("VALID_FROM").includes("T"))
+          ? entry.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
+          : "",
         responsible: entry.getRegistrator().getPermId().getPermId() || "",
-        color: colorMapping[typeCode] || "rgba(211, 211, 211, 0.5)", // light gray,
+        color: colorMapping[typeCode] || "rgba(211, 211, 211, 0.5)",
       }
     }
   );
@@ -212,10 +206,10 @@ export const LogbookEntryList = () => {
         columns={columns}
         rows={rows}
         idColumn="code"
+        hiddenCode={true}
         defaultSortColumn="validFrom"
         defaultSortDirection="descending"
         navigatePath="/logbook/creator"
-        // enableHistory={true}
         onDelete={onDelete}
         onEdit={onEdit}
       />

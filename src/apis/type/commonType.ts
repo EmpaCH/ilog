@@ -64,8 +64,11 @@ export interface ObjectTypeDefinition {
   collectionType: string;
 }
 
+// A resolved property type can be any `PropertyType` (either local variants or reference)
+export type ResolvedPropertyType = PropertyType;
+
 export interface ResolvedPropertyTypeSchema {
-  [group: string]: LocalPropertyType[];
+  [group: string]: PropertyType[];
 }
 
 export interface ResolvedObjectTypeDefinition extends ObjectTypeDefinition {
@@ -299,9 +302,12 @@ function serializePropertyType(key: LocalPropertyType): SerializedPropertyKey {
 function extractFields(type: ResolvedObjectTypeDefinition) {
   return new Set(
     Object.entries(type?.propertyTypes).flatMap(([propertyGroup, properties]) => {
-      return properties.map((prop) => {
-        return serializePropertyType(prop);
-      });
+      // Only serialize local property types (reference types don't have dataType)
+      return properties
+        .filter((prop) => (prop as any).type === "local")
+        .map((prop) => {
+          return serializePropertyType(prop as LocalPropertyType);
+        });
     })
   );
 }
@@ -321,7 +327,13 @@ export function checkValidSubType(
   console.log(
     "baseFieldSet",baseFieldSet,
     "derivedFieldSet",derivedFieldSet)
-  return derivedFieldSet.isSupersetOf(baseFieldSet); //* ts-ignore
+  // `Set.prototype.isSupersetOf` is not standard across lib targets; implement explicitly
+  for (const key of baseFieldSet) {
+    if (!derivedFieldSet.has(key)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
@@ -355,43 +367,6 @@ export function findAncestors(
   return inner(type, allTypes);
 }
 
-// /**
-//  * Adds property types to an openBIS object type.
-//  * @param objectType - The openBIS object type to add property types to.
-//  */
-// export function addPropertyTypesToObjectTypeDefinition(
-//   objectType: openbis.SampleType,
-// ): void {
-
-//   try {
-//     const groupedPropertyTypes: PropertyTypesSchema = {};
-
-//     const sections = objectType.propertyAssignments.map((assignment) => {
-//       return assignment.section;
-//     }).filter((section, index, self) => {
-//       return self.indexOf(section) === index;
-//     });
-
-//     sections.forEach((section) => {
-//       const propertyTypes = objectType.propertyAssignments.filter((assignment) => {
-//         return assignment.section === section;
-//       }).map((assignment) => {
-//         return assignment.propertyType;
-//       });
-
-//       groupedPropertyTypes[section] = propertyTypes;
-//     });
-
-//     objectType.propertyTypes = groupedPropertyTypes;
-//   } catch (error) {
-//     console.error(error);
-//     if (!objectType.propertyTypes) {
-//       objectType.propertyTypes = {};
-//     }
-//   }
-
-// }
-
 /**
  * Adds property types to an openBIS object type.
  * @param objectType - The openBIS object type to add property types to.
@@ -421,10 +396,8 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
         return assignment.getPropertyType();
       });
 
-    // Filter out reference properties and convert
-    const convertedProperties = propertyTypesBySection
-      .map(convertOpenBISPropertyType)
-      .filter((prop) => prop.type !== "reference");
+    // Convert property types (converted values are local variants)
+    const convertedProperties = propertyTypesBySection.map(convertOpenBISPropertyType);
 
     if (convertedProperties.length > 0) {
       propertyTypes[section] = convertedProperties;

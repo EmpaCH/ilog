@@ -34,7 +34,6 @@ export async function createObjectTypeSettingsDefinition(
   typeName: string
 ): Promise<void> {
   if (!getIsInitializing()) {
-    console.log(`Skipping ELN settings update for type '${typeName}' - existing lab instance`);
     return;
   }
   // Parse existing ELN settings properties
@@ -59,7 +58,6 @@ export async function deleteObjectTypeSettingsDefinition(
   typeName: string
 ): Promise<void> {
   if (!getIsInitializing()) {
-    console.log(`Skipping ELN settings update for type deletion '${typeName}' - existing lab instance`);
     return;
   }
   // Parse existing ELN settings properties
@@ -313,8 +311,6 @@ export function convertPropertyTypesSchemaToUpdateOperations(
           (assignment) => assignment.code == getPropertyTypeId(prop)
         );
 
-        console.log("Comparing property:", prop.code, "with existing:", existingPropertyType);
-
         if (
           !existingPropertyType ||
           (existingPropertyType.label === prop.label &&
@@ -322,11 +318,8 @@ export function convertPropertyTypesSchemaToUpdateOperations(
             existingPropertyType.dataType === prop.dataType)
         ) {
           // No changes, skip update
-          console.log("No changes for property:", prop.code, "- skipping");
           return null;
         }
-
-        console.log("Creating update for property:", prop.code);
         const update = new openbis.PropertyTypeUpdate();
         // update.setSchema(section);
         update.setTypeId(getPropertyTypeId(prop));
@@ -339,7 +332,6 @@ export function convertPropertyTypesSchemaToUpdateOperations(
     })
     .flatMap((it) => (it ? [it] : []));
 
-  console.log("Final update operations count:", updates.length);
   return updates;
 }
 
@@ -400,12 +392,9 @@ export function convertObjectTypeDefinitionToUpdateOperations(
       // Only include assignments for properties not in parent
       assignmentsToSet = assignmentsToSet.filter((assignment) => {
         const propId = assignment.getPropertyTypeId();
-        const propCode = propId.getPermId ? propId.getPermId() : propId.toString();
+        const propCode = propId.toString();
         return !parentPropertyCodes.has(propCode);
       });
-      
-      console.log("Filtered inherited properties. Keeping", assignmentsToSet.length, "assignments out of", 
-        convertPropertyTypesSchemaToAssignmentCreations(objectDefinition.propertyTypes as PropertyTypesSchema).length);
     }
   }
 

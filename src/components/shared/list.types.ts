@@ -8,23 +8,25 @@ export interface Column {
   filterable?: boolean;
 };
 
+export interface Row {
+  [key: string]: any;
+}
+
 export interface TypeRow {
   permId: openbis.EntityTypePermId;
   code: string;
   prefix: string;
-  collectionType: string;
+  baseType: string;
 };
 
 export interface ObjectRow {
   permId: openbis.SamplePermId;
-  name: string;
+  preview: string;
   code: string;
+  name: string;
   type: string;
+  baseType: string;
 };
-
-export interface Row {
-  [key: string]: any;
-}
 
 export interface LogbookEntryRow {
   permId: openbis.SamplePermId;

@@ -107,7 +107,7 @@ export const ObjectList = () => {
     await deleteObjectResult.mutateAsync(
       permId as openbis.SamplePermId,
     ).then(() => {
-      handleMessage(`'${code}' deleted successfully.`, true, true);
+      handleMessage(`Object '${code}' deleted successfully.`, true, true);
     }).catch((e) => {
       handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
       handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
@@ -115,7 +115,6 @@ export const ObjectList = () => {
   };
 
   const onEdit = async (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => {
     const object = objects.find((t) => t.getCode() === code);
@@ -185,36 +184,35 @@ export const ObjectList = () => {
       name: "Preview",
       sorting: false,
       align: "start",
+      filterable: false,
     },
     {
       key: "name",
       name: "Name",
       sorting: true,
       align: "start",
-    },
-    {
-      key: "code",
-      name: "Code",
-      sorting: true,
-      align: "start",
+      filterable: true,
     },
     {
       key: "type",
       name: "Type",
-      sorting: false,
+      sorting: true,
       align: "start",
+      filterable: true,
     },
     {
-      key: "collection",
-      name: "Collection",
-      sorting: false,
+      key: "baseType",
+      name: "Base Type",
+      sorting: true,
       align: "start",
+      filterable: true,
     },
     {
       key: "btns",
       name: "",
       sorting: false,
       align: "end",
+      filterable: false,
     },
   ];
 
@@ -223,14 +221,14 @@ export const ObjectList = () => {
       const metadata = obj.getType().getMetaData();
       const collectionType = metadata["collectionType"];
       const permId = obj.getPermId().getPermId();
-      // Only pass the image URL string, not a React element
+
       return {
-        preview: previewImages[permId] || "",
         permId: obj.getPermId(),
-        name: obj.getProperty("NAME") || obj.getCode(),
         code: obj.getCode(),
+        preview: previewImages[permId] || "",
+        name: obj.getProperty("NAME") || obj.getCode(),
         type: obj.getType().getCode(),
-        collection: getCollectionName(collectionType),
+        baseType: getCollectionName(collectionType),
       }
     }
   );
@@ -241,8 +239,8 @@ export const ObjectList = () => {
       <List
         columns={columns}
         rows={rows}
-        defaultSortColumn="name"
-        idColumn="code"
+        idColumn="name"
+        hiddenCode={true}
         navigatePath="/objects/creator"
         enableHistory={true}
         onDelete={onDelete}

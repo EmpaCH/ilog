@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Button, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Input, Accordion, AccordionItem } from "@heroui/react";
+import {
+  Autocomplete,
+  AutocompleteItem,
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Input,
+  Accordion,
+  AccordionItem,
+} from "@heroui/react";
 import { PropertyEditor } from "./PropertyEditor";
 import { Icon, Tabs, Tab } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
@@ -11,7 +23,6 @@ import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes
 import { produce, enableMapSet } from "immer";
 
 enableMapSet();
-
 
 // These are the events that the GroupedPropertyEditor emits
 // They must be handled by the parent component
@@ -94,7 +105,7 @@ const groupedPropertyEditorsReducer = produce(
 );
 
 // Generating random keys for list items
-export const createPropertyKey = () => {
+const createPropertyKey = () => {
   return `${Math.random().toString(36).substring(7)}`;
 };
 
@@ -415,26 +426,33 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         <ModalContent>
           <ModalHeader>Add Property to {selectedPropertyGroup}</ModalHeader>
           <ModalBody>
-            <p style={{  color: "rgb(243, 18, 96)" }}>
-              Type a property name: if it matches an existing property it will be reused, otherwise a new one will be created.
+            <p style={{ color: "rgb(243, 18, 96)" }} className="mb-4">
+              Search property: if it exists then it will be reused, otherwise a new one will be created.
             </p>
-              <Input
-                placeholder="Type property code..."
-                value={propertySearchInput}
-                onValueChange={(value) => {
-                  setPropertySearchInput(value);
-                  setAddPropertyError("");
-                }}
-                list="available-properties-list"
-                autoComplete="off"
-              />
-              <datalist id="available-properties-list">
-                {availableProperties.map((prop) => (
-                  <option key={prop.code} value={prop.code}>
-                    {prop.dataType}{prop.multivalued ? "[]" : ""}
-                  </option>
-                ))}
-              </datalist>
+            <Autocomplete
+              placeholder="Type property code..."
+              className="form-field"
+              aria-label="Property search input"
+              selectedKey={propertySearchInput}
+              defaultItems={availableProperties}
+              onSelectionChange={(value) => {
+                setPropertySearchInput(value ? String(value) : "");
+                setAddPropertyError("");
+              }}
+            >
+              {availableProperties.map((prop) => (
+                <AutocompleteItem
+                  key={prop.code}
+                  value={prop.code}
+                  aria-label={prop.code}
+                  endContent={
+                    <span style={{ color: "grey" }}>{prop.dataType}{prop.multivalued ? "[]" : ""}</span>
+                  }
+                >
+                  {prop.code}
+                </AutocompleteItem>
+              ))}
+            </Autocomplete>
             {addPropertyError && (
               <p style={{ color: "rgb(243, 18, 96)", fontSize: "0.875rem" }}>
                 {addPropertyError}

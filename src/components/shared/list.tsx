@@ -2,6 +2,8 @@ import { Accordion, AccordionItem } from "@heroui/accordion";
 import React, { useReducer } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
+  Autocomplete,
+  AutocompleteItem,
   Table,
   TableHeader,
   TableColumn,
@@ -16,6 +18,7 @@ import {
 } from "@heroui/react";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import HistoryIcon from "@mui/icons-material/History";
 import { Column, Row } from "./list.types";
@@ -24,9 +27,9 @@ import openbis from "@openbis/openbis.esm";
 export const List = (props: {
   columns: Column[];
   rows: Row[];
-  defaultSortColumn: string;
-  idColumn?: string;
-  searchColumn?: string;
+  idColumn: string;
+  hiddenCode?: boolean;
+  defaultSortColumn?: string;
   defaultSortDirection?: "ascending" | "descending";
   navigatePath: string;
   enableHistory?: boolean;
@@ -37,7 +40,6 @@ export const List = (props: {
     code: string,
   ) => void;
   onEdit: (
-    permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => void;
   onHistory?: (
@@ -57,7 +59,7 @@ export const List = (props: {
 
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [sortDescriptor, setSortDescriptor] = React.useState<SortDescriptor>({
-    column: props.defaultSortColumn,
+    column: props.defaultSortColumn || props.idColumn,
     direction: props.defaultSortDirection ? props.defaultSortDirection : "ascending",
   });
   const generalListFilter = "generalListFilter";
@@ -67,7 +69,7 @@ export const List = (props: {
   const filteredItems = React.useMemo(() => {
     let filteredItems: Row[] = [...props.rows];
     if (hasSearchFilter) {
-      const searchField = props.searchColumn || "name";
+      const searchField = props.idColumn;
       filteredItems = filteredItems.filter((items) =>
         items[searchField]
           ?.toString()
@@ -152,47 +154,39 @@ export const List = (props: {
   const filterBar = filterableColumns.length > 0 && (
     <>
       <Accordion>
-        <AccordionItem key="filters" aria-label="Filters" title="Filters">
+        <AccordionItem
+          key="filters"
+          aria-label="Filters"
+          title={<div style={{ display: 'inline-flex', gap: '0.5rem' }}><FilterAltIcon /> <span style={{ fontSize: '1.3rem' }}>Filters</span></div>}
+        >
           <div className="flex flex-row flex-wrap gap-2 items-end mb-2">
             {filterableColumns.map(col => {
               const values = Array.from(new Set(props.rows.map(row => row[col.key]).filter(v => v != null))).sort();
               return (
                 <div key={col.key} className="flex flex-col min-w-[230px]">
-                  <span className="text-xs mb-1 font-bold text-left">{col.name}</span>
+                  <span className="text-sm mb-1 font-bold text-left">{col.name}</span>
                   <div className="flex flex-row gap-1 items-center">
-                    <Input
-                      placeholder={"Type or select..."}
-                      value={filter[col.key] || ""}
-                      onValueChange={val => setFilterValue({ key: col.key, value: val })}
+                    <Autocomplete
+                      aria-label={col.name}
+                      placeholder="Type or select..."
                       className="flex-1"
-                      list={`filter-options-${col.key}`}
-                      autoComplete="off"
-                    />
-                    <datalist id={`filter-options-${col.key}`}>
-                      {values.map(v => (
-                        <option key={v} value={v}>{v}</option>
+                      selectedKey={filter[col.key] || ""}
+                      defaultItems={values}
+                      onSelectionChange={(value) => setFilterValue({ key: col.key, value: value?.toString() || "" })}
+                    >
+                      {values.map((value) => (
+                        <AutocompleteItem key={value} value={value} aria-label={value}>
+                          {value}
+                        </AutocompleteItem>
                       ))}
-                    </datalist>
-                    {filter[col.key] && (
-                      <button
-                        type="button"
-                        aria-label={`Clear ${col.name} filter`}
-                        className="ml-1 text-gray-400 hover:text-red-500 focus:outline-none"
-                        style={{ fontSize: '1.2rem', background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
-                        onClick={() => setFilterValue({ key: col.key, value: "" })}
-                      >
-                        ×
-                      </button>
-                    )}
+                    </Autocomplete>
                   </div>
                 </div>
               );
             })}
-            {filterableColumns.length > 0 && (
-              <Button variant="ghost" color="primary" onPress={onClear}>
-                Clear Filters
-              </Button>
-            )}
+            <Button variant="ghost" color="primary" onPress={onClear}>
+              Clear Filters
+            </Button>
           </div>
         </AccordionItem>
       </Accordion>
@@ -207,7 +201,7 @@ export const List = (props: {
         <Input
           isClearable
           className="w-full sm:max-w-[44%]"
-          placeholder={`Search by ${props.searchColumn || "name"}`}
+          placeholder={`Search by ${props.idColumn}...`}
           startContent={<SearchIcon />}
           value={filter[generalListFilter]}
           onClear={() => onClear()}
@@ -286,14 +280,13 @@ export const List = (props: {
 
   const renderRowCells = (
     permId: any,
-    row: { [key: string]: any },
-    idColumn: string | undefined,
-    defaultSortColumn: string,
+    row: { [key: string]: any }, // display-only row (may have `code` removed)
+    idColumn: string,
     enableModification: boolean | undefined,
     enableHistory: boolean | undefined,
+    fullRow?: { [key: string]: any }, // original row used for actions
   ): JSX.Element[] => {
     const cells = Object.entries(row).map(([key, value]) => (
-      // §TODO: Fix such that key matches the column name, not just same order as input
       (<TableCell key={`${permId}-${key}`} >
         {key === "preview" ? (
           <img src={value} alt="preview" style={{ width: "90px", height: "90px", objectFit: "cover" }} />
@@ -311,7 +304,7 @@ export const List = (props: {
             color="primary"
             variant="light"
             size="sm"
-            onPress={() => props.onHistory && props.onHistory(row[idColumn ? idColumn : defaultSortColumn])}
+            onPress={() => props.onHistory && props.onHistory(fullRow ? fullRow["code"] : row[idColumn])}
           >
             <HistoryIcon />
           </Button>
@@ -322,7 +315,7 @@ export const List = (props: {
             color="success"
             variant="light"
             size="sm"
-            onPress={() => props.onEdit(permId, row[idColumn ? idColumn : defaultSortColumn])}
+            onPress={() => props.onEdit(fullRow ? fullRow["code"] : row[idColumn])}
           >
             <DriveFileRenameOutlineIcon />
           </Button>
@@ -334,7 +327,7 @@ export const List = (props: {
             variant="light"
             size="sm"
             onPress={() =>
-              props.onDelete(permId, (row as Record<string, string>)[idColumn ? idColumn : defaultSortColumn])
+              props.onDelete(permId, row[idColumn])
             }
           >
             <DeleteOutlineIcon />
@@ -347,7 +340,8 @@ export const List = (props: {
   };
 
   const renderTableRow = (row: Row) => {
-    const { permId, color, enableModification, ...newRow } = row;
+    const { permId, color, enableModification, ...rest } = row;
+    const newRow = props.hiddenCode ? Object.fromEntries(Object.entries(rest).filter(([k]) => k !== "code")) : rest;
     return (
       <TableRow
         key={permId.getPermId()}
@@ -355,9 +349,9 @@ export const List = (props: {
           backgroundColor: color,
           cursor: props.onView ? "pointer" : "default",
         }}
-        onClick={() => props.onView?.(row[props.idColumn ? props.idColumn : props.defaultSortColumn])}
+        onClick={() => props.onView?.(props.hiddenCode ? row["code"] : row[props.idColumn])}
       >
-        {renderRowCells(permId, newRow, props.idColumn, props.defaultSortColumn, enableModification, props.enableHistory)}
+        {renderRowCells(permId, newRow, props.idColumn, enableModification, props.enableHistory, row)}
       </TableRow>
     );
   };

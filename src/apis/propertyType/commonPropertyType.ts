@@ -104,7 +104,6 @@ export function convertPropertyTypeToUpdate(
     case "local": {
       update.setTypeId(propertyType.code.toUpperCase());
       const test = convertDataTypeToOpenBISDataType(propertyType.dataType);
-      console.log("Updating property type", propertyType.code, "to data type", test);
       update.convertToDataType(
         test
       );
@@ -127,7 +126,6 @@ export function initializePropertyTypeCreation(
   if (propertyType.metadata) {
     creation.setMetaData(propertyType.metadata);
   }
-  console.log("PropertyTypeCreation", creation);
   return creation;
 }
 
