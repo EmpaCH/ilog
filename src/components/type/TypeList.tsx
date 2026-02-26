@@ -20,6 +20,21 @@ export const TypeList = () => {
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => {
+    // Prevent deletion if any other type uses this as its baseType
+    const dependents = types.filter((t) => {
+      if (t.getCode() === code) return false;
+      const meta = t.getMetaData() || {};
+      return meta.baseType === code || meta["baseType"] === code;
+    });
+
+    if (dependents.length > 0) {
+      setMessage(`Cannot delete '${code}': used as base type by ${dependents.map(d => d.getCode()).join(", ")}`);
+      setIsSuccess(false);
+      setShowMessage(true);
+      setTimeout(() => setShowMessage(false), 3000);
+      return;
+    }
+
     try {
       await deletion.mutateAsync(permId.getPermId());
       setMessage(`Type '${code}' deleted successfully.`);
