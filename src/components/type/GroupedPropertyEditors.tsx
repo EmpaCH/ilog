@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
+  Accordion,
+  AccordionItem,
   Autocomplete,
   AutocompleteItem,
   Button,
@@ -8,9 +10,6 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  Input,
-  Accordion,
-  AccordionItem,
 } from "@heroui/react";
 import { PropertyEditor } from "./PropertyEditor";
 import { Icon, Tabs, Tab } from "@mui/material";
@@ -50,7 +49,6 @@ export interface GroupedPropertyEditorsProps {
   lockedPropertyCodes: string[];
   lockedGroups: string[];
   onEvent: (event: GroupedPropertyEditorsEvents) => void;
-  mode?: "create" | "edit" | "view";
   isViewOnly?: boolean;
   isEditMode?: boolean;
 }
@@ -67,7 +65,7 @@ type GroupedPropertyEditorsStateAction =
   | { type: "REMOVE_GROUP"; payload: { group: string } }
   | { type: "REORDER_GROUPS"; payload: { fromIndex: number; toIndex: number } }
   | { type: "CHANGE_PROPERTY_CODE"; payload: { oldCode: string; newCode: string } }
-  | { type: "ADD_PROPERTY"; payload: { group: string; code: string } };
+  | { type: "ADD_PROPERTY"; payload: { group: string; code: string; key?: string } };
 
 // Reducer to handle component state changes
 // The most important is renaming the property, because
@@ -94,7 +92,8 @@ const groupedPropertyEditorsReducer = produce(
         break;
       }
       case "ADD_PROPERTY": {
-        draft.accordionItemKeyMapping[action.payload.code] = createPropertyKey();
+        draft.accordionItemKeyMapping[action.payload.code] =
+          action.payload.key || createPropertyKey();
         break;
       }
       case "REORDER_GROUPS": {
@@ -114,9 +113,8 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   lockedPropertyCodes,
   lockedGroups,
   onEvent,
-  mode,
   isViewOnly,
-  isEditMode: isEditModeProp,
+  isEditMode,
 }) => {
   const keys = Object.fromEntries(
     Object.entries(schema).flatMap(([propertyGroup, properties]) => {
@@ -141,10 +139,14 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
   const [propertySearchInput, setPropertySearchInput] = useState<string>("");
   const [addPropertyError, setAddPropertyError] = useState<string>("");
 
+  // Track properties added in this editing session so they can be detachable/editable
+  const [newlyAdded, setNewlyAdded] = useState<Set<string>>(new Set());
+
   // Get properties not already in the schema
   const availableProperties = existingPropertyTypes.filter(
     (prop) => !Object.values(schema).flat().some((p) => p.code === prop.code)
   );
+  const isExistingSelected = availableProperties.some((p) => p.code === propertySearchInput);
 
   const handleOpenAddPropertyModal = (group: string) => {
     setSelectedPropertyGroup(group);
@@ -153,20 +155,28 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
     setShowAddPropertyModal(true);
   };
 
+  // Track opened accordion item keys so we can open newly created items
+  const [openedKeys, setOpenedKeys] = useState<Set<string>>(new Set());
+
   const handleConfirmAddProperty = () => {
     // Use propertySearchInput which now contains either typed or selected value
     const propertyCode = propertySearchInput.trim();
 
-    if (!propertyCode) {
-      setAddPropertyError("Please select an existing property or type a new property name");
-      return;
-    }
+    const isExisting = availableProperties.some((p) => p.code === propertyCode);
+    // If creating a new property, generate a key so we can open it immediately
+    const newKey = isExisting ? undefined : createPropertyKey();
 
     onEvent({
       type: "ADD_PROPERTY",
       payload: { group: selectedPropertyGroup, code: propertyCode },
     });
-    dispatch({ type: "ADD_PROPERTY", payload: { code: propertyCode, group: selectedPropertyGroup } });
+    dispatch({ type: "ADD_PROPERTY", payload: { code: propertyCode, group: selectedPropertyGroup, key: newKey } });
+
+    // remember newly added code so we can treat it differently from originally attached
+    setNewlyAdded((prev) => new Set(Array.from(prev).concat(propertyCode)));
+    if (!isExisting && newKey) {
+      setOpenedKeys((prev) => new Set(Array.from(prev).concat(newKey)));
+    }
 
     setShowAddPropertyModal(false);
     setSelectedPropertyGroup("");
@@ -174,10 +184,6 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
     setAddPropertyError("");
   };
 
-  // This function handles the events from
-  // the PropertyEditor component
-  // in some cases it dispatches a new action to the reducer
-  // to handle the changes that affect the state of the current component
   const handlePropertyChanges = (
     group: string,
     oldProperty: PropertyType,
@@ -193,6 +199,15 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         type: "CHANGE_PROPERTY_CODE",
         payload: { oldCode: oldProperty.code, newCode: newProperty.code },
       });
+        // If the property was added during this editing session, update the newlyAdded set
+        setNewlyAdded((prev) => {
+          const n = new Set(prev);
+          if (n.has(oldProperty.code)) {
+            n.delete(oldProperty.code);
+            n.add(newProperty.code);
+          }
+          return n;
+        });
       onEvent({
         type: "CHANGE_PROPERTY_CODE",
         payload: {
@@ -268,7 +283,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         />
           );
         })}
-        {!isViewOnly && (
+        {isEditMode && (
           <Tab
             key="add-group-tab"
             label="+ Add Group"
@@ -295,73 +310,83 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
         >
           {selectedTab === index && (
             <>
-              <Accordion selectionMode="multiple">
-                {properties.map((property, propertyIndex) => (
-                  <AccordionItem
-                    key={state.accordionItemKeyMapping[property.code] || `${propertyGroup}-${property.code}-${propertyIndex}`}
-                    title={property.code}
-                    startContent={
-                      isViewOnly ? null : (
-                        lockedPropertyCodes.includes(property.code) ? (
-                          <Icon
-                            style={{
-                              display: "flex",
-                              justifyContent: "center",
-                              alignItems: "center",
-                              backgroundColor: "grey",
-                              borderRadius: "8px",
-                              width: "30px",
-                              height: "30px",
-                            }}
-                          >
-                            <LockIcon style={{ color: "white" }} />
-                          </Icon>
-                        ) : (
-                          <div
-                            onClick={() => {
-                              onEvent({
-                                type: "REMOVE_PROPERTY",
-                                payload: {
-                                  group: propertyGroup,
-                                  property: property,
-                                },
-                              });
-                            }}
-                            style={{
-                              display: "flex",
-                              justifyContent: "center",
-                              alignItems: "center",
-                              backgroundColor: "red",
-                              borderRadius: "8px",
-                              width: "30px",
-                              height: "30px",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <DeleteIcon style={{ color: "white" }} />
-                          </div>
+              <Accordion selectionMode="multiple" selectedKeys={openedKeys} onSelectionChange={(s) => setOpenedKeys(s as Set<string>)}>
+                {properties.map((property, propertyIndex) => {
+                  const itemKey = state.accordionItemKeyMapping[property.code] || `${propertyGroup}-${property.code}-${propertyIndex}`;
+                  const isExistingProperty = existingPropertyTypes.some((p) => p.code === property.code);
+                  const isNewlyAdded = newlyAdded.has(property.code);
+                  console.log(`Rendering property ${property.code}. Existing: ${isExistingProperty}, Newly Added: ${isNewlyAdded}`);
+
+                  return (
+                    <AccordionItem
+                      key={itemKey}
+                      title={property.code}
+                      startContent={
+                        !isEditMode ? null : (
+                          !isNewlyAdded ? (
+                            <Icon
+                              style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                backgroundColor: "grey",
+                                borderRadius: "8px",
+                                width: "30px",
+                                height: "30px",
+                              }}
+                            >
+                              <LockIcon style={{ color: "white" }} />
+                            </Icon>
+                          ) : (
+                            // show delete button unless it's an originally attached property while editing
+                            <div
+                              onClick={() => {
+                                // remove from newlyAdded set if present
+                                setNewlyAdded((prev) => {
+                                  const n = new Set(prev);
+                                  n.delete(property.code);
+                                  return n;
+                                });
+                                onEvent({
+                                  type: "REMOVE_PROPERTY",
+                                  payload: {
+                                    group: propertyGroup,
+                                    property: property,
+                                  },
+                                });
+                              }}
+                              style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                backgroundColor: "red",
+                                borderRadius: "8px",
+                                width: "30px",
+                                height: "30px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <DeleteIcon style={{ color: "white" }} />
+                            </div>
+                          )
                         )
-                      )
-                    }
-                  >
-                    <PropertyEditor
-                      onEdit={(newProperty) => {
-                        if (isViewOnly) return;
-                        handlePropertyChanges(
-                          propertyGroup,
-                          property,
-                          newProperty
-                        )
-                      }}
-                      locked={isViewOnly || lockedPropertyCodes.includes(property.code)}
-                      lockedCode={lockedPropertyCodes.includes(property.code)}
-                      propertyTypeDefinitions={property as LocalPropertyTypeVariants}
-                    />
-                  </AccordionItem>
-                ))}
+                      }
+                    >
+                      <PropertyEditor
+                        onEdit={(newProperty) => {
+                          if (isExistingProperty) return;
+                          handlePropertyChanges(propertyGroup, property, newProperty);
+                        }}
+                        locked={isExistingProperty}
+                        lockedCode={lockedPropertyCodes.includes(property.code) || (isNewlyAdded && isExistingProperty)}
+                        propertyTypeDefinitions={property as LocalPropertyTypeVariants}
+                      />
+                    </AccordionItem>
+                  );
+                })}
               </Accordion>
 
-              {!isViewOnly && (
+              {isEditMode && (
                 <>
                   <Button
                     isIconOnly
@@ -427,13 +452,13 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           <ModalHeader>Add Property to {selectedPropertyGroup}</ModalHeader>
           <ModalBody>
             <p style={{ color: "rgb(243, 18, 96)" }} className="mb-4">
-              Search property: if it exists then it will be reused, otherwise a new one will be created.
+              You can either select one of the already existing property types or create a new one.
             </p>
             <Autocomplete
-              placeholder="Type property code..."
+              placeholder="Search by property type code..."
               className="form-field"
               aria-label="Property search input"
-              selectedKey={propertySearchInput}
+              selectedKey={availableProperties.some(p => p.code === propertySearchInput) ? propertySearchInput : null}
               defaultItems={availableProperties}
               onSelectionChange={(value) => {
                 setPropertySearchInput(value ? String(value) : "");
@@ -468,7 +493,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
               Cancel
             </Button>
             <Button color="primary" onPress={handleConfirmAddProperty}>
-              Add Property
+              {isExistingSelected ? "Add Existing" : "Create New"}
             </Button>
           </ModalFooter>
         </ModalContent>
