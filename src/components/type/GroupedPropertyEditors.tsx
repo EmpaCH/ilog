@@ -246,7 +246,7 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           key={`tab-${propertyGroup}-${index}`}
           label={
             <div
-              contentEditable={!lockedGroups.includes(propertyGroup) && !isViewOnly}
+              contentEditable={!lockedGroups.includes(propertyGroup) && isEditMode}
               suppressContentEditableWarning={true}
               onBlur={(e) => {
                 if (isViewOnly) return;
