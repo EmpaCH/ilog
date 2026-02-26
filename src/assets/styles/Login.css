@@ -1,5 +1,5 @@
 .login-div {
-  width: 30%;
+  max-width: 45vw;
   position: absolute;
   top: 50%;
   left: 50%;
