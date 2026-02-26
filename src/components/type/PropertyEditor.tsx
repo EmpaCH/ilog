@@ -23,7 +23,6 @@ import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
   locked: boolean;
-  lockedCode?: boolean;
   onEdit: (definition: PropertyType) => void;
 };
 
@@ -93,7 +92,6 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
 export const PropertyEditor = ({
   propertyTypeDefinitions,
   locked,
-  lockedCode = false,
   onEdit,
 }: PropertyEditorProps) => {
   const [state, dispatch] = useReducer(
@@ -138,7 +136,6 @@ export const PropertyEditor = ({
         <div>
           <Input
             label="Code"
-            isDisabled={locked || lockedCode}
             defaultValue={state.code}
             onChange={(value) =>
               dispatch({

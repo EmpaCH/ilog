@@ -441,7 +441,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         <form onSubmit={handleSubmit}>
           <RadioGroup
             isRequired
-            isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
+            isReadOnly={mode === "edit" || (mode === "view" && !isEditMode)}
             label="What is the base type of this object type?"
             orientation="horizontal"
             style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
@@ -457,7 +457,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           </RadioGroup>
 
           <Autocomplete
-            isDisabled={mode === "view" && !isEditMode}
+            isReadOnly={mode === "edit" || (mode === "view" && !isEditMode)}
             label="Does it have a parent?"
             placeholder="Type to search..."
             className="form-field"
@@ -486,8 +486,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
           <Input
             isRequired
-            isDisabled={mode === "view" && !isEditMode}
-            isReadOnly={mode === "view" && !isEditMode}
+            isReadOnly={mode === "edit" || (mode === "view" && !isEditMode)}
             id="code"
             label="Code"
             type="text"
@@ -528,8 +527,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           />
           <Input
             id="prefix"
-            isDisabled={mode === "view" && !isEditMode}
-            isReadOnly={mode === "view" && !isEditMode}
+            isReadOnly={mode === "edit" || (mode === "view" && !isEditMode)}
             label="Prefix"
             placeholder="If left empty then the code's first 4 characters will be used as a prefix"
             type="text"
@@ -557,7 +555,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             onEvent={handlePropertyEditorEvents}
             lockedGroups={lockedGroups}
             isViewOnly={mode === "view" || !isEditMode}
-            isEditMode={mode === "edit" || (mode === "view" && isEditMode)}
+            isEditMode={mode === "create" || mode === "edit" || (mode === "view" && isEditMode)}
           />
 
           <Divider className="my-4" />
