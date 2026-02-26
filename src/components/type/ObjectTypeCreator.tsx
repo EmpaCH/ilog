@@ -72,6 +72,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const [initial, setInitial] = useState(true);
   const [objectBaseType, setObjectBaseType] = useState(EMPTY_TYPE_DEFINITION);
   const [isEditMode, setIsEditMode] = useState(mode === "edit" || mode === "create");
+  const [savedSchema, setSavedSchema] = useState<any>(null);
 
   const getLockedPropertiesSource = () => {
     if ((mode === "edit" || (mode === "view" && isEditMode)) && (!state.schema.baseType || state.schema.baseType === "")) {
@@ -555,9 +556,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             lockedPropertyCodes={lockedPropertyCodes}
             onEvent={handlePropertyEditorEvents}
             lockedGroups={lockedGroups}
-            mode={mode}
-            isViewOnly={mode === "view" && !isEditMode}
-            isEditMode={isEditMode}
+            isViewOnly={mode === "view" || !isEditMode}
+            isEditMode={mode === "edit" || (mode === "view" && isEditMode)}
           />
 
           <Divider className="my-4" />
@@ -575,7 +575,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
                 type="button"
                 color="primary"
                 className="mx-2"
-                onPress={() => setIsEditMode(true)}
+                onPress={() => {
+                  setSavedSchema(state.schema);
+                  setIsEditMode(true);
+                }}
               >
                 Edit
               </Button>
@@ -589,6 +592,10 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
                   isDisabled={localState.loading || (mode === "edit" || (mode === "view" && isEditMode) ? typeUpdate.isPending : typeCreation.isPending)}
                   onPress={() => {
                     if (mode === "view") {
+                      // revert to saved schema when cancelling edits
+                      if (savedSchema) {
+                        dispatch({ type: "SET_OBJECT_TYPE_TEMPLATE", payload: { objecttypetemplate: savedSchema } });
+                      }
                       setIsEditMode(false);
                     } else if (mode === "edit") {
                       window.location.reload();

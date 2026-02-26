@@ -9,7 +9,6 @@ import {
 import {
   Card,
   CardBody,
-  CardHeader,
   Input,
   Select,
   SelectItem,
@@ -135,10 +134,6 @@ export const PropertyEditor = ({
       isDisabled={locked}
       style={{ pointerEvents: locked ? "none" : "auto" }}
     >
-      <CardHeader className="flex gap-3">
-        {`Property: ${state.code}`}
-      </CardHeader>
-
       <CardBody>
         <div>
           <Input
@@ -152,8 +147,8 @@ export const PropertyEditor = ({
               })
             }
             onKeyDown={handleInputKeyDown}
+            className="form-field"
           />
-
           <Input
             label="Description"
             defaultValue={state.description}
@@ -164,6 +159,7 @@ export const PropertyEditor = ({
               })
             }
             onKeyDown={handleInputKeyDown}
+            className="form-field"
           />
           <Input
             label="Label"
@@ -175,14 +171,16 @@ export const PropertyEditor = ({
               })
             }
             onKeyDown={handleInputKeyDown}
+            className="form-field"
           />
-          <DataTypeSelect
-            defaultValue={propertyTypeDefinitions.dataType}
-            onSelectionChange={(value) =>
-              dispatch({ type: "SET_DATA_TYPE", payload: value })
-            }
-          />
-
+          <div className="form-field">
+            <DataTypeSelect
+              defaultValue={propertyTypeDefinitions.dataType}
+              onSelectionChange={(value) =>
+                dispatch({ type: "SET_DATA_TYPE", payload: value })
+              }
+            />
+          </div>
           {state.dataType === "CONTROLLEDVOCABULARY" ? (
             <Autocomplete
               disabled={locked}
@@ -194,6 +192,7 @@ export const PropertyEditor = ({
                   payload: value as string,
                 })
               }
+              className="form-field"
             >
               {allVocabularies?.data?.map((vocabulary) => {
                 return (
@@ -208,15 +207,17 @@ export const PropertyEditor = ({
             </Autocomplete>
           ) : null}
           {state.dataType === "OBJECT" ? (
-            <ObjectTypeAutoComplete
-              objectTypes={
-                allObjectTypes.data?.map((type) => type.getCode()) ?? []
-              }
-              selectedKey={(state as any).objectType || (state as any).sampleType}
-              onSelectionChange={(value) =>
-                dispatch({ type: "SET_OBJECT_TYPE", payload: value })
-              }
-            />
+            <div className="form-field">
+              <ObjectTypeAutoComplete
+                objectTypes={
+                  allObjectTypes.data?.map((type) => type.getCode()) ?? []
+                }
+                selectedKey={(state as any).objectType || (state as any).sampleType}
+                onSelectionChange={(value) =>
+                  dispatch({ type: "SET_OBJECT_TYPE", payload: value })
+                }
+              />
+            </div>
           ) : null}
           <Checkbox
             isSelected={state.multivalued}
@@ -226,6 +227,7 @@ export const PropertyEditor = ({
                 payload: value,
               })
             }}
+            style={{ marginBottom: "5px" }}
           >
             Multivalued
           </Checkbox>

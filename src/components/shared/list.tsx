@@ -377,7 +377,7 @@ export const List = (props: {
       topContent={topContent}
       topContentPlacement="outside"
       classNames={{
-        wrapper: "max-h-[557px]",
+        wrapper: "max-h-[570px]",
       }}
       sortDescriptor={sortDescriptor}
       onSortChange={setSortDescriptor}
