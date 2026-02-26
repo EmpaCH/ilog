@@ -215,6 +215,15 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
     if (mode === "view" && !isEditMode) {
       return;
     }
+    // Validate group names before proceeding
+    if (hasNumericOnlyGroup) {
+      handleMessage(
+        `Group name must contain at least one letter. Invalid groups: ${numericOnlyGroups.join(", ")}`,
+        false,
+        true
+      );
+      return;
+    }
     localDispatch({ type: "SET_LOADING", payload: true });
 
     const ancestors = findAncestors(state.schema, objectTypes);
@@ -433,6 +442,12 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const onBack = () => {
     navigate({ to: "/types" });
   };
+
+  // Validate group names: they must contain at least one letter
+  const numericOnlyGroups = Object.keys(state.schema.propertyTypes).filter(
+    (g) => /^[0-9]+$/.test(g)
+  );
+  const hasNumericOnlyGroup = numericOnlyGroups.length > 0;
 
   return (
     <>
