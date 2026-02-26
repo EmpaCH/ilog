@@ -300,153 +300,153 @@ export const GroupedPropertyEditors: React.FC<GroupedPropertyEditorsProps> = ({
           />
         )}
       </Tabs>
-      {Object.entries(schema).map(([propertyGroup, properties], index) => (
-        <div
-          role="tabpanel"
-          hidden={selectedTab !== index}
-          key={`tabpanel-${propertyGroup}-${index}`}
-          id={`tabpanel-${index}`}
-          aria-labelledby={`tab-${index}`}
-        >
-          {selectedTab === index && (
-            <>
-              <Accordion selectionMode="multiple" selectedKeys={openedKeys} onSelectionChange={(s) => setOpenedKeys(s as Set<string>)}>
-                {properties.map((property, propertyIndex) => {
-                  const itemKey = state.accordionItemKeyMapping[property.code] || `${propertyGroup}-${property.code}-${propertyIndex}`;
-                  const isExistingProperty = existingPropertyTypes.some((p) => p.code === property.code);
-                  const isNewlyAdded = newlyAdded.has(property.code);
-                  console.log(`Rendering property ${property.code}. Existing: ${isExistingProperty}, Newly Added: ${isNewlyAdded}`);
+      {Object.entries(schema).map(([propertyGroup, properties], index) => {
+        const groupHasLockedProperty = properties.some((property) => lockedPropertyCodes.includes(property.code));
+        const canDeleteGroup = !lockedGroups.includes(propertyGroup) && properties.length === 0 && !groupHasLockedProperty;
+        return (
+          <div
+            role="tabpanel"
+            hidden={selectedTab !== index}
+            key={`tabpanel-${propertyGroup}-${index}`}
+            id={`tabpanel-${index}`}
+            aria-labelledby={`tab-${index}`}
+          >
+            {selectedTab === index && (
+              <>
+                <Accordion selectionMode="multiple" selectedKeys={openedKeys} onSelectionChange={(s) => setOpenedKeys(s as Set<string>)}>
+                  {properties.map((property, propertyIndex) => {
+                    const itemKey = state.accordionItemKeyMapping[property.code] || `${propertyGroup}-${property.code}-${propertyIndex}`;
+                    const isExistingProperty = existingPropertyTypes.some((p) => p.code === property.code);
+                    const isNewlyAdded = newlyAdded.has(property.code);
 
-                  return (
-                    <AccordionItem
-                      key={itemKey}
-                      title={property.code}
-                      startContent={
-                        !isEditMode ? null : (
-                          !isNewlyAdded ? (
-                            <Icon
-                              style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                backgroundColor: "grey",
-                                borderRadius: "8px",
-                                width: "30px",
-                                height: "30px",
-                              }}
-                            >
-                              <LockIcon style={{ color: "white" }} />
-                            </Icon>
-                          ) : (
-                            // show delete button unless it's an originally attached property while editing
-                            <div
-                              onClick={() => {
-                                // remove from newlyAdded set if present
-                                setNewlyAdded((prev) => {
-                                  const n = new Set(prev);
-                                  n.delete(property.code);
-                                  return n;
-                                });
-                                onEvent({
-                                  type: "REMOVE_PROPERTY",
-                                  payload: {
-                                    group: propertyGroup,
-                                    property: property,
-                                  },
-                                });
-                              }}
-                              style={{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                backgroundColor: "red",
-                                borderRadius: "8px",
-                                width: "30px",
-                                height: "30px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              <DeleteIcon style={{ color: "white" }} />
-                            </div>
+                    return (
+                      <AccordionItem
+                        key={itemKey}
+                        title={property.code}
+                        startContent={
+                          !isEditMode ? null : (
+                            !isNewlyAdded ? (
+                              <Icon
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  backgroundColor: "grey",
+                                  borderRadius: "8px",
+                                  width: "30px",
+                                  height: "30px",
+                                }}
+                              >
+                                <LockIcon style={{ color: "white" }} />
+                              </Icon>
+                            ) : (
+                              // show delete button unless it's an originally attached property while editing
+                              <div
+                                onClick={() => {
+                                  // remove from newlyAdded set if present
+                                  setNewlyAdded((prev) => {
+                                    const n = new Set(prev);
+                                    n.delete(property.code);
+                                    return n;
+                                  });
+                                  onEvent({
+                                    type: "REMOVE_PROPERTY",
+                                    payload: {
+                                      group: propertyGroup,
+                                      property: property,
+                                    },
+                                  });
+                                }}
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                  backgroundColor: "red",
+                                  borderRadius: "8px",
+                                  width: "30px",
+                                  height: "30px",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                <DeleteIcon style={{ color: "white" }} />
+                              </div>
+                            )
                           )
-                        )
-                      }
-                    >
-                      <PropertyEditor
-                        onEdit={(newProperty) => {
-                          if (isExistingProperty) return;
-                          handlePropertyChanges(propertyGroup, property, newProperty);
-                        }}
-                        locked={isExistingProperty}
-                        lockedCode={lockedPropertyCodes.includes(property.code) || (isNewlyAdded && isExistingProperty)}
-                        propertyTypeDefinitions={property as LocalPropertyTypeVariants}
-                      />
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
+                        }
+                      >
+                        <PropertyEditor
+                          onEdit={(newProperty) => {
+                            if (isExistingProperty) return;
+                            handlePropertyChanges(propertyGroup, property, newProperty);
+                          }}
+                          locked={isExistingProperty}
+                          propertyTypeDefinitions={property as LocalPropertyTypeVariants}
+                        />
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
 
-              {isEditMode && (
-                <>
-                  <Button
-                    isIconOnly
-                    onPress={() => {
-                      handleOpenAddPropertyModal(propertyGroup);
-                    }}
-                    color="primary"
-                  >
-                    <Icon
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                      }}
-                    >
-                      <AddIcon />
-                    </Icon>
-                  </Button>
-                  {lockedGroups.includes(propertyGroup) || properties.some((property) =>
-                    lockedPropertyCodes.includes(property.code)
-                  ) ? (
+                {isEditMode && (
+                  <>
                     <Button
-                      color="warning"
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "not-allowed",
-                        opacity: 0.5,
-                      }}
-                      disabled
-                    >
-                      <LockIcon /> Locked Group
-                    </Button>
-                  ) : (
-                    <Button
+                      isIconOnly
                       onPress={() => {
-                        onEvent({
-                          type: "REMOVE_GROUP",
-                          payload: { group: propertyGroup },
-                        });
-                        setSelectedTab(0);
+                        handleOpenAddPropertyModal(propertyGroup);
                       }}
-                      color="danger"
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        cursor: "pointer",
-                      }}
+                      color="primary"
                     >
-                      <DeleteIcon /> Delete Group
+                      <Icon
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <AddIcon />
+                      </Icon>
                     </Button>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </div>
-      ))}
+                    {!canDeleteGroup ? (
+                      <Button
+                        color="warning"
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          cursor: "not-allowed",
+                          opacity: 0.5,
+                        }}
+                        disabled
+                      >
+                        <LockIcon /> Locked Group
+                      </Button>
+                    ) : (
+                      <Button
+                        onPress={() => {
+                          onEvent({
+                            type: "REMOVE_GROUP",
+                            payload: { group: propertyGroup },
+                          });
+                          setSelectedTab(0);
+                        }}
+                        color="danger"
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <DeleteIcon /> Delete Group
+                      </Button>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
       <Modal size="2xl" isOpen={showAddPropertyModal} onOpenChange={setShowAddPropertyModal}>
         <ModalContent>
           <ModalHeader>Add Property to {selectedPropertyGroup}</ModalHeader>

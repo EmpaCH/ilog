@@ -324,9 +324,6 @@ export function checkValidSubType(
 ) {
   const baseFieldSet = extractFields(baseType);
   const derivedFieldSet = extractFields(derivedType);
-  console.log(
-    "baseFieldSet",baseFieldSet,
-    "derivedFieldSet",derivedFieldSet)
   // `Set.prototype.isSupersetOf` is not standard across lib targets; implement explicitly
   for (const key of baseFieldSet) {
     if (!derivedFieldSet.has(key)) {
