@@ -243,6 +243,7 @@ export const ObjectList = () => {
         hiddenCode={true}
         navigatePath="/objects/creator"
         enableHistory={true}
+        enableLogbook={true}
         onDelete={onDelete}
         onEdit={onEdit}
         onHistory={onHistory}

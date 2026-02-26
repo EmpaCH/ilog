@@ -1,4 +1,3 @@
-import { Accordion, AccordionItem } from "@heroui/accordion";
 import React, { useReducer } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -15,12 +14,15 @@ import {
   Divider,
   Pagination,
   SortDescriptor,
+  Accordion,
+  AccordionItem,
 } from "@heroui/react";
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import HistoryIcon from "@mui/icons-material/History";
+import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import { Column, Row } from "./list.types";
 import openbis from "@openbis/openbis.esm";
 
@@ -33,6 +35,7 @@ export const List = (props: {
   defaultSortDirection?: "ascending" | "descending";
   navigatePath: string;
   enableHistory?: boolean;
+  enableLogbook?: boolean;
   enableEdit?: boolean;
   enableDelete?: boolean;
   onDelete: (
@@ -50,11 +53,23 @@ export const List = (props: {
   ) => void;
 }) => {
   const navigate = useNavigate();
+  // Initialize filters from URL query params when present
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : "");
+  const filterableColumnKeys = props.columns.filter(col => col.filterable).map(c => c.key);
+  const initialFilterState: Record<string, string> = {};
+  filterableColumnKeys.forEach((key) => {
+    const v = urlParams.get(key);
+    if (v) initialFilterState[key] = v;
+  });
+  // support general search param 'q'
+  const q = urlParams.get('q');
+  if (q) initialFilterState["generalListFilter"] = q;
+
   const [filter, setFilterValue] = useReducer(
     (state: Record<string, string>, action: { key: string; value: string }) => {
       return { ...state, [action.key]: action.value };
     },
-    {}
+    initialFilterState
   );
 
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
@@ -151,9 +166,14 @@ export const List = (props: {
 
   // Build filter bar for filterable columns
   const filterableColumns = props.columns.filter(col => col.filterable);
+  // Open filters accordion if any initial filters were provided via URL
+  const [openedFilters, setOpenedFilters] = React.useState<Set<string>>(
+    Object.keys(initialFilterState).length > 0 ? new Set(["filters"]) : new Set()
+  );
+
   const filterBar = filterableColumns.length > 0 && (
     <>
-      <Accordion>
+      <Accordion selectionMode="multiple" selectedKeys={openedFilters} onSelectionChange={(s) => setOpenedFilters(s as Set<string>)}>
         <AccordionItem
           key="filters"
           aria-label="Filters"
@@ -284,6 +304,7 @@ export const List = (props: {
     idColumn: string,
     enableModification: boolean | undefined,
     enableHistory: boolean | undefined,
+    enableLogbook: boolean | undefined,
     fullRow?: { [key: string]: any }, // original row used for actions
   ): JSX.Element[] => {
     const cells = Object.entries(row).map(([key, value]) => (
@@ -298,10 +319,26 @@ export const List = (props: {
 
     cells.push(
       <TableCell key={`${permId}-actions`} style={{ width: enableHistory ? "220px" : "155px" }}>
-        {enableHistory && 
+        {enableLogbook &&
           <Button
+            isIconOnly
             type="button"
             color="primary"
+            variant="light"
+            size="sm"
+            onPress={() => {
+              const objectValue = fullRow ? fullRow["name"] : row["name"];
+              navigate({ to: `/logbook?object=${encodeURIComponent(objectValue)}&openFilters=1` });
+            }}
+          >
+            <LibraryBooksOutlinedIcon />
+          </Button>
+        }
+        {enableHistory && 
+          <Button
+            isIconOnly
+            type="button"
+            color="secondary"
             variant="light"
             size="sm"
             onPress={() => props.onHistory && props.onHistory(fullRow ? fullRow["code"] : row[idColumn])}
@@ -311,6 +348,7 @@ export const List = (props: {
         }
         {enableModification !== undefined ? enableModification : true && 
           <Button
+            isIconOnly
             type="button"
             color="success"
             variant="light"
@@ -322,6 +360,7 @@ export const List = (props: {
         }
         {enableModification !== undefined ? enableModification : true &&
           <Button
+            isIconOnly
             type="button"
             color="danger"
             variant="light"
@@ -351,7 +390,7 @@ export const List = (props: {
         }}
         onClick={() => props.onView?.(props.hiddenCode ? row["code"] : row[props.idColumn])}
       >
-        {renderRowCells(permId, newRow, props.idColumn, enableModification, props.enableHistory, row)}
+        {renderRowCells(permId, newRow, props.idColumn, enableModification, props.enableHistory, props.enableLogbook, row)}
       </TableRow>
     );
   };
