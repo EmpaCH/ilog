@@ -1,4 +1,5 @@
 {
+    auto_https off
     debug
     	log default {
 		output stdout
@@ -11,15 +12,16 @@
 (openbis) {
     
     log default
-    handle /openbis/* {
-    reverse_proxy {$OPENBIS_URL} {
-        header_up Host {upstream_hostport}
-        }
+    handle /openbis* {
+    reverse_proxy {$OPENBIS_URL}
     }
-    handle /datastore_server/* {
-    reverse_proxy {$OPENBIS_DSS_URL} {
-        header_up Host {upstream_hostport}
-        }
+    handle /datastore_server* {
+    reverse_proxy {$OPENBIS_DSS_URL}
+    }
+    # Convenience alias to match openBIS docs/examples that use /afs-server/*.
+    # In this docker setup the AFS server is exposed separately on port 8085.
+    handle /afs-server* {
+    reverse_proxy {$OPENBIS_AFS_URL:http://openbis-app:8085}
     }
     handle {
         root * /var/www/html
@@ -32,6 +34,6 @@ localhost:443 {
 }
 
 
-localhost:80 {
+localhost:80, localhost.openbis.net:80 {
     import openbis
 }

@@ -22,9 +22,11 @@ services:
       - openbis-app-data:/data
       - openbis-app-etc:/etc/openbis
       - openbis-app-logs:/var/log/openbis
+      - ./scripts/start-openbis.patched.sh:/usr/local/bin/start-openbis.sh:ro
     ports:
       - ${OPENBIS_DSS_PORT}:8081
       - ${OPENBIS_AS_PORT}:8080
+      - 8085:8085
     networks:
       - openbis-network
 
@@ -37,6 +39,26 @@ services:
       - OPENBIS_HOST=openbis-app
     ports:
       - 443:443
+    networks:
+      openbis-network:
+        aliases:
+          - localhost.openbis.net
+
+  web:
+    container_name: ilog-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: serve
+    depends_on:
+      - app
+    environment:
+      - OPENBIS_URL=http://openbis-app:8080
+      - OPENBIS_DSS_URL=http://openbis-app:8081
+      - OPENBIS_AFS_URL=http://openbis-app:8085
+      - CADDY_LOG_LEVEL=INFO
+    ports:
+      - 80:80
     networks:
       - openbis-network
 

@@ -11,14 +11,14 @@ export class OpenBISApiFacade {
 
   private constructor() {}
 
-  public static getInstance(asUrl: string, dssUrl?: string): openbis.openbis {
-    const hasDssUrl = dssUrl !== undefined;
-    const key = hasDssUrl ? `${asUrl}::${dssUrl}` : asUrl;
+  public static getInstance(asUrl: string, afsUrl?: string): openbis.openbis {
+    const hasAfsUrl = afsUrl !== undefined;
+    const key = hasAfsUrl ? `${asUrl}::${afsUrl}` : asUrl;
     console.log("Getting instance with URL:", key);
 
     if (OpenBISApiFacade.instances.get(key) === undefined) {
       console.log("Creating new instance with URL:", key);
-      const instance = hasDssUrl ? new openbis.openbis(asUrl, dssUrl as string) : new openbis.openbis(asUrl);
+      const instance = hasAfsUrl ? new openbis.openbis(asUrl, afsUrl as string) : new openbis.openbis(asUrl);
       OpenBISApiFacade.instances.set(key, instance);
     }
 
@@ -35,12 +35,12 @@ export const USER_KEY = "user";
 export const openBISHookFactory = (url: string) => {
   return () => {
     // const apiFacade = new openbis.openbis(url);
-    // When we talk to openBIS via the Vite dev proxy (relative AS URL), force DSS calls to use
-    // same-origin requests so they are routed through the `/datastore_server/` dev proxy.
-    // NOTE: the openBIS JS client itself appends `/datastore_server/...` when calling DSS.
-    // Therefore the DSS base URL must be empty (same-origin), not "/datastore_server".
-    const dssUrl = url.startsWith("/") ? "" : undefined;
-    const apiFacade = OpenBISApiFacade.getInstance(url, dssUrl);
+    // AFS calls are served by the data store side; route them through the same-origin
+    // proxy (Vite dev proxy / reverse proxy) when we use a relative AS URL.
+    // The openBIS JS client will append `/api` to this base URL.
+    // We expose AFS as `/afs-server/*` (proxied to the dedicated AFS service).
+    const afsUrl = url.startsWith('/') ? '/afs-server' : undefined;
+    const apiFacade = OpenBISApiFacade.getInstance(url, afsUrl);
     // @ts-ignore
     apiFacade._private.log = () => {};
     const id = new Date();
