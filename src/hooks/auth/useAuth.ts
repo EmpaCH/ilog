@@ -1,6 +1,12 @@
 
 import openbis from "@openbis/openbis.esm";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+type OpenBisFacadeWithPrivate = openbis.openbis & {
+  _private?: {
+    log?: (...messages: unknown[]) => void;
+  };
+};
 
 
 /**
@@ -11,14 +17,13 @@ export class OpenBISApiFacade {
 
   private constructor() {}
 
-  public static getInstance(asUrl: string, afsUrl?: string): openbis.openbis {
-    const hasAfsUrl = afsUrl !== undefined;
-    const key = hasAfsUrl ? `${asUrl}::${afsUrl}` : asUrl;
+  public static getInstance(asUrl: string): openbis.openbis {
+    const key = asUrl;
     console.log("Getting instance with URL:", key);
 
     if (OpenBISApiFacade.instances.get(key) === undefined) {
       console.log("Creating new instance with URL:", key);
-      const instance = hasAfsUrl ? new openbis.openbis(asUrl, afsUrl as string) : new openbis.openbis(asUrl);
+      const instance = new openbis.openbis(asUrl);
       OpenBISApiFacade.instances.set(key, instance);
     }
 
@@ -34,18 +39,13 @@ export const USER_KEY = "user";
 
 export const openBISHookFactory = (url: string) => {
   return () => {
-    // const apiFacade = new openbis.openbis(url);
-    // AFS calls are served by the data store side; route them through the same-origin
-    // proxy (Vite dev proxy / reverse proxy) when we use a relative AS URL.
-    // The openBIS JS client will append `/api` to this base URL.
-    // We expose AFS as `/afs-server/*` (proxied to the dedicated AFS service).
-    const afsUrl = url.startsWith('/') ? '/afs-server' : undefined;
-    const apiFacade = OpenBISApiFacade.getInstance(url, afsUrl);
-    // @ts-ignore
-    apiFacade._private.log = () => {};
+    const apiFacade = OpenBISApiFacade.getInstance(url) as OpenBisFacadeWithPrivate;
+    if (apiFacade._private) {
+      apiFacade._private.log = () => {};
+    }
     const id = new Date();
-    const idLogger = (...msgs: any) => {
-      console.log(`Facade created, ${msgs}`);
+    const idLogger = (...msgs: unknown[]) => {
+      console.log("Facade created,", ...msgs);
     };
     idLogger(`Creating hook with URL: ${url}`);
 
@@ -55,6 +55,40 @@ export const openBISHookFactory = (url: string) => {
     const [isLoading, setIsLoading] = useState(true); // Add loading state
     const [loginResult, setLoginResult] = useState<string | null>(null);
 
+    // Helper function to set user/token info on successful login
+    const setLoginInfo = useCallback((user: string, token: string) => {
+      setIsAuthenticated(true);
+      setUser(user);
+      setToken(token);
+      apiFacade.setSessionToken(token);
+      idLogger(`Setting token: ${token}`);
+      localStorage.setItem(USER_KEY, user);
+      localStorage.setItem(TOKEN_KEY, token);
+      idLogger(`Stored token: ${localStorage.getItem(TOKEN_KEY)}`);
+    }, [apiFacade]);
+
+    // Helper function to remove user/token info on logout
+    const removeLoginInfo = useCallback(() => {
+      setIsAuthenticated(false);
+      setUser(null);
+      setToken(null);
+      setLoginResult(null);
+      setIsLoading(false); // Set loading to false when removing login info
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(USER_KEY);
+    }, []);
+
+    // Function to verify token validity
+    const verifyToken = useCallback(async (token: string) => {
+      try {
+        apiFacade.setSessionToken(token);
+        await apiFacade.getServerInformation();
+        return true;
+      } catch {
+        return false;
+      }
+    }, [apiFacade]);
+
     // Check for token and user in localStorage on initialization
     useEffect(() => {
       const storedToken = localStorage.getItem(TOKEN_KEY);
@@ -62,7 +96,7 @@ export const openBISHookFactory = (url: string) => {
       idLogger(`Stored token: ${storedToken}`);
       const checkStoredToken = async () => {
         if (storedToken !== null && storedUser !== null) {
-          const result = await verifyToken(storedToken, storedUser);
+          const result = await verifyToken(storedToken);
           idLogger("Token verified");
           if (result) {
             idLogger("Token is valid");
@@ -76,18 +110,7 @@ export const openBISHookFactory = (url: string) => {
         setIsLoading(false); // Set loading to false after check
       };
       checkStoredToken();
-    }, []);
-
-    // Function to verify token validity
-    const verifyToken = async (token: string, _user: string) => {
-      try {
-        apiFacade.setSessionToken(token);
-        await apiFacade.getServerInformation();
-        return true;
-      } catch (e) {
-        return false;
-      }
-    };
+    }, [removeLoginInfo, setLoginInfo, verifyToken]);
 
     function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       const timeout = new Promise<never>((_, reject) =>
@@ -160,29 +183,6 @@ export const openBISHookFactory = (url: string) => {
       await apiFacade.logout();
       removeLoginInfo();
     };
-
-    // Helper function to set user/token info on successful login
-    function setLoginInfo(user: string, token: string) {
-      setIsAuthenticated(true);
-      setUser(user);
-      setToken(token);
-      apiFacade.setSessionToken(token);
-      idLogger(`Setting token: ${token}`);
-      localStorage.setItem(USER_KEY, user);
-      localStorage.setItem(TOKEN_KEY, token);
-      idLogger(`Stored token: ${localStorage.getItem(TOKEN_KEY)}`);
-    }
-
-    // Helper function to remove user/token info on logout
-    function removeLoginInfo() {
-      setIsAuthenticated(false);
-      setUser(null);
-      setToken(null);
-      setLoginResult(null);
-      setIsLoading(false); // Set loading to false when removing login info
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-    }
 
     return {
       isAuthenticated,
