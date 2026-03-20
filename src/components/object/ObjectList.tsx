@@ -242,6 +242,16 @@ export const ObjectList = () => {
         idColumn="name"
         hiddenCode={true}
         navigatePath="/objects/creator"
+        extraTopButtons={[
+          {
+            label: 'Add dataset (DSS)',
+            onPress: () => navigate({ to: '/objects/datasets/upload/dss' as any }),
+          },
+          {
+            label: 'Add dataset (AFS)',
+            onPress: () => navigate({ to: '/objects/datasets/upload/afs' as any }),
+          },
+        ]}
         enableHistory={true}
         enableLogbook={true}
         onDelete={onDelete}

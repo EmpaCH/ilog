@@ -22,29 +22,63 @@ services:
       - openbis-app-data:/data
       - openbis-app-etc:/etc/openbis
       - openbis-app-logs:/var/log/openbis
+      - ./scripts/start-openbis.patched.sh:/usr/local/bin/start-openbis.sh:ro
     ports:
       - ${OPENBIS_DSS_PORT}:8081
       - ${OPENBIS_AS_PORT}:8080
+      - 8085:8085
     networks:
       - openbis-network
 
-  ilog:
-    build:
-      context: . 
-      dockerfile: Dockerfile
-      target: env
-      network: host
+  ingress:
+    container_name: openbis-ingress
+    image: openbis/openbis-local:latest
+    depends_on:
+      - app
+    environment:
+      - OPENBIS_HOST=openbis-app
     ports:
-      - 5173:5173
-    env_file:
-      - .env
+      - 443:443
+    networks:
+      openbis-network:
+        aliases:
+          - localhost.openbis.net
+
+  web:
+    container_name: ilog-web
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: serve
+    depends_on:
+      - app
+    environment:
+      - OPENBIS_URL=http://openbis-app:8080
+      - OPENBIS_DSS_URL=http://openbis-app:8081
+      - OPENBIS_AFS_URL=http://openbis-app:8085
+      - CADDY_LOG_LEVEL=INFO
+    ports:
+      - 80:80
     networks:
       - openbis-network
-    develop: 
-      watch: 
-        - action: sync
-          path: ./src
-          target: /app
+
+  # ilog:
+  #   build:
+  #     context: . 
+  #     dockerfile: Dockerfile
+  #     target: env
+  #     network: host
+  #   ports:
+  #     - 5173:5173
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - openbis-network
+  #   develop: 
+  #     watch: 
+  #       - action: sync
+  #         path: ./src
+  #         target: /app
 
 volumes:
   openbis-db-data:

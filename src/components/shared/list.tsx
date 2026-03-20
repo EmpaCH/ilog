@@ -34,6 +34,12 @@ export const List = (props: {
   defaultSortColumn?: string;
   defaultSortDirection?: "ascending" | "descending";
   navigatePath: string;
+  extraTopButtons?: {
+    label: string;
+    onPress: () => void;
+    color?: React.ComponentProps<typeof Button>['color'];
+    variant?: React.ComponentProps<typeof Button>['variant'];
+  }[];
   enableHistory?: boolean;
   enableLogbook?: boolean;
   enableEdit?: boolean;
@@ -231,6 +237,16 @@ export const List = (props: {
           <Button color="primary" onPress={() => onBack()}>
             Add New
           </Button>
+            {props.extraTopButtons?.map((btn) => (
+              <Button
+                key={btn.label}
+                color={btn.color ?? 'primary'}
+                variant={btn.variant ?? 'bordered'}
+                onPress={btn.onPress}
+              >
+                {btn.label}
+              </Button>
+            ))}
         </div>
       </div>
       <div className="flex justify-between items-center">

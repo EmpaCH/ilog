@@ -5,24 +5,35 @@ import TanStackRouterVite from "@tanstack/router-plugin/vite";
 /// <reference types="vitest/config" />
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+
+  const openbisTarget = env.OPENBIS_URL;
+  const dssTarget = env.OPENBIS_DSS_URL ?? openbisTarget;
+  const afsTarget = env.OPENBIS_AFS_URL ?? openbisTarget;
+
   return {
     test: {
       testTransformMode: "web",
       printConsoleTrace: false,
       environment: "happy-dom",
-      testUrl: `${env.OPENBIS_URL}`,
+      testUrl: openbisTarget,
+      setupFiles: ["./src/tests/vitest.setup.ts"],
     },
     plugins: [react(), TanStackRouterVite()],
     server: {
       cors: true,
       proxy: {
         "/openbis/": {
-          target: `${env.OPENBIS_URL}`,
+          target: openbisTarget,
           changeOrigin: true,
           secure: false,
         },
         "/datastore_server/": {
-          target: `${env.OPENBIS_DSS_URL ?? env.OPENBIS_URL}`,
+          target: dssTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+        "/afs-server/": {
+          target: afsTarget,
           changeOrigin: true,
           secure: false,
         },
