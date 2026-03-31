@@ -19,7 +19,7 @@ export const MessageModal = (props: {
     } else {
       onClose();
     }
-  }, [props]);
+  }, [props.isOpen]);
 
   return (
     <Modal

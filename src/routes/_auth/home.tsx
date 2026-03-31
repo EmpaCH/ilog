@@ -11,6 +11,8 @@ import { useExportImportObjects } from "../../apis/object/useExportImportObjects
 
 export const Route = createFileRoute("/_auth/home")({
   component: () => {
+    const OPENBIS_URL = import.meta.env.VITE_OPENBIS_URL;
+
     const [showInitModal, setShowInitModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [importProgress, setImportProgress] = useState<string[]>([]);
@@ -19,7 +21,6 @@ export const Route = createFileRoute("/_auth/home")({
       skipped: number;
       failed: number;
     } | null>(null);
-    const [importType, setImportType] = useState<"types" | "objects" | "administrative" | null>(null);
     const { apiFacade } = useContext(AuthContext);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const fileInputObjectsRef = useRef<HTMLInputElement>(null);
@@ -71,7 +72,6 @@ export const Route = createFileRoute("/_auth/home")({
       const file = event.target.files?.[0];
       if (!file) return;
 
-      setImportType("administrative");
       setShowImportModal(true);
       setImportProgress(["Starting import..."]);
       setImportStats(null);
@@ -99,7 +99,6 @@ export const Route = createFileRoute("/_auth/home")({
       const file = event.target.files?.[0];
       if (!file) return;
 
-      setImportType("types");
       setShowImportModal(true);
       setImportProgress(["Starting import..."]);
       setImportStats(null);
@@ -127,7 +126,6 @@ export const Route = createFileRoute("/_auth/home")({
       const file = event.target.files?.[0];
       if (!file) return;
 
-      setImportType("objects");
       setShowImportModal(true);
       setImportProgress(["Starting import..."]);
       setImportStats(null);
@@ -160,99 +158,103 @@ export const Route = createFileRoute("/_auth/home")({
 
       return (
         <>
-          <h1>Welcome, {currentUser?.[0]?.getUserId?.() ?? "User"} 👋</h1>
-          <div className="flex gap-4 items-center justify-center my-8">
-            <Button
-              color="primary"
-              onPress={handleInitializeWorkspace}
-              size="lg"
-              isDisabled={showInitModal}
-            >
-              Initialize Workspace
-            </Button>
-          </div>
-          <Divider className="my-4" />
-          <div className="flex gap-4 items-center justify-center my-8">
-            <h3 className="w-full text-center">Types</h3>
-          </div>
-          <div className="flex gap-4 items-center justify-center my-8">
-            <Button
-              onPress={handleExportObjectTypes}
-              size="lg"
-            >
-              ⬆️ Export Types
-            </Button>
-            <Button
-              onPress={() => fileInputRef.current?.click()}
-              size="lg"
-            >
-              ⬇️ Import Types
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportObjectTypes}
-              style={{ display: "none" }}
-            />
-          </div>
-          <Divider className="my-4" />
-          <div className="flex gap-4 items-center justify-center my-8">
-            <h3 className="w-full text-center">Administrative Data</h3>
-          </div>
-          <div className="flex gap-4 items-center justify-center my-8">
-            <Button
-              onPress={handleExportAdministrativeData}
-              size="lg"
-            >
-              ⬆️ Export Admin Data
-            </Button>
-            <Button
-              onPress={() => fileInputAdminRef.current?.click()}
-              size="lg"
-            >
-              ⬇️ Import Admin Data
-            </Button>
-            <input
-              ref={fileInputAdminRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportAdministrativeData}
-              style={{ display: "none" }}
-            />
-          </div>
-          <Divider className="my-4" />
-          <div className="flex gap-4 items-center justify-center my-8">
-            <h3 className="w-full text-center">Objects</h3>
-          </div>
-          <div className="flex gap-4 items-center justify-center my-8">
-            <Button
-              onPress={handleExportObjects}
-              size="lg"
-            >
-              ⬆️ Export Objects
-            </Button>
-            <Button
-              onPress={() => fileInputObjectsRef.current?.click()}
-              size="lg"
-            >
-              ⬇️ Import Objects
-            </Button>
-            <input
-              ref={fileInputObjectsRef}
-              type="file"
-              accept=".json"
-              onChange={handleImportObjects}
-              style={{ display: "none" }}
-            />
-          </div>
-          {showInitModal && <InitComponent show={showInitModal} />}
-          <ImportProgress
-            isOpen={showImportModal}
-            onOpenChange={setShowImportModal}
-            progress={importProgress}
-            stats={importStats}
-          />
+          <h2>Welcome, {currentUser?.[0]?.getUserId?.() ?? "User"} 👋</h2>
+          {OPENBIS_URL && OPENBIS_URL.includes("localhost") && (
+            <>
+              <div className="flex gap-4 items-center justify-center my-8">
+                <Button
+                  color="primary"
+                  onPress={handleInitializeWorkspace}
+                  size="lg"
+                  isDisabled={showInitModal}
+                >
+                  Initialize Workspace
+                </Button>
+              </div>
+              <Divider className="my-4" />
+              <div className="flex gap-4 items-center justify-center my-8">
+                <h3 className="w-full text-center">Types</h3>
+              </div>
+              <div className="flex gap-4 items-center justify-center my-8">
+                <Button
+                  onPress={handleExportObjectTypes}
+                  size="lg"
+                >
+                  ⬆️ Export Types
+                </Button>
+                <Button
+                  onPress={() => fileInputRef.current?.click()}
+                  size="lg"
+                >
+                  ⬇️ Import Types
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportObjectTypes}
+                  style={{ display: "none" }}
+                />
+              </div>
+              <Divider className="my-4" />
+              <div className="flex gap-4 items-center justify-center my-8">
+                <h3 className="w-full text-center">Administrative Data</h3>
+              </div>
+              <div className="flex gap-4 items-center justify-center my-8">
+                <Button
+                  onPress={handleExportAdministrativeData}
+                  size="lg"
+                >
+                  ⬆️ Export Admin Data
+                </Button>
+                <Button
+                  onPress={() => fileInputAdminRef.current?.click()}
+                  size="lg"
+                >
+                  ⬇️ Import Admin Data
+                </Button>
+                <input
+                  ref={fileInputAdminRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportAdministrativeData}
+                  style={{ display: "none" }}
+                />
+              </div>
+              <Divider className="my-4" />
+              <div className="flex gap-4 items-center justify-center my-8">
+                <h3 className="w-full text-center">Objects</h3>
+              </div>
+              <div className="flex gap-4 items-center justify-center my-8">
+                <Button
+                  onPress={handleExportObjects}
+                  size="lg"
+                >
+                  ⬆️ Export Objects
+                </Button>
+                <Button
+                  onPress={() => fileInputObjectsRef.current?.click()}
+                  size="lg"
+                >
+                  ⬇️ Import Objects
+                </Button>
+                <input
+                  ref={fileInputObjectsRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportObjects}
+                  style={{ display: "none" }}
+                />
+              </div>
+              {showInitModal && <InitComponent show={showInitModal} />}
+              <ImportProgress
+                isOpen={showImportModal}
+                onOpenChange={setShowImportModal}
+                progress={importProgress}
+                stats={importStats}
+              />
+            </>
+          )}
           <Divider className="my-8" />
           <UserInfo />
         </>

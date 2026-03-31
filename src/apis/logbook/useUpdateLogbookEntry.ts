@@ -11,14 +11,17 @@ export const useUpdateLogbookEntry = () => {
     mutationFn: ({
       sampleId,
       properties,
+      parentPermIds,
     }: {
       sampleId: openbis.ISampleId;
       properties: object;
+      parentPermIds?: string[];
     }) => {
       return updateLogbookEntry(
         apiFacade,
         sampleId,
         properties,
+        parentPermIds,
       );
     },
   });

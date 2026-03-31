@@ -110,7 +110,6 @@ export const ObjectList = () => {
       handleMessage(`Object '${code}' deleted successfully.`, true, true);
     }).catch((e) => {
       handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
-      handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
     });
   };
 

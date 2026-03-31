@@ -1,5 +1,5 @@
 import openbis from "@openbis/openbis.esm";
-import { iLogID, iLogLogbookID } from "../shared/common";
+import { iLogID } from "../shared/common";
 import {
   createObjectTypeSettingsDefinition,
   deleteObjectTypeSettingsDefinition,
@@ -24,10 +24,9 @@ export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
   ao.withEntityType();
   ao.withPropertyTypeUsing(po);
   fo.withPropertyAssignmentsUsing(ao);
-  
+
   // If you need to access validation plugins or other metadata
   fo.withValidationPlugin();
-  
   return fo;
 }
 
@@ -55,33 +54,21 @@ export async function getObjectTypes(
 }
 
 /**
- * Get all logbook entry types with the iLog base type property and apply filtering by code if search field is provided.
+ * Get a specific object type with requested permId.
  * @param api - The OpenBIS JavaScript facade instance.
- * @param search - The search string to filter types by code.
- * @returns A promise that resolves to an array of SampleType objects.
+ * @param permId - The permId to search for.
+ * @returns A promise that resolves to a SampleType object.
  */
-export async function getLogbookEntryTypes(
+export async function getObjectType(
   api: openbis.OpenBISJavaScriptFacade,
-  search: string = ""
-): Promise<openbis.SampleType[]> {
-  const sc = new openbis.SampleTypeSearchCriteria();
-  sc.withCode().thatStartsWith(search.toUpperCase());
-  sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogLogbookID);
-  const fo = createObjectTypeFetchOptions();
-
-  const result = await api.searchSampleTypes(sc, fo);
-  return result.getObjects();
-}
-
-export async function getObjectType(api: openbis.OpenBISJavaScriptFacade, permId: string): Promise<openbis.SampleType | undefined> {
+  permId: string,
+): Promise<openbis.SampleType | undefined> {
   const sc = new openbis.SampleTypeSearchCriteria();
   sc.withCode().thatEquals(permId);
   const fo = createObjectTypeFetchOptions();
   const result = await api.searchSampleTypes(sc, fo);
   return result.getObjects()[0];
 }
-
-
 
 /**
  * Create a new object type and automatically enable it in ELN settings.

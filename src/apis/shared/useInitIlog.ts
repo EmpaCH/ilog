@@ -158,12 +158,12 @@ export const useInitIlog = () => {
         await createVoc.mutateAsync();
         console.log("iLog vocabulary initialized.");
 
-        // for (const [objectTypeDefinition, requestResult] of objectTypeChecks) {
-        //   if (await requestResult.refetch().then(res => res.data) === undefined) {
-        //     await createObjects.mutateAsync({ definition: objectTypeDefinition });
-        //     emitMessage(`${objectTypeDefinition.code} type initialized.`, createObjects.status);
-        //   }
-        // }
+        for (const [objectTypeDefinition, requestResult] of objectTypeChecks) {
+          if (await requestResult.refetch().then(res => res.data) === undefined) {
+            await createObjects.mutateAsync({ definition: objectTypeDefinition });
+            emitMessage(`${objectTypeDefinition.code} type initialized.`, createObjects.status);
+          }
+        }
       }
     },
     onSuccess: () => {

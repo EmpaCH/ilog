@@ -1,5 +1,6 @@
 import openbis from "@openbis/openbis.esm";
 import { iLogID, iLogLogbookID, logbookCollectionID } from "../shared/common";
+import { createObjectTypeFetchOptions } from "../type/typeAPI";
 
 /**
  * Get all logbook entries from the iLog inventory Equipment collection.
@@ -20,6 +21,7 @@ export async function getAllLogbookEntries(
   fo.withProperties();
   fo.withPropertiesHistory();
   fo.withParents().withProperties();
+  fo.withParents().withExperiment();
   fo.withRegistrator();
 
   const ao = new openbis.PropertyAssignmentFetchOptions();
@@ -45,6 +47,7 @@ export async function getLogbookEntry(
   fo.withProperties();
   fo.withPropertiesHistory();
   fo.withParents();
+  fo.withParents().withExperiment();
 
   const ao = new openbis.PropertyAssignmentFetchOptions();
   const po = new openbis.PropertyTypeFetchOptions();
@@ -103,11 +106,15 @@ export async function updateLogbookEntry(
   api: openbis.OpenBISJavaScriptFacade,
   sampleId: openbis.ISampleId,
   properties: object,
+  parentPermIds?: string[],
 ): Promise<void> {
   const updateEntry = new openbis.SampleUpdate();
   updateEntry.setSampleId(sampleId);
   for (const [key, value] of Object.entries(properties)) {
     updateEntry.setProperty(key, value);
+  }
+  if (parentPermIds !== undefined) {
+    updateEntry.getParentIds().set(parentPermIds.map((permId) => new openbis.SamplePermId(permId)));
   }
   await api.updateSamples([updateEntry]);
 }
@@ -124,4 +131,23 @@ export async function deleteLogbookEntry(
   const sdo = new openbis.SampleDeletionOptions();
   sdo.setReason('Logbook entry no longer needed.');
   await api.deleteSamples([sampleId], sdo);
+}
+
+/**
+ * Get all logbook entry types with the iLog base type property and apply filtering by code if search field is provided.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param search - The search string to filter types by code.
+ * @returns A promise that resolves to an array of SampleType objects.
+ */
+export async function getLogbookEntryTypes(
+  api: openbis.OpenBISJavaScriptFacade,
+  search: string = ""
+): Promise<openbis.SampleType[]> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatStartsWith(search.toUpperCase());
+  sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogLogbookID);
+  const fo = createObjectTypeFetchOptions();
+
+  const result = await api.searchSampleTypes(sc, fo);
+  return result.getObjects();
 }

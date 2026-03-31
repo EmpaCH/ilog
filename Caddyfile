@@ -15,7 +15,7 @@
         }
     }
     handle /datastore_server/* {
-    reverse_proxy {$OPENBIS_DSS_URL} {
+    reverse_proxy {$OPENBIS_URL} {
             header_up Host {upstream_hostport}
         }
     }

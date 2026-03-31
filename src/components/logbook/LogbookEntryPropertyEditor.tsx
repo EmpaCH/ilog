@@ -5,18 +5,15 @@ import { ComponentListPropertyEditor } from "../object/ComponentListPropertyEdit
 import { LocalPropertyTypeVariants } from "../../apis/propertyType/commonPropertyType";
 
 // The props that are received by the component
-// define whether this will be a Logbook Entry Creator or Editor component
-const creatorModes = ["edit", "view"] as const;
-type CreatorMode = (typeof creatorModes)[number];
 interface LogbookEntryPropertyEditorsProps {
-  mode: CreatorMode;
+  isReadOnly: boolean;
   state: LogbookEntryState;
   dispatch: React.Dispatch<LogbookEntryActions>;
   hiddenPropertyCodes?: string[];
 }
 
 export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsProps> = ({
-  mode,
+  isReadOnly,
   state,
   dispatch,
   hiddenPropertyCodes,
@@ -50,7 +47,6 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
 
   const renderPropertyField = (property: LocalPropertyTypeVariants) => {
     const value = state.propertyValues[property.code] ?? "";
-    const isDisabled = mode === "view";
     const widgetType = getWidgetType(property);
     const options = getOptions(property);
 
@@ -65,7 +61,7 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
       case "dropdown":
         return (
           <Select
-            disabled={isDisabled}
+            disabled={isReadOnly}
             id={property.code}
             label={property.label}
             placeholder={property.description}
@@ -84,6 +80,7 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
       case "link":
         return (
           <ComponentListPropertyEditor
+            isReadOnly={isReadOnly}
             dispatch={(permIds: string[]) => {
               dispatch({
                 type: "SET_PROPERTY_VALUES",
@@ -97,7 +94,7 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
       case "float":
         return (
           <Input
-            disabled={isDisabled}
+            disabled={isReadOnly}
             id={property.code}
             label={property.label}
             placeholder={property.description}
@@ -112,7 +109,7 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
       case "duration":
         return (
           <Input
-            disabled={isDisabled}
+            disabled={isReadOnly}
             id={property.code}
             label={property.label}
             placeholder="hh:mm:ss"
@@ -126,7 +123,8 @@ export const LogbookEntryPropertyEditor: React.FC<LogbookEntryPropertyEditorsPro
       default:
         return (
           <Input
-            disabled={isDisabled}
+            isRequired={property.code === "NAME"}
+            disabled={isReadOnly}
             id={property.code}
             label={property.label}
             placeholder={property.description}

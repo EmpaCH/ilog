@@ -545,7 +545,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   return (
     <>
       <div>
-        <h2>{mode === "create" ? "Create Object" : mode === "edit" ? "Edit Object" : "View Object"}</h2>
+        <h2>{mode === "create" ? "Create Object" : (mode === "edit" || (mode === "view" && isEditMode)) ? "Edit Object" : "View Object"}</h2>
         <form onSubmit={onSubmit}>
           <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row gap-8 bg-white rounded-lg shadow p-6 mb-8">
             <div className="flex-1 min-w-[260px] max-w-[25rem]">
@@ -824,8 +824,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 Please select a type.
               </p>
             )}
-          </div>
           <Divider className="my-4" />
+          </div>          
           <div className="flex items-center justify-center" style={{ minHeight: "4rem" }}>
             <Button
               type="button"

@@ -131,15 +131,7 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         description: "Responsible",
         metadata: null,
       },      
-      {
-        code: "COMPONENT",
-        type: "local",
-        multivalued: true,
-        dataType: "VARCHAR",
-        label: "Component",
-        description: "Component (most directly involved)",
-        metadata: null,
-      },
+      
     ]
   } as PropertyTypesSchema,
 };

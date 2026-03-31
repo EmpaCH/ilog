@@ -33,6 +33,28 @@ export function createEmptyLogbookEntryDefinition(): LogbookEntryDefinition {
  * @param timestamp? - If provided, uses this as the validFrom timestamp. Otherwise falls back to current time.
  * @returns The corresponding local LogbookEntryDefinition.
  */
+export function convertOpenBISEntryListToLogbookEntryDefinition(
+  sample: openbis.Sample,
+): LogbookEntryDefinition {
+  const validFrom = sample.getProperty("VALID_FROM");
+
+  return {
+    id: sample.getIdentifier(),
+    type: sample.getType().getCode(),
+    code: sample.getCode(),
+    validFrom: validFrom ? parseZonedDateTime(validFrom) : now(getLocalTimeZone()),
+    propertiesSchema: {},
+    propertyValues: sample.getProperties(),
+  };
+}
+
+/**
+ * Converts an openBIS Sample and its list of latest property history entries to a local LogbookEntryDefinition.
+ * @param sample - The openBIS Sample to convert.
+ * @param history - The openBIS PropertyHistoryEntry[] to convert.
+ * @param timestamp? - If provided, uses this as the validFrom timestamp. Otherwise falls back to current time.
+ * @returns The corresponding local LogbookEntryDefinition.
+ */
 export function convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(
   sample: openbis.Sample,
   history: openbis.PropertyHistoryEntry[],
