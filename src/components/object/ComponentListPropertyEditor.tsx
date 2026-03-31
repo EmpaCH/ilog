@@ -24,6 +24,7 @@ import openbis from "@openbis/openbis.esm";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { getSampleDatasets, getDatasetImageFilenameFromObject } from "../../apis/dataset/datasetAPI";
+import { logbookCollectionID } from "../../apis/shared/environment";
 
 interface ComponentListPropertyEditorProps {
   dispatch: React.Dispatch<any>;
@@ -48,6 +49,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   isReadOnly,
   logentries,
 }) => {
+  // console.log(value);
   const { apiFacade } = useContext(AuthContext);
   const getObjectsResult = useGetObjects();
   const lastDispatchedRef = useRef<string>('');
@@ -58,7 +60,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   const [components, setComponents] = useState<openbis.Sample[]>([]);
   const [previewImages, setPreviewImages] = useState<{ [permId: string]: string | null }>({});
   const [storedCurrentObjectCode, setStoredCurrentObjectCode] = useState<string | undefined>(currentObjectCode);
-
+  
   // Remember the first non-empty currentObjectCode provided by the parent
   useEffect(() => {
     if (currentObjectCode && currentObjectCode !== storedCurrentObjectCode) {
@@ -126,22 +128,19 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   });
 
   const getSelectedCodes = (): string[] => {
-    let selectedCodes: string[] = [];
     if (selectedKeys == "all") {
       return components.map(component => component.getCode());
     }
-    for (const key of selectedKeys) {
-      selectedCodes.push(key.valueOf() as string);
-    }
-    return selectedCodes;
+    const selectedPerms = Array.from(selectedKeys).map(k => k.valueOf() as string);
+    return selectedPerms.map(permId => {
+      const comp = components.find(c => c.getPermId().getPermId() === permId);
+      return comp ? comp.getCode() : "";
+    }).filter(code => code !== "");
   };
 
   const getSelectedPermIds = (): string[] => {
-    return components.filter((component) =>
-      getSelectedCodes().includes(component.getCode())
-    ).map((component) => {
-      return component.getPermId().getPermId();
-    });
+    if (selectedKeys == "all") return components.map(c => c.getPermId().getPermId());
+    return Array.from(selectedKeys).map(k => k.valueOf() as string);
   };
 
   useEffect(() => {
@@ -199,7 +198,8 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     if (allComponents.length === 0) return;
     let filteredComponents = [...allComponents];
     if (isReadOnly) {
-      // Only show selected components in readOnly mode
+      // In read-only mode always constrain to the selected value(s)
+      // An empty value means no parent is assigned, so an empty table
       const selectedPermIds = Array.isArray(value) ? value : value ? [value] : [];
       filteredComponents = filteredComponents.filter((component) =>
         selectedPermIds.includes(component.getPermId().getPermId())
@@ -241,30 +241,53 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   }, [selectedPermIds, dispatch, onSelectedComponentsChange]);
 
   useEffect(() => {
-    if (!value || !Array.isArray(components) || components.length === 0) {
-      return;
-    }
+    // console.log('effect');
     const currentValueString = JSON.stringify(value);
-    if (lastValueRef.current === currentValueString) {
+    // console.log(currentValueString);
+
+    if (lastValueRef.current === currentValueString && hasInitializedRef.current) {
       return;
     }
-    // Create a copy to avoid mutation
-    const valueArray = Array.isArray(value) ? [...value] : [value];
-    const matchingCodes = new Set<string>();
+    // Create normalized value array
+    const valueArray = Array.isArray(value) ? [...value] : value ? [value] : [];
+    // console.log(valueArray);
+    // If there is no value to select, clear selection
+    if (valueArray.length === 0) {
+      setSelectedKeys(new Set());
+      lastValueRef.current = currentValueString;
+      hasInitializedRef.current = true;
+      return;
+    }
 
-    valueArray.forEach(val => {
-      const matchingComponent = components.find(component => 
-        component.getPermId().getPermId() === val
-      );
-      if (matchingComponent) {
-        matchingCodes.add(matchingComponent.getCode());
+    // Try to find matching components for each permId
+    const matchingPermIds = new Set<string>();
+    for (const val of valueArray) {
+      const matchingComponent = components.find(component => component.getPermId().getPermId() === val);
+      if (matchingComponent) matchingPermIds.add(matchingComponent.getPermId().getPermId());
+    }
+
+    // If we found no matching components, check if missingObjectQuery has the data
+    // (it will have been injected into allComponents by the getObjectsResult effect).
+    // Do NOT mutate allComponents here — the getObjectsResult effect already handles
+    // injection of missingObjectQuery.data, so mutating here races with it and causes duplicates.
+    if (matchingPermIds.size === 0 && missingObjectQuery.data) {
+      const mo = missingObjectQuery.data;
+      if (mo && valueArray.includes(mo.getPermId().getPermId())) {
+        matchingPermIds.add(mo.getPermId().getPermId());
       }
-    });
+    }
 
-    setSelectedKeys(matchingCodes);
-    lastValueRef.current = currentValueString;
-    hasInitializedRef.current = true;
-  }, [value, components]);
+    setSelectedKeys(matchingPermIds);
+    // Only mark as fully initialized when we actually resolved the value into
+    // matching components. If value is non-empty but nothing matched yet
+    // (e.g. logentries haven't been populated yet), keep hasInitializedRef false
+    // so this effect re-runs when components changes and tries again.
+    const fullyResolved = valueArray.length === 0 || matchingPermIds.size > 0;
+    if (fullyResolved) {
+      lastValueRef.current = currentValueString;
+      hasInitializedRef.current = true;
+    }
+  }, [value, components, missingObjectQuery.data, allComponents]);
 
   const sortComponents = (descriptor: SortDescriptor) => {
     const sortedComponents = [...components].sort((a, b) => {
@@ -299,18 +322,51 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   const renderTableRow = (component: openbis.Sample) => {
     const permId = component.getPermId().getPermId();
     if (logentries) {
+      // Determine parent logbook entry (first logbook parent)
+      let parents: any[] = [];
+      try {
+        parents = (component.getParents && component.getParents()) || [];
+      } catch (e) {
+        // getParents() throws NotFetchedException if parents were not fetched for this entry
+      }
+      let parentEntry = "";
+      if (parents.length > 0) {
+        for (const p of parents) {
+          try {
+            const isLogbookEntry = p.getExperiment && p.getExperiment().getCode() === logbookCollectionID;
+            if (isLogbookEntry && !parentEntry) {
+              parentEntry = p.getProperty("NAME") || p.getCode() || "";
+            }
+            if (parentEntry) break;
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+
       // Omit preview column for logentries
       return (
-        <TableRow key={component.getCode()}>
+        <TableRow
+          key={component.getPermId().getPermId()}
+          style={{
+            cursor: !isReadOnly ? "pointer" : "default",
+            border: "1px solid #E0E0E0",
+          }}
+        >
           <TableCell>{component.getProperty("NAME")}</TableCell>
-          <TableCell>{component.getCode()}</TableCell>
-          <TableCell>{component.getType().getCode()}</TableCell>
+          <TableCell style={{ color: component.getType().getMetaData()["color"] }}>{ component.getType().getDescription() }</TableCell>
+          <TableCell>{parentEntry}</TableCell>
+          <TableCell>{(component.getProperty("VALID_FROM") && typeof component.getProperty("VALID_FROM") === "string" && component.getProperty("VALID_FROM").includes("T"))
+            ? component.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
+            : ""}
+          </TableCell>
+          <TableCell>{component.getRegistrator().getPermId().getPermId() || ""}</TableCell>
         </TableRow>
       );
     }
     // Default: show preview column
     return (
-      <TableRow key={component.getCode()}>
+      <TableRow key={component.getPermId().getPermId()}>
         <TableCell>
           {previewImages[permId] ? (
             <img
@@ -397,8 +453,10 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     if (logentries) {
       return <TableHeader>
         <TableColumn key="name" allowsSorting>Name</TableColumn>
-        <TableColumn key="code" allowsSorting>Code</TableColumn>
         <TableColumn key="type" allowsSorting>Type</TableColumn>
+        <TableColumn key="parentEntry" allowsSorting>Parent Entry</TableColumn>
+        <TableColumn key="validFrom" allowsSorting>Valid From</TableColumn>
+        <TableColumn key="responsible" allowsSorting>Responsible</TableColumn>
       </TableHeader>
     }
     return (
@@ -419,7 +477,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         aria-label={logentries ? "Logbook Entry List" : "Component list"}
         topContent={topContent}
         topContentPlacement="outside"
-        selectedKeys={isReadOnly ? [] : selectedKeys}
+        selectedKeys={selectedKeys}
         onSelectionChange={isReadOnly ? () => {} : setSelectedKeys}
         classNames={{
           wrapper: "max-h-[300px]",
@@ -430,9 +488,9 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       >
         {renderTableHeaders()}
         <TableBody emptyContent={"No objects found"}>
-          {components.map((component) => (
-            renderTableRow(component)
-          ))}
+          {components.map((component) => {
+            return renderTableRow(component);
+          })}
         </TableBody>
       </Table>
     </>

@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
         },
         "/datastore_server/": {
-          target: `${env.OPENBIS_DSS_URL ?? env.OPENBIS_URL}`,
+          target: `${env.OPENBIS_URL}`,
           changeOrigin: true,
           secure: false,
         },

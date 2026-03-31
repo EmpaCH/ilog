@@ -14,10 +14,9 @@ file-server.repository-path=
 OPENBIS_DSS_PORT=
 OPENBIS_AS_PORT=
 OPENBIS_URL=
-OPENBIS_DSS_URL=
 ```
 
-`OPENBIS_DSS_URL` should point to the DSS base URL that serves `/datastore_server/*` (e.g. `http://localhost:8083`).
+`OPENBIS_URL` is also used to point to the DSS base URL that serves `/datastore_server/*`.
 
 ## Execution
 

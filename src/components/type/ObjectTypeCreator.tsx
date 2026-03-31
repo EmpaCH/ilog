@@ -452,7 +452,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   return (
     <>
       <div className="md-size-div">
-        <h2>{mode === "create" ? "Create Type" : mode === "edit" ? "Edit Type" : "View Type"}</h2>
+        <h2>{mode === "create" ? "Create Type" : (mode === "edit" || (mode === "view" && isEditMode)) ? "Edit Type" : "View Type"}</h2>
         <form onSubmit={handleSubmit}>
           <RadioGroup
             isRequired

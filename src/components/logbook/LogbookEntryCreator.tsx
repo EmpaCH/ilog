@@ -1,6 +1,5 @@
-import React, { useContext, useEffect, useReducer, useState, useMemo } from "react";
+import React, { useEffect, useReducer, useRef, useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
   Autocomplete,
   AutocompleteItem,
@@ -10,14 +9,13 @@ import {
   DatePicker,
   TimeInput,
 } from "@heroui/react";
-import { AuthContext } from "../../context/auth/authContext";
 import { LogbookEntryPropertyEditor } from "./LogbookEntryPropertyEditor";
 import { ComponentListPropertyEditor } from "../object/ComponentListPropertyEditor";
 import { useCreateLogbookEntry } from "../../apis/logbook/useCreateLogbookEntry";
 import { useGetAllLogbookEntries } from "../../apis/logbook/useGetAllLogbookEntries";
 import { useUpdateLogbookEntry } from "../../apis/logbook/useUpdateLogbookEntry";
 import { useGetLogbookEntry } from "../../apis/logbook/useGetLogbookEntry";
-import { getLogbookEntryTypes } from "../../apis/type/typeAPI";
+import { useGetLogbookEntryTypes } from "../../apis/logbook/useGetLogbookEntryTypes";
 import { logbookEntryReducer } from "./LogbookEntryActions";
 import {
   logbookEntryCreatorLocalReducer,
@@ -25,14 +23,15 @@ import {
 } from "./LogbookEntryLocalActions";
 import {
   createEmptyLogbookEntryDefinition,
-  convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition,
-  reconstructHistory,
+  // convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition,
+  // reconstructHistory,
+  convertOpenBISEntryListToLogbookEntryDefinition,
 } from "../../apis/logbook/helpersLogbookEntryAPI";
 import {
-  ReconstructedHistory,
+  // ReconstructedHistory,
   LogbookEntryDefinition,
 } from "../../apis/logbook/commonLogbookEntry";
-import { iLogID, iLogLogbookID } from "../../apis/shared/environment";
+import { iLogID, iLogLogbookID, logbookCollectionID } from "../../apis/shared/environment";
 import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
@@ -45,9 +44,10 @@ import {
 } from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
+import { MessageModal } from "../shared/messageModal";
 
 // define whether this will be a Logbook Entry Creator or Editor component
-const creatorModes = ["create", "edit"] as const;
+const creatorModes = ["create", "edit",  "view"] as const;
 type CreatorMode = (typeof creatorModes)[number];
 interface LogbookEntryCreatorProps {
   mode: CreatorMode;
@@ -58,54 +58,48 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   mode,
   logbookEntryCode,
 }) => {
-  const { apiFacade } = useContext(AuthContext);
   const logbookEntryResult = useGetLogbookEntry(logbookEntryCode);
   const logbookEntryCreation = useCreateLogbookEntry();
   const logbookEntryUpdate = useUpdateLogbookEntry();
   const allLogbookEntriesQuery = useGetAllLogbookEntries();
   const navigate = useNavigate();
 
-  let [openbisSample, setOpenbisSample] = useState<openbis.Sample | undefined>(undefined);
-  let [reconstructedHistory, setReconstructedHistory] = useState<ReconstructedHistory>({});
+  let [isEditMode, setIsEditMode] = useState(mode === "edit" || mode === "create");
+  // let [openbisSample, setOpenbisSample] = useState<openbis.Sample | undefined>(undefined);
+  // let [reconstructedHistory, setReconstructedHistory] = useState<ReconstructedHistory>({});
   let [logbookEntryTemplate, setLogbookEntryTemplate] = useState<LogbookEntryDefinition>(createEmptyLogbookEntryDefinition());
   let [isValidFromSelected, setIsValidFromSelected] = useState(false);
   let [parentObjectPermId, setParentObjectPermId] = useState<string>("");
   let [parentLogbookEntryPermId, setParentLogbookEntryPermId] = useState<string>("");
-  let [parentObjectLogbookEntries, setParentObjectLogbookEntries] = useState<any[]>([]);
-
-  useEffect(() => {
-    // Filter logbook entries for selected parent object
-    const logEntries = parentObjectPermId && allLogbookEntriesQuery.data
-      ? allLogbookEntriesQuery.data.filter(entry => {
-          return (
-            entry.getProperty("COMPONENT") === parentObjectPermId
-          );
-        })
-      : [];
-    setParentObjectLogbookEntries(logEntries);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parentObjectPermId, allLogbookEntriesQuery.data]);
+  let [availableParentObjectLogbookEntries, setAvailableParentObjectLogbookEntries] = useState<any[]>([]);
 
   const [state, dispatch] = useReducer(logbookEntryReducer, logbookEntryTemplate);
   const [localState, localDispatch] = useReducer(logbookEntryCreatorLocalReducer,
     EMPTY_LOGBOOK_ENTRY_CREATOR_LOCAL_DEFINITION,
   );
+  const logbookEntryTypes = useGetLogbookEntryTypes(localState.searchTerm);
+  // Tracks the last type for which the schema was computed. Prevents re-running
+  // on background refetches that produce a new logbookEntryTypes.data reference
+  // without actually changing the type or its schema.
+  const schemaComputedForRef = useRef<string>("");
 
-  const logbookEntryTypes = useQuery({
-    queryKey: ["getSampleTypes"],
-    queryFn: async () => {
-      const types = await getLogbookEntryTypes(apiFacade, localState.searchTerm);
-      return types.map(type => ({
-        key: type.getCode(),
-        code: type.getCode(),
-        sampleType: type,
-      }));
-    },
-  });
+  // Update isEditMode when mode prop changes
+  useEffect(() => {
+    setIsEditMode(mode === "edit" || mode === "create");
+  }, [mode]);
 
   useEffect(() => {
-    logbookEntryTypes.refetch();
-  }, [localState.searchTerm]);
+    // Filter logbook entries for selected parent object
+    const logEntries = parentObjectPermId && allLogbookEntriesQuery.data
+      ? allLogbookEntriesQuery.data.filter(entry => {
+          // Only consider explicit parent relationships: check parents' permIds
+          const parents = entry.getParents && entry.getParents();
+          return parents && parents.length > 0 && parents.some((p: any) => p.getPermId().getPermId() === parentObjectPermId);
+        })
+      : [];
+    setAvailableParentObjectLogbookEntries(logEntries);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentObjectPermId, allLogbookEntriesQuery.data]);
 
   useEffect(() => {
     if (!isValidFromSelected) {
@@ -116,12 +110,22 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
     }
   }, [isValidFromSelected]);
 
-  // Ensure schema is created when type is selected or when entering edit mode
+  // Apply schema whenever state.type or logbookEntryTypes.data changes.
+  // Using logbookEntryTypes.data (not .status) avoids re-running on background
+  // refetch status cycles. The ref guard prevents re-running when data gets a
+  // new reference but the type and its schema haven't actually changed.
   useEffect(() => {
-    if ((mode === "edit" || mode === "create") && state.type && logbookEntryTypes.status === "success") {
-      createLogbookEntrySchemaBasedOnType(state.type, mode);
+    if (!state.type) {
+      schemaComputedForRef.current = "";
+      return;
     }
-  }, [state.type, logbookEntryTypes.status, mode]);
+    if (state.type === schemaComputedForRef.current) return;
+    const found = logbookEntryTypes.data?.find((it) => it.code === state.type);
+    if (!found) return; // data not yet loaded; effect re-runs when data arrives
+    schemaComputedForRef.current = state.type;
+    createLogbookEntrySchemaBasedOnType(state.type, mode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.type, logbookEntryTypes.data, mode]);
 
   const createLogbookEntrySchemaBasedOnType = (
     type: string,
@@ -138,6 +142,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
       const propertyTypes = logbookEntryTypeTemplate.propertyTypes;
       
       // Dispatch the schema
+      dispatch({ type: "SET_TYPE", payload: type });
       dispatch({
         type: "SET_PROPERTIES_SCHEMA",
         payload: propertyTypes as PropertyTypesSchema,
@@ -159,75 +164,71 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
 
   useMemo(() => {
     if (logbookEntryResult.status === "success") {
-      const openbisSample = logbookEntryResult.data[0];
-      setOpenbisSample(openbisSample);
+      const newOpenbisSample = logbookEntryResult.data[0];
+      // setOpenbisSample(newOpenbisSample);
 
-      if (openbisSample) {
-        const parents = openbisSample.getParents();
-        const parentComponent = openbisSample.getProperty("COMPONENT");
-
-        // Only update parentObjectPermId if changed and not empty
-        if (parentComponent && parentObjectPermId !== parentComponent) {
-          setParentObjectPermId(parentComponent);
-        }
-
-        // Only update parentLogbookEntryPermId if changed and not empty
+      if (newOpenbisSample) {
+        // Determine parent roles from parents list. Prefer explicit parent relationship.
+        // Parent that is in the LOGBOOK collection is considered a logbook-entry parent.
+        let foundParentObjectPermId = "";
+        let foundParentLogbookEntryPermId = "";
+        const parents = newOpenbisSample.getParents();
         if (parents && parents.length > 0) {
-          let parentComponentPermId = parents[0].getPermId().getPermId();
-          if (parentComponentPermId !== parentComponent && parentLogbookEntryPermId !== parentComponentPermId) {
-            setParentLogbookEntryPermId(parentComponentPermId);
-          } else if ((parentComponentPermId === parentComponent) && parentLogbookEntryPermId) {
-            setParentLogbookEntryPermId("");
+          for (const p of parents) {
+            try {
+              const perm = p.getPermId().getPermId();
+              const isLogbook = p.getExperiment().getCode() === logbookCollectionID;
+              if (isLogbook && !foundParentLogbookEntryPermId) {
+                foundParentLogbookEntryPermId = perm;
+                setParentLogbookEntryPermId(foundParentLogbookEntryPermId);
+              } else if (!isLogbook && !foundParentObjectPermId) {
+                foundParentObjectPermId = perm;
+                setParentObjectPermId(foundParentObjectPermId);
+              }
+            } catch (e) {
+              // ignore malformed parent entries
+              setParentObjectPermId("");
+              setParentLogbookEntryPermId("");
+            }
           }
-        } else if (parentLogbookEntryPermId) {
-          setParentLogbookEntryPermId("");
         }
 
-        const logbookEntryHistory = openbisSample.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
-        const registrationDate = openbisSample.getRegistrationDate();
-        const reconstructedHistory = reconstructHistory(logbookEntryHistory, registrationDate);
-        setReconstructedHistory(reconstructedHistory);
-        const latestKey = Object.keys(reconstructedHistory).pop();
-        const latestSampleState = latestKey ? reconstructedHistory[latestKey] : [];
-        const logbookEntryTemplate = convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(openbisSample, latestSampleState, latestKey ? Number(latestKey) : undefined)
+        const logbookEntryTemplate = convertOpenBISEntryListToLogbookEntryDefinition(newOpenbisSample);
         setLogbookEntryTemplate(logbookEntryTemplate);
+        schemaComputedForRef.current = ""; // reset so the schema effect re-runs for the loaded type
         dispatch({ type: "RESET", payload: logbookEntryTemplate });
-        createLogbookEntrySchemaBasedOnType(logbookEntryTemplate.type);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logbookEntryCode, logbookEntryResult.status, logbookEntryResult.data, parentObjectPermId, parentLogbookEntryPermId]);
-
-  const onLoadValidFrom = (newValidFrom: ZonedDateTime | null) => {
-    const keys = Object.keys(reconstructedHistory);
-
-    if (mode === "edit" && keys.length > 1 && newValidFrom !== null && openbisSample) {
-      let previousKey = keys[0];
-      for (let i = 1; i < keys.length; i++) {
-        if (keys[i] >= newValidFrom.toString()) {
-          break;
-        }
-        previousKey = keys[i];
-      }
-
-      const previousState = reconstructedHistory[previousKey];
-      const logbookEntryState = convertOpenBISPropertyHistoryEntryListToLogbookEntryDefinition(openbisSample, previousState, Number(previousKey));
-      dispatch({ type: "RESET", payload: logbookEntryState });
-      createLogbookEntrySchemaBasedOnType(logbookEntryTemplate.type);
-    }
-  };
+  }, [logbookEntryCode, logbookEntryResult.status, logbookEntryResult.data]);
 
   const onSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    // Prevent form submission in view mode
+    if (mode === "view" && !isEditMode) {
+      return;
+    }
+
+    // Validate required field
+    if (mode === "create" && !parentObjectPermId) {
+      onError("Parent Object is required.");
+      return;
+    }
     localDispatch({ type: "CLEAR" });
 
-    if (mode === "edit") {
+    if (mode === "edit" || (mode === "view" && isEditMode)) {
+      const parentPermIds: string[] = [];
+      if (parentLogbookEntryPermId) parentPermIds.push(parentLogbookEntryPermId);
+      if (parentObjectPermId) parentPermIds.push(parentObjectPermId);
+
       logbookEntryUpdate.mutate({
         sampleId: state.id as openbis.ISampleId,
         properties: {
           ...state.propertyValues,
           VALID_FROM: state.validFrom.toString(),
         },
+        parentPermIds,
       }, {
         onError: (err) => {
           onError(err.message);
@@ -240,19 +241,18 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
         },
       });
     } else {
-      // Use parent logbook entry permId if selected, otherwise parent object permId
+      // Build parentPermIds to include both parent logbook entry and parent object (component)
+      const parentPermIds: string[] = [];
+      if (parentLogbookEntryPermId) parentPermIds.push(parentLogbookEntryPermId);
+      if (parentObjectPermId) parentPermIds.push(parentObjectPermId);
+
       logbookEntryCreation.mutate({
         type: state.type,
         properties: {
           ...state.propertyValues,
-          COMPONENT: parentObjectPermId ? parentObjectPermId : undefined,
           VALID_FROM: state.validFrom.toString(),
         },
-        parentPermIds: parentLogbookEntryPermId
-          ? [parentLogbookEntryPermId]
-          : parentObjectPermId
-            ? [parentObjectPermId]
-            : [],
+        parentPermIds: parentPermIds,
       }, {
         onError: (err) => {
           onError(err.message);
@@ -267,14 +267,14 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
 
   const onError = (msg: string) => {
     localDispatch({ type: "SET_MESSAGE", payload: msg.split(" (Context:")[0] });
-    localDispatch({ type: "SET_MESSAGE_COLOR", payload: "error-message" });
+    localDispatch({ type: "SET_IS_SUCCESS", payload: false });
     localDispatch({ type: "SET_SHOW_MESSAGE", payload: true });
     localDispatch({ type: "SET_LOADING", payload: false });
   };
 
   const onSuccess = (msg: string) => {
     localDispatch({ type: "SET_MESSAGE", payload: msg });
-    localDispatch({ type: "SET_MESSAGE_COLOR", payload: "success-message" });
+    localDispatch({ type: "SET_IS_SUCCESS", payload: true });
     localDispatch({ type: "SET_SHOW_MESSAGE", payload: true });
   };
 
@@ -285,6 +285,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
       dispatch({ type: "CLEAR" });
       localDispatch({ type: "SET_LOADING", payload: false });
       setParentObjectPermId(""); // Clear parent selection
+      schemaComputedForRef.current = ""; // reset so re-selecting the same type re-initialises the schema
       setTimeout(() => {
         localDispatch({ type: "CLEAR" });
       }, ms);
@@ -297,10 +298,11 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
 
   return (
     <div className="md-size-div">
-      <h2>{mode === "edit" ? "Edit Logbook Entry" : "Create Logbook Entry"}</h2>
+      <h2>{mode === "create" ? "Create Logbook Entry" : (mode === "edit" || (mode === "view" && isEditMode)) ? "Edit Logbook Entry" : "View Logbook Entry"}</h2>
       <form onSubmit={onSubmit}>
         <div className="flex flex-col md:flex-row items-center gap-4">
           <Checkbox
+            isDisabled={!isEditMode}
             isSelected={isValidFromSelected}
             onValueChange={setIsValidFromSelected}
           />
@@ -316,7 +318,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             value={state.validFrom}
             onChange={(value) => {
               dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
-              onLoadValidFrom(value as ZonedDateTime);
+              // onLoadValidFrom(value as ZonedDateTime);
             }}
           />
           <TimeInput
@@ -329,7 +331,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             value={state.validFrom}
             onChange={(value) => {
               dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
-              onLoadValidFrom(value as ZonedDateTime);
+              // onLoadValidFrom(value as ZonedDateTime);
             }}
           />
           <Button
@@ -350,96 +352,123 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
           <h4>Parent Object</h4>
           <ComponentListPropertyEditor
             dispatch={(permIds: string[]) => {
-              setParentObjectPermId(permIds.length > 0 ? permIds[0] : "")
+              setParentObjectPermId(permIds.length > 0 ? permIds[0] : "");
+              if (permIds.length > 0) localDispatch({ type: "CLEAR" });
             }}
             multivalued={false}
-            value={parentObjectPermId ? [parentObjectPermId] : []}
-            isReadOnly={false}
+            value={parentObjectPermId ? [parentObjectPermId] : undefined}
+            isReadOnly={mode === "view" && !isEditMode}
+            currentObjectCode={logbookEntryCode}
           />
         </div>
         <div className="mb-4">
           <h4>Parent Logbook Entry</h4>
           <ComponentListPropertyEditor
-            logentries={parentObjectLogbookEntries}
+            logentries={availableParentObjectLogbookEntries}
             dispatch={(permIds: string[]) => {
               setParentLogbookEntryPermId(permIds.length > 0 ? permIds[0] : "")
             }}
             multivalued={false}
             value={parentLogbookEntryPermId ? [parentLogbookEntryPermId] : []}
-            isReadOnly={false}
+            isReadOnly={mode === "view" && !isEditMode}
             currentObjectCode={logbookEntryCode}
           />
         </div>
         <Divider className="my-4" />
         <Autocomplete
           isRequired
-          isDisabled={mode === "edit"}
+          isReadOnly={mode === "edit" || mode === "view"}
           id="type"
           label="Type"
           placeholder="Type to search..."
           className="form-field"
-          defaultItems={[]}
+          defaultItems={logbookEntryTypes.data || []}
           items={logbookEntryTypes.data}
           onInputChange={(value) => {
-            localDispatch({ type: "SET_SEARCH_TERM", payload: value });
+            if (!state.type) {
+              localDispatch({ type: "SET_SEARCH_TERM", payload: value });
+            }
           }}
           selectedKey={state.type}
           onSelectionChange={(value) => {
-            const newType = value?.toString() ?? "";
-            dispatch({ type: "SET_TYPE", payload: newType });
-            createLogbookEntrySchemaBasedOnType(newType, "create");
+            if (value) {
+              createLogbookEntrySchemaBasedOnType(value.toString(), "create");
+            }
           }}
         >
-          {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
+          {(type) => <AutocompleteItem key={type.key}>{type.description}</AutocompleteItem>}
         </Autocomplete>
         {state.type !== "" ? (
           <LogbookEntryPropertyEditor
-            mode="edit"
+            isReadOnly={mode === "view" && !isEditMode}
             state={state}
             dispatch={dispatch}
             hiddenPropertyCodes={[
               iLogID,
               iLogLogbookID,
               "VALID_FROM",
-              "COMPONENT",
             ]}
           />) : (
           <p className="text-gray-500">
             Please select a type.
           </p>
         )}
-        {localState.showMessage && (
-          <div style={{ marginBottom: "15px" }} className={localState.messageColor}>
-            {localState.message}
-          </div>
-        )}
-        <div className="items-center mt-6">
+        <Divider className="my-4" />
+        <div className="flex items-center justify-center" style={{ minHeight: "4rem" }}>
           <Button
             type="button"
             color="default"
-            className="mx-2 mb-2"
+            className="mx-2"
             onPress={onBack}
           >
             Back
           </Button>
-          <Button
-            type="button"
-            color="danger"
-            className="mx-2 mb-2"
-            onPress={() => onClear(0)}
-          >
-            {mode === "edit" ? "Reset" : "Clear"}
-          </Button>
-          <Button
-            type="submit"
-            color="primary"
-            className="mx-2 mb-2"
-            isLoading={localState.loading}
-          >
-            {mode === "edit" ? "Update" : "Create"}
-          </Button>
+          {mode === "view" && !isEditMode && (
+            <Button
+              type="button"
+              color="primary"
+              className="mx-2"
+              onPress={() => setIsEditMode(true)}
+            >
+              Edit
+            </Button>
+          )}
+          {isEditMode && (
+            <>
+              <Button
+                type="button"
+                color="danger"
+                className="mx-2"
+                isDisabled={localState.loading || logbookEntryCreation.isPending || logbookEntryUpdate.isPending}
+                onPress={() => {
+                  if (mode === "view") {
+                    setIsEditMode(false);
+                  } else if (mode === "edit") {
+                    window.location.reload();
+                  } else {
+                    onClear(0);
+                  }
+                }}
+              >
+                {mode === "view" ? "Cancel" : mode === "edit" ? "Reset" : "Clear"}
+              </Button>
+              <Button
+                type="submit"
+                color="primary"
+                className="mx-2"
+                isLoading={localState.loading || logbookEntryCreation.isPending || logbookEntryUpdate.isPending}
+              >
+                {mode === "create" ? "Create" : "Update"}
+              </Button>
+            </>
+          )}
         </div>
       </form>
+      <MessageModal
+        message={localState.message}
+        isOpen={localState.showMessage}
+        isSuccess={localState.isSuccess}
+      />
     </div>
   );
 }

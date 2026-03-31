@@ -6,7 +6,7 @@ export interface LogbookEntryCreatorLocalDefinition {
   loading: boolean;
   message: string;
   showMessage: boolean;
-  messageColor: string;
+  isSuccess: boolean;
 }
 
 export const EMPTY_LOGBOOK_ENTRY_CREATOR_LOCAL_DEFINITION: LogbookEntryCreatorLocalDefinition = {
@@ -14,7 +14,7 @@ export const EMPTY_LOGBOOK_ENTRY_CREATOR_LOCAL_DEFINITION: LogbookEntryCreatorLo
   loading: false,
   message: "",
   showMessage: false,
-  messageColor: "success-message",
+  isSuccess: false,
 };
 
 export type LogbookEntryCreatorLocalActions =
@@ -23,7 +23,7 @@ export type LogbookEntryCreatorLocalActions =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_MESSAGE"; payload: string }
   | { type: "SET_SHOW_MESSAGE"; payload: boolean }
-  | { type: "SET_MESSAGE_COLOR"; payload: string };
+  | { type: "SET_IS_SUCCESS"; payload: boolean };
 
 export type LogbookEntryCreatorLocalState = LogbookEntryCreatorLocalDefinition;
 
@@ -40,8 +40,8 @@ export const logbookEntryCreatorLocalReducer = produce(
         return { ...state, message: action.payload };
       case "SET_SHOW_MESSAGE":
         return { ...state, showMessage: action.payload };
-      case "SET_MESSAGE_COLOR":
-        return { ...state, messageColor: action.payload };
+      case "SET_IS_SUCCESS":
+        return { ...state, isSuccess: action.payload };
     }
   }
 );

@@ -306,9 +306,10 @@ export const List = (props: {
     enableHistory: boolean | undefined,
     enableLogbook: boolean | undefined,
     fullRow?: { [key: string]: any }, // original row used for actions
+    color?: string,
   ): JSX.Element[] => {
     const cells = Object.entries(row).map(([key, value]) => (
-      (<TableCell key={`${permId}-${key}`} >
+      (<TableCell key={`${permId}-${key}`} style={{ color: key === "type" ? color : "inherit" }}>
         {key === "preview" ? (
           <img src={value} alt="preview" style={{ width: "90px", height: "90px", objectFit: "cover" }} />
         ) : (
@@ -385,12 +386,12 @@ export const List = (props: {
       <TableRow
         key={permId.getPermId()}
         style={{
-          backgroundColor: color,
           cursor: props.onView ? "pointer" : "default",
+          border: "1px solid #E0E0E0",
         }}
         onClick={() => props.onView?.(props.hiddenCode ? row["code"] : row[props.idColumn])}
       >
-        {renderRowCells(permId, newRow, props.idColumn, enableModification, props.enableHistory, props.enableLogbook, row)}
+        {renderRowCells(permId, newRow, props.idColumn, enableModification, props.enableHistory, props.enableLogbook, row, color)}
       </TableRow>
     );
   };
@@ -410,7 +411,6 @@ export const List = (props: {
     <Table
       aria-label="Items list"
       isHeaderSticky
-      isStriped
       bottomContent={bottomContent}
       bottomContentPlacement="outside"
       topContent={topContent}

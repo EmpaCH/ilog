@@ -1,14 +1,16 @@
 import { useContext } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createLogbookEntry } from './LogbookEntryAPI';
 import { AuthContext } from '../../context/auth/authContext';
 import { useGetSpace } from "../space/useGetSpace";
 import { useGetProject } from "../project/useGetProject";
 import { useGetCollection } from "../collection/useGetCollection";
 import { iLogID, labID, logbookCollectionID } from "../shared/common";
+import { GET_ALL_QUERY_PREFIX } from "./useGetAllLogbookEntries";
 
 export const useCreateLogbookEntry = () => {
   const { apiFacade } = useContext(AuthContext);
+  const queryClient = useQueryClient();
 
   const space = useGetSpace(labID);
   const project = useGetProject(labID, iLogID);
@@ -38,6 +40,9 @@ export const useCreateLogbookEntry = () => {
         collection.data.getPermId(),
         parentPermIds,
       );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [GET_ALL_QUERY_PREFIX] });
     },
   });
 };
