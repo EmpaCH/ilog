@@ -125,11 +125,13 @@ export async function updateObject(
   updateObj.setSampleId(sampleId);
   for (const [key, value] of Object.entries(properties)) {
     if (Array.isArray(value) && value.length === 0) {
-      updateObj.setProperty(key, undefined);
+      updateObj.setProperty(key, "-");
     } else if (Array.isArray(value) && value.length === 1) {
       updateObj.setProperty(key, value[0]);
     } else if (Array.isArray(value) && value.length > 1) {
       updateObj.setProperty(key, value.join(','));
+    } else if (value === "" || value === undefined) {
+      updateObj.setProperty(key, "-");
     } else {
       updateObj.setProperty(key, value);
     }

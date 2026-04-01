@@ -1,5 +1,4 @@
 import { produce } from "immer";
-import { ZonedDateTime } from "@internationalized/date";
 import { createEmptyObjectDefinition } from "../../apis/object/helpersObjectAPI";
 import { ObjectDefinition } from "../../apis/object/commonObject";
 import { PropertyTypesSchema } from "../../apis/type/commonType";
@@ -9,7 +8,6 @@ export type ObjectCreatorActions =
   | { type: "RESET"; payload: ObjectDefinition }
   | { type: "SET_COLLECTION"; payload: string }
   | { type: "SET_TYPE"; payload: string }
-  | { type: "SET_VALID_FROM"; payload: ZonedDateTime }
   | { type: "SET_PROPERTIES_SCHEMA"; payload: PropertyTypesSchema }
   | { type: "SET_PROPERTY_VALUES"; payload: any };
 
@@ -26,8 +24,6 @@ export const objectCreatorReducer = produce(
         return { ...state, type: action.payload };
       case "SET_COLLECTION":
         return { ...state, collection: action.payload };
-      case "SET_VALID_FROM":
-        return { ...state, validFrom: action.payload };
       case "SET_PROPERTIES_SCHEMA":
         return { ...state, propertiesSchema: action.payload };
       case "SET_PROPERTY_VALUES":
