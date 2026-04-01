@@ -5,10 +5,7 @@ import {
   Autocomplete,
   AutocompleteItem,
   Button,
-  Checkbox,
   Divider,
-  DatePicker,
-  TimeInput,
   Radio,
   RadioGroup,
   Input,
@@ -31,10 +28,7 @@ import {
   convertOpenBISPropertyHistoryEntryListToObjectDefinition,
   reconstructHistory,
 } from "../../apis/object/helpersObjectAPI";
-import {
-  ReconstructedHistory,
-  ObjectDefinition,
-} from "../../apis/object/commonObject";
+import { ObjectDefinition } from "../../apis/object/commonObject";
 import {
   iLogID,
   componentCollectionID,
@@ -47,11 +41,6 @@ import {
   ObjectTypeDefinition,
   convertOpenBISSampleTypeToObjectTypeDefinition,
 } from "../../apis/type/commonType";
-import {
-  now,
-  getLocalTimeZone,
-  ZonedDateTime,
-} from "@internationalized/date";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { MessageModal } from "../shared/messageModal";
@@ -77,11 +66,9 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const navigate = useNavigate();
 
   let [openbisSample, setOpenbisSample] = useState<openbis.Sample | undefined>(undefined);
-  let [reconstructedHistory, setReconstructedHistory] = useState<ReconstructedHistory>({});
   let [objectTemplate, setObjectTemplate] = useState<ObjectDefinition>(createEmptyObjectDefinition());
   let [originalPropertyValues, setOriginalPropertyValues] = useState<{ [key: string]: any }>({});
 
-  let [isValidFromSelected, setIsValidFromSelected] = useState(false);
   let [selectedComponentsByProperty, setSelectedComponentsByProperty] = useState<{ [propertyCode: string]: string[] }>({});
   let [isEditMode, setIsEditMode] = useState(mode === "edit" || mode === "create");
   let [newlyCreatedObject, setNewlyCreatedObject] = useState<openbis.Sample | null>(null);
@@ -193,22 +180,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     });
   }, [objectTypes.data, state.collection]);
 
-  useEffect(() => {
-    if (!isValidFromSelected) {
-      const interval = setInterval(() => {
-        dispatch({ type: "SET_VALID_FROM", payload: now(getLocalTimeZone()) })
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isValidFromSelected]);
-
-  // Load historical state when a past date is selected
-  useEffect(() => {
-    if (isValidFromSelected && mode === "edit" && state.validFrom) {
-      onLoadValidFrom(state.validFrom);
-    }
-  }, [isValidFromSelected, state.validFrom, mode]);
-
   const createObjectSchemaBasedOnType = (
     type: string,
     mode?: CreatorMode,
@@ -257,18 +228,21 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
 
       if (openbisSample) {
         const objectHistory = openbisSample.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
-        const registrationDate = openbisSample.getRegistrationDate();
-        const reconstructedHistory = reconstructHistory(objectHistory, registrationDate);
-        setReconstructedHistory(reconstructedHistory);
+        const reconstructedHistory = reconstructHistory(objectHistory);
         const latestKey = Object.keys(reconstructedHistory).pop();
         const latestSampleState = latestKey ? reconstructedHistory[latestKey] : [];
-        const objectTemplate = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, latestSampleState, latestKey ? Number(latestKey) : undefined)
-        
-        // Ensure LOCATION property is set from current sample properties if not in history
-        if (!objectTemplate.propertyValues["LOCATION"] && openbisSample.getProperty("LOCATION")) {
-          objectTemplate.propertyValues["LOCATION"] = stripVocabularyName(openbisSample.getProperty("LOCATION"));
+        const objectTemplate = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, latestSampleState);
+
+        // For any property missing from history, populate from current sample properties so nothing is silently dropped
+        const currentProperties = openbisSample.getProperties() as { [key: string]: string } | null;
+        if (currentProperties) {
+          Object.entries(currentProperties).forEach(([key, value]) => {
+            if ((objectTemplate.propertyValues[key] === undefined || objectTemplate.propertyValues[key] === null) && value !== undefined && value !== null) {
+              objectTemplate.propertyValues[key] = stripVocabularyName(String(value));
+            }
+          });
         }
-        
+
         setObjectTemplate(objectTemplate);
         setOriginalPropertyValues({ ...objectTemplate.propertyValues });
         dispatch({ type: "RESET", payload: objectTemplate });
@@ -290,33 +264,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       // The useMemo will automatically recalculate
     }
   }, [objectTypes.status, objectTypes.data]);
-
-  const onLoadValidFrom = (newValidFrom: ZonedDateTime | null) => {
-    const keys = Object.keys(reconstructedHistory)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map(k => k.toString());
-
-    if (mode === "edit" && newValidFrom !== null && openbisSample) {
-      const newValidFromMs = newValidFrom.toDate().getTime();
-      
-      // Find the latest history entry that is before or equal to the selected VALID_FROM
-      let previousKey = keys[0];
-      for (let i = 0; i < keys.length; i++) {
-        const keyMs = Number(keys[i]);
-        if (keyMs <= newValidFromMs) {
-          previousKey = keys[i];
-        } else {
-          break;
-        }
-      }
-
-      const previousState = reconstructedHistory[previousKey];
-      const objectState = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, previousState, Number(previousKey));
-      dispatch({ type: "RESET", payload: objectState });
-      createObjectSchemaBasedOnType(objectTemplate.type);
-    }
-  };
 
   const updateComponentLocations = async (instrumentPermId: string) => {
     if (!Object.keys(selectedComponentsByProperty).length || !apiFacade) {
@@ -348,7 +295,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     }
     localDispatch({ type: "SET_LOADING", payload: true });
 
-    if (mode === "edit") {
+    if (mode === "edit" || (mode === "view" && isEditMode)) {
       const isInstrument = state.collection === instrumentCollectionID;
       if (isInstrument) {
         // Use the enhanced update for instruments to handle component locations
@@ -357,7 +304,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           objectCode: objectCode,
           properties: {
             ...state.propertyValues,
-            VALID_FROM: state.validFrom.toString(),
           },
           previousProperties: originalPropertyValues,
         }, {
@@ -392,7 +338,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           objectCode: objectCode,
           properties: {
             ...state.propertyValues,
-            VALID_FROM: state.validFrom.toString(),
           },
         }, {
           onError: (err) => {
@@ -408,13 +353,11 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         });
       }
     } else {
-      // Don't include VALID_FROM when creating new objects - only add it when editing
       objectCreation.mutate({
         collection: state.collection,
         type: state.type,
         properties: {
           ...state.propertyValues,
-          // VALID_FROM is not set during creation, only during edits
         },
       }, {
         onError: (err) => {
@@ -704,52 +647,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             </div>
             <div className="flex-1 min-w-[260px] max-w-xl flex flex-col gap-4 justify-start">
               <div className="flex flex-col gap-4">
-                <div className="flex flex-row items-center gap-4">
-                  <Checkbox
-                    isSelected={isValidFromSelected}
-                    onValueChange={setIsValidFromSelected}
-                    isDisabled={mode === "view" && !isEditMode}
-                  />
-                  <DatePicker
-                    isRequired
-                    isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
-                    id="validFrom"
-                    label="Valid From"
-                    className="form-field max-w-[180px]"
-                    labelPlacement="outside-left"
-                    showMonthAndYearPickers
-                    granularity="day"
-                    value={state.validFrom}
-                    onChange={(value) => {
-                      dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
-                    }}
-                  />
-                  <TimeInput
-                    isRequired
-                    isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
-                    aria-label="Time"
-                    className="form-field"
-                    granularity="second"
-                    hourCycle={24}
-                    value={state.validFrom}
-                    onChange={(value) => {
-                      dispatch({ type: "SET_VALID_FROM", payload: value as ZonedDateTime });
-                    }}
-                  />
-                  <Button
-                    isDisabled={!isValidFromSelected || (mode === "view" && !isEditMode)}
-                    radius="full"
-                    size="sm"
-                    color="primary"
-                    variant="faded"
-                    onPress={() =>
-                      dispatch({ type: "SET_VALID_FROM", payload: now(getLocalTimeZone()) })
-                    }
-                  >
-                    Now
-                  </Button>
-                </div>
-                <Divider className="my-2" />
                 <RadioGroup
                   isRequired
                   isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
@@ -805,8 +702,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 dispatch={dispatch}
                 hiddenPropertyCodes={[
                   iLogID,
-                  // iLogBaseTypesPropertyCode,
-                  "VALID_FROM",
                 ]}
                 currentObjectCode={objectCode}
                 onSelectedComponentsChange={(propertyCode, permIds) => {

@@ -22,16 +22,6 @@ export const iLogManufacturerGroup = "Manufacturer";
 export const iLogBaseSchema: PropertyTypesSchema = {
   [iLogGeneralInfoGroup]: [
     { code: iLogID, type: "reference" },
-    // { code: iLogBaseTypesPropertyCode, type: "reference" },
-    {
-      code: "VALID_FROM",
-      type: "local",
-      multivalued: false,
-      dataType: "VARCHAR",
-      label: "ValidFrom",
-      description: "ValidFrom",
-      metadata: null,
-    },
     { code: "NAME", type: "reference" },
     {
       code: "DESCRIPTION",

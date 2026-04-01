@@ -33,16 +33,13 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
 
       if (openbisSample) {
         const objectHistory = openbisSample.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
-        console.log("Object history entries:", objectHistory);
-        const registrationDate = openbisSample.getRegistrationDate();
-        const reconstructedHistory = reconstructHistory(objectHistory, registrationDate);
+        const reconstructedHistory = reconstructHistory(objectHistory);
 
         const groupedHistory: GroupedHistory = {};
         for (const timestamp of Object.keys(reconstructedHistory)) {
           const objectDefinition = convertOpenBISPropertyHistoryEntryListToObjectDefinition(
             openbisSample,
             reconstructedHistory[timestamp],
-            Number(timestamp),
           );
 
           const objectTypeTemplate: ObjectTypeDefinition = convertOpenBISSampleTypeToObjectTypeDefinition(
@@ -66,17 +63,17 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
     try {
-      // Convert milliseconds to ISO 8601 string and parse
       const date = new Date(timestampMs);
-      const day = date.getUTCDate();
-      const month = date.getUTCMonth();
-      const year = date.getUTCFullYear();
-      const hour = date.getUTCHours();
-      const minute = date.getUTCMinutes();
-      
+      const day = date.getDate();
+      const month = date.getMonth();
+      const year = date.getFullYear();
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const seconds = date.getSeconds();
+
       return (
         `${displayNumber(day)} ${monthNames[month]} ${year}, ` +
-        `${displayNumber(hour)}:${displayNumber(minute)}`
+        `${displayNumber(hours)}:${displayNumber(minutes)}:${displayNumber(seconds)}`
       );
     } catch {
       return new Date(timestampMs).toISOString();
@@ -104,12 +101,10 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
               <Card>
                 <CardBody>
                   <ObjectPropertyEditor
-                    mode="view"
+                    isReadOnly={true}
                     state={history[timestampStr]}
                     hiddenPropertyCodes={[
                       iLogID,
-                      // iLogBaseTypesPropertyCode,
-                      "VALID_FROM",
                     ]}
                   />
                 </CardBody>
