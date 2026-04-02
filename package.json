@@ -11,6 +11,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^11.1.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@heroui/react": "2.6.14",
@@ -44,6 +45,7 @@
     "@vitejs/plugin-react-swc": "^3.5.0",
     "@vitest/browser": "^3.0.5",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^8.2.2",
     "eslint": "^9.9.0",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
@@ -57,7 +59,6 @@
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.0.1",
     "vite": "^5.4.1",
-    "vitest": "^3.0.5",
-    "concurrently": "^8.2.2"
+    "vitest": "^3.0.5"
   }
 }

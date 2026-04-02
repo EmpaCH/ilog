@@ -62,6 +62,7 @@ export interface ObjectTypeDefinition {
   propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema;
   baseType?: string;
   collectionType: string;
+  metadata?: Record<string, string>;
 }
 
 // A resolved property type can be any `PropertyType` (either local variants or reference)
