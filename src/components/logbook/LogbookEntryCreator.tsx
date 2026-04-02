@@ -71,6 +71,8 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   let [isValidFromSelected, setIsValidFromSelected] = useState(false);
   let [parentObjectPermId, setParentObjectPermId] = useState<string>("");
   let [parentLogbookEntryPermId, setParentLogbookEntryPermId] = useState<string>("");
+  let [originalParentObjectPermId, setOriginalParentObjectPermId] = useState<string>("");
+  let [originalParentLogbookEntryPermId, setOriginalParentLogbookEntryPermId] = useState<string>("");
   let [availableParentObjectLogbookEntries, setAvailableParentObjectLogbookEntries] = useState<any[]>([]);
 
   const [state, dispatch] = useReducer(logbookEntryReducer, logbookEntryTemplate);
@@ -158,6 +160,9 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
           type: "SET_PROPERTY_VALUES",
           payload: propertyValues,
         });
+      } else {
+        // Merge schema into logbookEntryTemplate so cancel can reset to full original state
+        setLogbookEntryTemplate((prev) => ({ ...prev, propertiesSchema: propertyTypes as PropertyTypesSchema }));
       }
     }
   };
@@ -195,6 +200,9 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
 
         const logbookEntryTemplate = convertOpenBISEntryListToLogbookEntryDefinition(newOpenbisSample);
         setLogbookEntryTemplate(logbookEntryTemplate);
+        setOriginalParentObjectPermId(foundParentObjectPermId);
+        setOriginalParentLogbookEntryPermId(foundParentLogbookEntryPermId);
+        setIsValidFromSelected(true); // pin the loaded date — stop the auto-tick
         schemaComputedForRef.current = ""; // reset so the schema effect re-runs for the loaded type
         dispatch({ type: "RESET", payload: logbookEntryTemplate });
       }
@@ -303,12 +311,14 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
         <div className="flex flex-col md:flex-row items-center gap-4">
           <Checkbox
             isDisabled={!isEditMode}
+            isReadOnly={mode === "edit" || mode === "view"}
             isSelected={isValidFromSelected}
             onValueChange={setIsValidFromSelected}
           />
           <DatePicker
             isRequired
             isDisabled={!isValidFromSelected}
+            isReadOnly={!isEditMode}
             id="validFrom"
             label="Valid From"
             className="form-field max-w-[280px]"
@@ -324,6 +334,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
           <TimeInput
             isRequired
             isDisabled={!isValidFromSelected}
+            isReadOnly={!isEditMode}
             aria-label="Time"
             className="form-field max-w-[200px]"
             granularity="second"
@@ -335,7 +346,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             }}
           />
           <Button
-            isDisabled={!isValidFromSelected}
+            isDisabled={!isValidFromSelected || !isEditMode}
             radius="full"
             size="sm"
             color="primary"
@@ -375,6 +386,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
           />
         </div>
         <Divider className="my-4" />
+        <p style={{ fontWeight: "bold", textAlign: "left" }}>TYPE</p>
         <Autocomplete
           isRequired
           isReadOnly={mode === "edit" || mode === "view"}
@@ -443,6 +455,9 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
                 onPress={() => {
                   if (mode === "view") {
                     setIsEditMode(false);
+                    dispatch({ type: "RESET", payload: logbookEntryTemplate });
+                    setParentObjectPermId(originalParentObjectPermId);
+                    setParentLogbookEntryPermId(originalParentLogbookEntryPermId);
                   } else if (mode === "edit") {
                     window.location.reload();
                   } else {
