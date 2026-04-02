@@ -62,3 +62,7 @@ h1, h2, h3, h4, h5, h6 {
 .warning-message {
   color: rgb(255, 165, 0);
 }
+
+.ck.ck-editor__editable_inline {
+  padding: 0 2rem !important;
+}

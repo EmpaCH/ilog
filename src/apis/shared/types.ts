@@ -87,7 +87,7 @@ export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
 };
 export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "LOGBOOK_ENTRY",
-  generatedCodePrefix: "ENTRY",
+  generatedCodePrefix: "LOGENTRY",
   description: "Ilog Logbook Entry",
   collectionType: logbookCollectionID,
   propertyTypes: {
@@ -112,31 +112,120 @@ export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
         description: "Description",
         metadata: null,
       },
-      {
-        code: "RESPONSIBLE",
-        type: "local",
-        multivalued: true,
-        dataType: "VARCHAR",
-        label: "Responsible",
-        description: "Responsible",
-        metadata: null,
-      },      
-      
     ]
   } as PropertyTypesSchema,
 };
 
-// Define different logbook entry types: Maintenance, Errors and Problems, Calibration/Optimization, Cryogen Filling, Degasing, Cleaning, Bakeout, Comment, Other
+// Logbook entry types definitions, kept here for documentation and backup purposes
 export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
-  maintenance: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "MAINTENANCE_LOGENTRY", generatedCodePrefix: "MAINTENANCELOG", description: "Maintenance Logbook Entry" },
-  errorsAndProblems: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "ERRORS_AND_PROBLEMS_LOGENTRY", generatedCodePrefix: "ERRORSANDPROBLEMSLOG", description: "Errors and Problems Logbook Entry" },
-  calibrationOptimization: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CALIBRATION_OPTIMIZATION_LOGENTRY", generatedCodePrefix: "CALIBRATIONOPTIMIZATIONLOG", description: "Calibration and Optimization Logbook Entry" },
-  cryogenFilling: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CRYOGEN_FILLING_LOGENTRY", generatedCodePrefix: "CRYOGENFILLINGLOG", description: "Cryogen Filling Logbook Entry" },
-  degasing: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "DEGASING_LOGENTRY", generatedCodePrefix: "DEGASINGLOG", description: "Degasing Logbook Entry" },
-  cleaning: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "CLEANING_LOGENTRY", generatedCodePrefix: "CLEANINGLOG", description: "Cleaning Logbook Entry" },
-  bakeout: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "BAKEOUT_LOGENTRY", generatedCodePrefix: "BAKEOUTLOG", description: "Bakeout Logbook Entry" },
-  comment: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "COMMENT_LOGENTRY", generatedCodePrefix: "COMMENTLOG", description: "Comment Logbook Entry" },
-  other: { ...LOGBOOK_ENTRY_TYPE_DEFINITION, code: "OTHER_LOGENTRY", generatedCodePrefix: "OTHERLOG", description: "Other Logbook Entry" },
+  bakeout: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "BAKEOUT_LOGENTRY",
+    generatedCodePrefix: "BAKEOUTLOG",
+    description: "🔥 Bakeout",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#e67800",
+      icon: "🔥",
+      type: "BAKEOUT_LOGENTRY",
+    },
+  },
+  calibrationOptimization: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "CALIBRATION_OPTIMIZATION_LOGENTRY",
+    generatedCodePrefix: "CALIBRATIONOPTIMIZATIONLOG",
+    description: "⚙️ Calibration & Optimization",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#40cd54",
+      icon: "⚙️",
+      type: "CALIBRATION_OPTIMIZATION_LOGENTRY",
+    },
+  },
+  cleaning: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "CLEANING_LOGENTRY",
+    generatedCodePrefix: "CLEANINGLOG",
+    description: "🧼 Cleaning",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#dcbe28",
+      icon: "🧼",
+      type: "CLEANING_LOGENTRY",
+    },
+  },
+  comment: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "COMMENT_LOGENTRY",
+    generatedCodePrefix: "COMMENTLOG",
+    description: "💬 Comment",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#aa78c8",
+      icon: "💬",
+      type: "COMMENT_LOGENTRY",
+    },
+  },
+  cryogenFilling: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "CRYOGEN_FILLING_LOGENTRY",
+    generatedCodePrefix: "CRYOGENFILLINGLOG",
+    description: "❄️ Cryogen Filling",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#005aaa",
+      icon: "❄️",
+      type: "CRYOGEN_FILLING_LOGENTRY",
+    },
+  },
+  degasing: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "DEGASING_LOGENTRY",
+    generatedCodePrefix: "DEGASINGLOG",
+    description: "💨 Degasing",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#009678",
+      icon: "💨",
+      type: "DEGASING_LOGENTRY",
+    },
+  },
+  errorsAndProblems: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "ERRORS_AND_PROBLEMS_LOGENTRY",
+    generatedCodePrefix: "ERRORSANDPROBLEMSLOG",
+    description: "⚠️ Errors & Problems`",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#b8131d",
+      icon: "⚠️",
+      type: "ERRORS_AND_PROBLEMS_LOGENTRY",
+    },
+  },
+  maintenance: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "MAINTENANCE_LOGENTRY",
+    generatedCodePrefix: "MAINTENANCELOG",
+    description: "🔧 Maintenance",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#966e3c",
+      icon: "🔧",
+      type: "MAINTENANCE_LOGENTRY",
+    },
+  },
+  other: {
+    ...LOGBOOK_ENTRY_TYPE_DEFINITION,
+    code: "OTHER_LOGENTRY",
+    generatedCodePrefix: "OTHERLOG",
+    description: "📝 Other",
+    metadata: {
+      collectionType: logbookCollectionID,
+      color: "#788c96",
+      icon: "📝",
+      type: "OTHER_LOGENTRY",
+    },
+  },
 }
 
 // Type definitions for iLog base types

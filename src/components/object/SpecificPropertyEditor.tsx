@@ -5,7 +5,6 @@ import {
   DatePicker,
   Input,
   Checkbox,
-  Textarea,
 } from "@heroui/react";
 import {
   parseDate,
@@ -22,6 +21,7 @@ import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
 import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
 import { Editor } from "@monaco-editor/react";
 import { ComponentListPropertyEditor } from "./ComponentListPropertyEditor";
+import { RichTextEditor } from "../shared/RichTextEditor";
 
 interface SpecificPropertyEditorProps {
   propertyDefinition: LocalPropertyTypeVariants;
@@ -131,14 +131,10 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
     );
   } else if (propertyDefinition.dataType == "MULTILINE_VARCHAR") {
     return (
-      <Textarea
+      <RichTextEditor
+        initialData={propertyValue}
+        onChange={onValueChange}
         isReadOnly={isReadOnly}
-        id={propertyDefinition.code}
-        aria-label={propertyDefinition.code}
-        placeholder={propertyDefinition.description}
-        value={propertyValue}
-        type="text"
-        onValueChange={onValueChange}
       />
     );
   } else if (propertyDefinition.dataType == "OBJECT") {
