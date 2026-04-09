@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useReducer, useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import {
   Autocomplete,
   AutocompleteItem,
@@ -17,7 +16,7 @@ import { useCreateObject } from "../../apis/object/useCreateObject";
 import { useUpdateObject } from "../../apis/object/useUpdateObject";
 import { useUpdateObjectWithComponentLocations } from "../../apis/object/useUpdateObjectWithComponentLocations";
 import { useGetObject } from "../../apis/object/useGetObject";
-import { getObjectTypes } from "../../apis/type/typeAPI";
+import { useGetIlogObjectTypes } from "../../apis/type/useGetIlogObjectTypes";
 import { objectCreatorReducer } from "./ObjectActions";
 import {
   objectCreatorLocalReducer,
@@ -150,24 +149,25 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     }
   };
 
-  const objectTypes = useQuery({
-    queryKey: ["getSampleTypes", localState.searchTerm, state.collection],
-    queryFn: async () => {
-      const types = await getObjectTypes(apiFacade, localState.searchTerm);
-      return types.map(type => ({
-        key: type.getCode(),
-        code: type.getCode(),
-        sampleType: type,
-      }));
-    },
-    staleTime: 5000,
-  });
+  const objectTypes = useGetIlogObjectTypes();
+  // const objectTypes = useQuery({
+  //   queryKey: ["getSampleTypes", localState.searchTerm, state.collection],
+  //   queryFn: async () => {
+  //     const types = await getObjectTypes(apiFacade, localState.searchTerm);
+  //     return types.map(type => ({
+  //       key: type.getCode(),
+  //       code: type.getCode(),
+  //       sampleType: type,
+  //     }));
+  //   },
+  //   staleTime: 5000,
+  // });
 
   const objectTypesFilteredByCollection = useMemo(() => {
     if (!objectTypes.data || !state.collection) return [];
     
     return objectTypes.data.filter((oj) => {
-      const metadata = oj.sampleType.getMetaData();
+      const metadata = oj.getMetaData();
       const collectionType = metadata["collectionType"];
 
       if (state.collection === instrumentCollectionID) {
@@ -189,11 +189,11 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     }
 
     const selectedType = objectTypes.data?.find(
-      (it) => it.code === type
+      (it) => it.getCode() === type
     );
 
     if (allPropertyTypesResult.status == "success" && selectedType) {
-      const objectTypeTemplate: ObjectTypeDefinition = convertOpenBISSampleTypeToObjectTypeDefinition(selectedType.sampleType);
+      const objectTypeTemplate: ObjectTypeDefinition = convertOpenBISSampleTypeToObjectTypeDefinition(selectedType);
       const resolvedTypes = Object.entries(objectTypeTemplate.propertyTypes).map(
         ([group, propertyTypesGroup]) => {
           return [ group, propertyTypesGroup ];
@@ -217,6 +217,9 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           type: "SET_PROPERTY_VALUES",
           payload: propertyValues,
         });
+      } else {
+        // Merge schema into objectTemplate so cancel can reset to full original state
+        setObjectTemplate((prev) => ({ ...prev, propertiesSchema: Object.fromEntries(resolvedTypes) as PropertyTypesSchema }));
       }
     }
   };
@@ -689,7 +692,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                       createObjectSchemaBasedOnType(newType, "create");
                     }}
                   >
-                    {(type) => <AutocompleteItem key={type.key}>{type.code}</AutocompleteItem>}
+                    {(type) => <AutocompleteItem key={type.getPermId().getPermId()}>{type.getCode()}</AutocompleteItem>}
                   </Autocomplete>
                 )}
               </div>
@@ -750,6 +753,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                   onPress={() => {
                     if (mode === "view") {
                       setIsEditMode(false);
+                      dispatch({ type: "RESET", payload: objectTemplate });
                     } else if (mode === "edit") {
                       window.location.reload();
                     } else {

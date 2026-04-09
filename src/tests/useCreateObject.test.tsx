@@ -1,40 +1,15 @@
 import {
-  QueryClient,
-  QueryClientProvider,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
-  act,
   render,
-  renderHook,
   waitFor,
-  screen,
 } from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { useGetAllObjectTypes } from "../apis/type/useGetAllObjectTypes";
 import userEvent from "@testing-library/user-event";
-import { openBISHookFactory, useOpenBIS } from "../hooks/auth/useAuth";
-import { AuthContext } from "../context/auth/authContext";
-import openbis from "@openbis/openbis.esm"; // Ensure correct import
-import { useSearch } from "@tanstack/react-router";
-import {
-  useEffect,
-  useState,
-  ReactElement,
-  ReactNode,
-  useContext,
-} from "react";
-import { useGetProjects } from "../apis/project/useGetProjects";
+import { openBISHookFactory } from "../hooks/auth/useAuth";
+import { useState } from "react";
 import { storageMockFactory } from "./storageMock";
-import {
-  INSTRUMENT_TYPE_DEFINITION,
-  iLogGeneralInfoGroup,
-} from "../apis/shared/types";
-import { L } from "vitest/dist/chunks/reporters.6vxQttCV.js";
-import { getObjectTypes } from "../apis/type/typeAPI";
-import { useGetSpaces } from "../apis/space/useGetSpaces";
+import { INSTRUMENT_TYPE_DEFINITION } from "../apis/shared/types";
 import TestWrapper from "./TestWrapper";
-import Login from "./Login";
 import TestComponent from "./TestComponent";
 import { useCreateObjectType } from "../apis/type/useCreateObjectType";
 

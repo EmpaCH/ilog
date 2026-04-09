@@ -1,5 +1,4 @@
 import openbis from "@openbis/openbis.esm";
-import { iLogID } from "../shared/common";
 import {
   createObjectTypeSettingsDefinition,
   deleteObjectTypeSettingsDefinition,
@@ -31,26 +30,46 @@ export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
 }
 
 /**
+ * Get all object types and apply filtering by code if search field is provided.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param search - The search string to filter types by code.
+ * @returns A promise that resolves to an array of SampleType objects.
+ */
+export async function getAllObjectTypes(
+  api: openbis.OpenBISJavaScriptFacade,
+  search: string = ""
+): Promise<openbis.SampleType[]> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  if (search && search.trim()) {
+    sc.withCode().thatStartsWith(search.toUpperCase());
+  }
+  const fo = createObjectTypeFetchOptions();
+  const result = await api.searchSampleTypes(sc, fo);
+  return result.getObjects();
+}
+
+
+/**
  * Get all object types with the iLog base type property and apply filtering by code if search field is provided.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param search - The search string to filter types by code.
  * @returns A promise that resolves to an array of SampleType objects.
  */
-export async function getObjectTypes(
+export async function getIlogObjectTypes(
   api: openbis.OpenBISJavaScriptFacade,
   search: string = ""
 ): Promise<openbis.SampleType[]> {
-  const sc = new openbis.SampleTypeSearchCriteria();
+  // const sc = new openbis.SampleTypeSearchCriteria();
+  // if (search && search.trim()) {
+  //   sc.withCode().thatStartsWith(search.toUpperCase());
+  // }
+  // sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
+  // const fo = createObjectTypeFetchOptions();
+  // const result = await api.searchSampleTypes(sc, fo);
+  // return result.getObjects();
 
-  if (search && search.trim()) {
-    sc.withCode().thatStartsWith(search.toUpperCase());
-  }
-
-  sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
-  const fo = createObjectTypeFetchOptions();
-  
-  const result = await api.searchSampleTypes(sc, fo);
-  return result.getObjects();
+  const allTypes = await getAllObjectTypes(api, search);
+  return allTypes.filter((type) => type.getMetaData()?.["ilog"] === "true");
 }
 
 /**
@@ -70,41 +89,41 @@ export async function getObjectType(
   return result.getObjects()[0];
 }
 
-/**
- * Create a new object type and automatically enable it in ELN settings.
- * @param api - The OpenBIS JavaScript facade instance.
- * @param otd - The object type definition.
- */
-export async function createObjectType(
-  api: openbis.OpenBISJavaScriptFacade,
-  otd: ObjectTypeDefinition
-): Promise<void> {
-  const existingPropertyTypes = await getPropertyTypes(api);
-  const existingObjectTypes = await getObjectTypes(api);
-  const creations = convertObjectTypeDefinitionToOperations(otd);
+// /**
+//  * Create a new object type and automatically enable it in ELN settings.
+//  * @param api - The OpenBIS JavaScript facade instance.
+//  * @param otd - The object type definition.
+//  */
+// export async function createObjectType(
+//   api: openbis.OpenBISJavaScriptFacade,
+//   otd: ObjectTypeDefinition
+// ): Promise<void> {
+//   const existingPropertyTypes = await getPropertyTypes(api);
+//   const existingObjectTypes = await getAllObjectTypes(api);
+//   const creations = convertObjectTypeDefinitionToOperations(otd);
 
-  const filteredPropertyTypeCreations = creations.propertyTypeCreations?.filter(
-    (creation) => {
-      // Check if there is no element in existingPropertyTypes with the same code as the current creation
-      return !existingPropertyTypes.some((type) => type.code === creation.getCode());
-    }
-  );
-  const filteredObjectTypeCreations = creations.objectTypeCreations?.filter(
-    (creation) => {
-      // Check if there is no element in existingObjectTypes with the same code as the current creation
-      return !existingObjectTypes.some((type) => type.getCode() === creation.getCode());
-    }
-  );
+//   const filteredPropertyTypeCreations = creations.propertyTypeCreations?.filter(
+//     (creation) => {
+//       // Check if there is no element in existingPropertyTypes with the same code as the current creation
+//       return !existingPropertyTypes.some((type) => type.code === creation.getCode());
+//     }
+//   );
+//   const filteredObjectTypeCreations = creations.objectTypeCreations?.filter(
+//     (creation) => {
+//       // Check if there is no element in existingObjectTypes with the same code as the current creation
+//       return !existingObjectTypes.some((type) => type.getCode() === creation.getCode());
+//     }
+//   );
 
-  const ops = convertCreationsToOperations({
-    propertyTypeCreations: filteredPropertyTypeCreations,
-    objectTypeCreations: filteredObjectTypeCreations,
-  });
-  const props = new openbis.SynchronousOperationExecutionOptions();
-  props.setExecuteInOrder(true);
-  await api.executeOperations(ops, props);
-  await createObjectTypeSettingsDefinition(api, otd.code);
-}
+//   const ops = convertCreationsToOperations({
+//     propertyTypeCreations: filteredPropertyTypeCreations,
+//     objectTypeCreations: filteredObjectTypeCreations,
+//   });
+//   const props = new openbis.SynchronousOperationExecutionOptions();
+//   props.setExecuteInOrder(true);
+//   await api.executeOperations(ops, props);
+//   await createObjectTypeSettingsDefinition(api, otd.code);
+// }
 
 /**
  * Update an existing object type and automatically update its settings in ELN.
@@ -117,7 +136,7 @@ export async function updateObjectType(
   otd: ObjectTypeDefinition
 ): Promise<void> {
   const existingPropertyTypes = await getPropertyTypes(api);
-  const existingObjectTypes = await getObjectTypes(api);
+  const existingObjectTypes = await getAllObjectTypes(api);
   const creations = convertObjectTypeDefinitionToOperations(otd);
 
   // First Create non existing property types and object types
@@ -173,4 +192,86 @@ export async function deleteObjectType(
   stdo.setReason("Type no longer needed.");
   await api.deleteSampleTypes([typeId], stdo);
   await deleteObjectTypeSettingsDefinition(api, typeId.getPermId());
+}
+
+/**
+ * Update an existing object type's metadata to automatically include it in iLog.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param permId - The ID of the type to update.
+ */
+export async function importObjectTypeToIlog(
+  api: openbis.OpenBISJavaScriptFacade,
+  permId: string,
+): Promise<void> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatEquals(permId);
+  const fo = createObjectTypeFetchOptions();
+  const result = await api.searchSampleTypes(sc, fo);
+  const sampleType = result.getObjects()[0];
+  if (!sampleType) return;
+
+  const existingMetadata: Record<string, string> = sampleType.getMetaData() ?? {};
+  const update = new openbis.SampleTypeUpdate();
+  update.setTypeId(sampleType.getPermId());
+  update.getMetaData().set([{ ...existingMetadata, ilog: "true" }]);
+
+  const props = new openbis.SynchronousOperationExecutionOptions();
+  props.setExecuteInOrder(true);
+  await api.executeOperations([new openbis.UpdateSampleTypesOperation([update])], props);
+}
+
+/**
+ * Remove an existing object type from iLog by removing the ilog key from its metadata.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param permId - The ID of the type to update.
+ */
+export async function removeObjectTypeFromIlog(
+  api: openbis.OpenBISJavaScriptFacade,
+  permId: string,
+): Promise<void> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatEquals(permId);
+  const fo = createObjectTypeFetchOptions();
+  const result = await api.searchSampleTypes(sc, fo);
+  const sampleType = result.getObjects()[0];
+  if (!sampleType) return;
+
+  const existingMetadata: Record<string, string> = { ...(sampleType.getMetaData() ?? {}) };
+  delete existingMetadata["ilog"];
+
+  const update = new openbis.SampleTypeUpdate();
+  update.setTypeId(sampleType.getPermId());
+  update.getMetaData().set([existingMetadata]);
+
+  const props = new openbis.SynchronousOperationExecutionOptions();
+  props.setExecuteInOrder(true);
+  await api.executeOperations([new openbis.UpdateSampleTypesOperation([update])], props);
+}
+
+/**
+ * Set the collectionType metadata key on an object type.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param permId - The code/permId of the type to update.
+ * @param collectionType - The collection type value to set (e.g. "INSTRUMENT_COLLECTION").
+ */
+export async function setObjectTypeCollectionType(
+  api: openbis.OpenBISJavaScriptFacade,
+  permId: string,
+  collectionType: string,
+): Promise<void> {
+  const sc = new openbis.SampleTypeSearchCriteria();
+  sc.withCode().thatEquals(permId);
+  const fo = createObjectTypeFetchOptions();
+  const result = await api.searchSampleTypes(sc, fo);
+  const sampleType = result.getObjects()[0];
+  if (!sampleType) return;
+
+  const existingMetadata: Record<string, string> = sampleType.getMetaData() ?? {};
+  const update = new openbis.SampleTypeUpdate();
+  update.setTypeId(sampleType.getPermId());
+  update.getMetaData().set([{ ...existingMetadata, collectionType }]);
+
+  const props = new openbis.SynchronousOperationExecutionOptions();
+  props.setExecuteInOrder(true);
+  await api.executeOperations([new openbis.UpdateSampleTypesOperation([update])], props);
 }

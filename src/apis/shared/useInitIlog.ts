@@ -10,10 +10,6 @@ import {
   LOGBOOK_ENTRY_TYPE_DEFINITION,
   LOGBOOK_ENTRY_TYPES,
   iLogID,
-  componentCollectionID,
-  componentCollectionName,
-  instrumentCollectionID,
-  instrumentCollectionName,
   logbookCollectionID,
   logbookCollectionName,
 } from "./common";
@@ -25,6 +21,7 @@ import { useCreateObjectType } from "../type/useCreateObjectType";
 import { useCreateVocabulary } from "../vocabulary/useCreateVocabulary";
 import { useState } from "react";
 import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "../type/useGetAllObjectTypes";
+import { ILOG_OBJECT_TYPES_QUERY_PREFIX } from "../type/useGetIlogObjectTypes";
 import { useGetObjectType } from "../type/useGetObjectType";
 import { useGetInit } from "./useGetInit";
 import { useContext } from "react";
@@ -52,20 +49,6 @@ export const useInitIlog = () => {
   const iLogLogbookPropertyCreation = useCreateIlogLogbookProperty();
   const spaceCreation = useCreateSpace(labID, "ilog Space");
   const projectCreation = useCreateProject(labID, iLogID, "iLog Project");
-  const collectionComponentCreation = useCreateCollection(
-    labID,
-    iLogID,
-    componentCollectionID,
-    componentCollectionName,
-    "COLLECTION"
-  );
-  const collectionInstrumentCreation = useCreateCollection(
-    labID,
-    iLogID,
-    instrumentCollectionID,
-    instrumentCollectionName, 
-    "COLLECTION"
-  );
   const collectionLogbookCreation = useCreateCollection(
     labID,
     iLogID,
@@ -127,15 +110,9 @@ export const useInitIlog = () => {
         
         emitMessage("Initializing project...", projectCreation.status);
         await projectCreation.mutateAsync();
-
-        emitMessage("Initializing component collection...", collectionComponentCreation.status);
-        await collectionComponentCreation.mutateAsync();
-        emitMessage("Initializing instrument collection...", collectionInstrumentCreation.status);
-        await collectionInstrumentCreation.mutateAsync();
         emitMessage("Initializing logbook collection...", collectionLogbookCreation.status);
         await collectionLogbookCreation.mutateAsync();
         console.log("Inventory space, project and collection initialized.");
-
 
         emitMessage(
           "Initializing iLog property type...",
@@ -173,7 +150,8 @@ export const useInitIlog = () => {
       setIsInitializing(false); // Clear initialization flag
       queryClient.invalidateQueries({
         queryKey: [
-          ALL_OBJECT_TYPES_QUERY_PREFIX
+          ALL_OBJECT_TYPES_QUERY_PREFIX,
+          ILOG_OBJECT_TYPES_QUERY_PREFIX,
         ],
       });
     },

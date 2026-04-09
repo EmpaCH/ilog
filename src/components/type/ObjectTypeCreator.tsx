@@ -34,7 +34,7 @@ import { GroupedPropertyEditors } from "./GroupedPropertyEditors";
 import { GroupedPropertyEditorsEvents } from "./GroupedPropertyEditors";
 import { useCreateObjectType } from "../../apis/type/useCreateObjectType";
 import { useUpdateObjectType } from "../../apis/type/useUpdateObjectType";
-import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
+import { useGetIlogObjectTypes } from "../../apis/type/useGetIlogObjectTypes";
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { TypeInheritanceChain } from "./TypeInheritanceChain";
@@ -59,7 +59,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const typeCreation = useCreateObjectType();
   const typeUpdate = useUpdateObjectType();
   const allPropertyTypesResult = useGetPropertyTypes();
-  const allObjectTypesResult = useGetAllObjectTypes();
+  const allObjectTypesResult = useGetIlogObjectTypes();
   const navigate = useNavigate();
 
   const [state, dispatch] = useReducer(typeCreatorReducer, {
@@ -235,28 +235,6 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
         localDispatch({ type: "SET_LOADING", payload: false });
         return;
       }
-    }
-    const baseType = ancestors[0];
-
-    if (
-      baseType === "INSTRUMENT" &&
-      state.schema.propertyTypes.Components &&
-      state.schema.propertyTypes.Components.length === 0
-    ) {
-      handleMessage("An instrument or a type derived from INSTRUMENT must have at least one component.", false, true);
-      localDispatch({ type: "SET_LOADING", payload: false });
-      return;
-    }
-
-    if (
-      mode === "create" &&
-      state.schema.collectionType === instrumentCollectionID &&
-      (!state.schema.propertyTypes.Components || 
-       state.schema.propertyTypes.Components.length === 0)
-    ) {
-      handleMessage("When creating a new instrument type, you must add at least one property to the COMPONENTS section.", false, true);
-      localDispatch({ type: "SET_LOADING", payload: false });
-      return;
     }
 
     // Clean schema: remove typeId if not a number from all properties
@@ -457,7 +435,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           <RadioGroup
             isRequired
             isReadOnly={mode === "edit" || (mode === "view" && !isEditMode)}
-            label="What is the base type of this object type?"
+            label="What is this object type?"
             orientation="horizontal"
             style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
             value={state.schema.collectionType || ""}
@@ -544,7 +522,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             id="prefix"
             isReadOnly={mode === "edit" || (mode === "view" && !isEditMode)}
             label="Prefix"
-            placeholder="If left empty then the code's first 4 characters will be used as a prefix"
+            placeholder="If left empty then the code's first 4 characters will be used as a prefix."
             type="text"
             className="form-field"
             value={state.schema.generatedCodePrefix ?? ""}

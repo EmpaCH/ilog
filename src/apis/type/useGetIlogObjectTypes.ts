@@ -1,16 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
-import { getAllObjectTypes } from "./typeAPI";
+import { getIlogObjectTypes } from "./typeAPI";
 
-export const ALL_OBJECT_TYPES_QUERY_PREFIX = "GET_ALL_OBJECT_TYPES";
-export const useGetAllObjectTypes = () => {
+export const ILOG_OBJECT_TYPES_QUERY_PREFIX = "GET_ILOG_OBJECT_TYPES";
+export const useGetIlogObjectTypes = () => {
   const { apiFacade } = useContext(AuthContext);
 
   return useQuery({
-    queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX],
+    queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX],
     queryFn: () => {
-      return getAllObjectTypes(apiFacade);
+      return getIlogObjectTypes(apiFacade);
     },
   });
 };

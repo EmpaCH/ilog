@@ -180,19 +180,34 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           return !location || location === "" || location === null || location === undefined;
         });
       }
-      // If a selected object is missing, add it to the lists
-      let mergedData = filteredData;
-      if (missingObjectQuery.data && !filteredData.some(c => c.getPermId().getPermId() === missingObjectQuery.data?.getPermId().getPermId())) {
-        mergedData = [...filteredData, missingObjectQuery.data];
-      }
-      setAllComponents(mergedData);
-      setComponents(mergedData);
-      const componentTypes = mergedData.map((component) => {
+      setAllComponents(filteredData);
+      setComponents(filteredData);
+      const componentTypes = filteredData.map((component) => {
         return component.getType().getCode();
       });
       setComponentTypes([...new Set(componentTypes)]);
     }
-  }, [getObjectsResult.status, getObjectsResult.data, objectType, storedCurrentObjectCode, currentInstrumentPermId, missingObjectQuery.data, logentries]);
+  }, [getObjectsResult.status, getObjectsResult.data, objectType, storedCurrentObjectCode, currentInstrumentPermId, logentries]);
+
+  // Separately, additively merge a missing selected object into allComponents.
+  // Keeping this decoupled prevents an oscillation loop: if we merged and removed
+  // the object inside the same effect that depends on missingObjectQuery.data, then
+  // the merge would clear missingSelectedPermIds → disable the query → data becomes
+  // undefined → effect re-runs without the object → missingSelectedPermIds is
+  // non-empty again → instant cache hit → infinite cycle.
+  useEffect(() => {
+    if (!missingObjectQuery.data) return;
+    const missingPermId = missingObjectQuery.data.getPermId().getPermId();
+    setAllComponents((prev) => {
+      if (prev.some((c) => c.getPermId().getPermId() === missingPermId)) return prev;
+      return [...prev, missingObjectQuery.data!];
+    });
+    setComponentTypes((prev) => {
+      const typeCode = missingObjectQuery.data!.getType().getCode();
+      if (prev.includes(typeCode)) return prev;
+      return [...prev, typeCode];
+    });
+  }, [missingObjectQuery.data]);
 
   useMemo(() => {
     if (allComponents.length === 0) return;

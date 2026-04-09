@@ -7,6 +7,7 @@ import {
   LocalPrimitivePropertyType,
   LocalPropertyType,
 } from "../propertyType/commonPropertyType";
+import { iLogGeneralInfoGroup } from "../shared/types";
 
 // Define primitive data types
 const PRIMITIVE_DATA_TYPES = [
@@ -377,7 +378,7 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
   const sections = propertyAssignments
     .map((assignment) => {
       const section = assignment.getSection();
-      return (section && section.trim()) || 'PROPERTIES';
+      return (section && section.trim()) || iLogGeneralInfoGroup;
     })
     .filter((section, index, self) => {
       return self.indexOf(section) === index;
@@ -387,7 +388,7 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
     const propertyTypesBySection = propertyAssignments
       .filter((assignment) => {
         const assignmentSection = assignment.getSection();
-        const normalizedSection = (assignmentSection && assignmentSection.trim()) || 'PROPERTIES';
+        const normalizedSection = (assignmentSection && assignmentSection.trim()) || iLogGeneralInfoGroup;
         return normalizedSection === section;
       })
       .map((assignment) => {
