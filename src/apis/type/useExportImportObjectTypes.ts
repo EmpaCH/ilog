@@ -1,6 +1,10 @@
 import { useCallback } from "react";
 import openbis from "@openbis/openbis.esm";
-import { iLogID } from "../shared/environment";
+import {
+  iLogID,
+  componentCollectionID,
+  instrumentCollectionID,
+} from "../shared/environment";
 
 interface UseExportImportObjectTypesProps {
   apiFacade: any;
@@ -209,8 +213,8 @@ export const useExportImportObjectTypes = ({
               console.log("Processing typeData", typeData);
               let metadata: { collectionType: string; baseType?: string } = {
                 collectionType: typeData.code.includes("INSTRUMENT")
-                  ? "INSTRUMENT_COLLECTION"
-                  : "COMPONENT_COLLECTION",
+                  ? instrumentCollectionID
+                  : componentCollectionID,
               };
               creation.setMetaData(metadata);
             }

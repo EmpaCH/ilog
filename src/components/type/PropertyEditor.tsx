@@ -18,7 +18,7 @@ import {
 } from "@heroui/react";
 import { propertyTypeEditorReducer } from "./PropertyTypeActions";
 import { useGetVocabularies } from "../../apis/vocabulary/useGetVocabularies";
-import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
+import { useGetIlogObjectTypes } from "../../apis/type/useGetIlogObjectTypes";
 
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
@@ -125,7 +125,7 @@ export const PropertyEditor = ({
   };
 
   const allVocabularies = useGetVocabularies();
-  const allObjectTypes = useGetAllObjectTypes();
+  const allObjectTypes = useGetIlogObjectTypes();
 
   return (
     <Card

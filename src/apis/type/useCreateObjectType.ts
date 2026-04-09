@@ -5,10 +5,11 @@ import {
   ObjectTypeDefinition,
   convertOpenBISSampleTypeToObjectTypeDefinition,
 } from "./commonType";
+import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "./useGetAllObjectTypes";
 import {
-  ALL_OBJECT_TYPES_QUERY_PREFIX,
-  useGetAllObjectTypes,
-} from "./useGetAllObjectTypes";
+  ILOG_OBJECT_TYPES_QUERY_PREFIX,
+  useGetIlogObjectTypes,
+} from "./useGetIlogObjectTypes";
 import {
   ALL_PROPERTY_TYPES_QUERY_PREFIX,
   useGetPropertyTypes,
@@ -45,8 +46,8 @@ import {
  *  */
 export const useCreateObjectType = () => {
   const { apiFacade } = useContext(AuthContext);
-  
-  const existingObjectTypesResult = useGetAllObjectTypes();
+
+  const existingIlogObjectTypesResult = useGetIlogObjectTypes();
   const existingPropertyTypesResult = useGetPropertyTypes();
   const existingPropertyAssigmentsResult = useGetPropertyAssignments();
   const queryClient = useQueryClient();
@@ -56,6 +57,7 @@ export const useCreateObjectType = () => {
     onSuccess: () => {
       // Invalidate all relevant caches to ensure fresh data on next fetch
       queryClient.refetchQueries({ queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX] });
     },
@@ -68,17 +70,17 @@ export const useCreateObjectType = () => {
       definition: ObjectTypeDefinition;
     }) => {
       // Cache might be invalidated, so we need to refetch
-      const freshObjectTypesResult = await existingObjectTypesResult.refetch();
+      const freshIlogObjectTypesResult = await existingIlogObjectTypesResult.refetch();
       const freshPropertyTypesResult = await existingPropertyTypesResult.refetch();
       const freshPropertyAssignmentsResult =
         await existingPropertyAssigmentsResult.refetch();
 
       if (
-        freshObjectTypesResult.isSuccess &&
+        freshIlogObjectTypesResult.isSuccess &&
         freshPropertyTypesResult.isSuccess &&
         freshPropertyAssignmentsResult.isSuccess
       ) {
-        const objectTypes = freshObjectTypesResult.data;
+        const objectTypes = freshIlogObjectTypesResult.data;
         const propertyTypes = freshPropertyTypesResult.data;
         const propertyAssignments = freshPropertyAssignmentsResult.data;
         const operations = convertObjectTypeDefinitionToOperations(

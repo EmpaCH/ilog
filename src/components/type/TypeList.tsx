@@ -4,7 +4,7 @@ import openbis from "@openbis/openbis.esm";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
 import { Column, TypeRow } from "../shared/list.types";
-import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
+import { useGetIlogObjectTypes } from "../../apis/type/useGetIlogObjectTypes";
 import { useDeleteObjectType } from "../../apis/type/useDeleteObjectType";
 
 export const TypeList = () => {
@@ -12,7 +12,7 @@ export const TypeList = () => {
   const [message, setMessage] = useState("");
   const [showMessage, setShowMessage] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const res = useGetAllObjectTypes();
+  const res = useGetIlogObjectTypes();
   const deletion = useDeleteObjectType();
   const types = res.data ? [...res.data] : [];
 
@@ -104,7 +104,7 @@ export const TypeList = () => {
     },
     {
       key: "baseType",
-      name: "Base Type",
+      name: "iLog Type",
       sorting: true,
       align: "start",
       filterable: true,

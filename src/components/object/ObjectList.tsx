@@ -201,7 +201,7 @@ export const ObjectList = () => {
     },
     {
       key: "baseType",
-      name: "Base Type",
+      name: "iLog Type",
       sorting: true,
       align: "start",
       filterable: true,

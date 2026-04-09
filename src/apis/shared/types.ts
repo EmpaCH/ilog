@@ -21,7 +21,6 @@ export const iLogManufacturerGroup = "Manufacturer";
 // Schema definitions for iLog base types
 export const iLogBaseSchema: PropertyTypesSchema = {
   [iLogGeneralInfoGroup]: [
-    { code: iLogID, type: "reference" },
     { code: "NAME", type: "reference" },
     {
       code: "DESCRIPTION",

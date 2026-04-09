@@ -3,6 +3,7 @@ import { useGetCurrentUser } from "../../apis/user/useGetCurrentUser";
 import { InitComponent } from "../../components/auth/Init";
 import { UserInfo } from "../../components/auth/UserInfo";
 import { ImportProgress } from "../../components/auth/ImportProgress";
+import { ImportTypesToIlog } from "../../components/auth/ImportTypesToIlog";
 import { useState, useContext, useRef } from "react";
 import { Divider, Button } from "@heroui/react";
 import { AuthContext } from "../../context/auth/authContext";
@@ -159,7 +160,10 @@ export const Route = createFileRoute("/_auth/home")({
       return (
         <>
           <h2>Welcome, {currentUser?.[0]?.getUserId?.() ?? "User"} 👋</h2>
-          {OPENBIS_URL && OPENBIS_URL.includes("localhost") && (
+          <Divider className="my-8" />
+          <UserInfo />
+          <Divider className="my-8" />
+          {OPENBIS_URL && OPENBIS_URL.includes("localhost") ? (
             <>
               <div className="flex gap-4 items-center justify-center my-8">
                 <Button
@@ -254,9 +258,9 @@ export const Route = createFileRoute("/_auth/home")({
                 stats={importStats}
               />
             </>
+          ) : (
+            <ImportTypesToIlog />
           )}
-          <Divider className="my-8" />
-          <UserInfo />
         </>
       );
     }
