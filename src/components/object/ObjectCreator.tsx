@@ -11,7 +11,7 @@ import {
 } from "@heroui/react";
 import { AuthContext } from "../../context/auth/authContext";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
-import { uploadFileAsDataset, getSampleDatasets, deleteDataset, getDatasetImageFilenameFromObject } from "../../apis/dataset/datasetAPI";
+import { uploadFileAsDataset, deleteDataset, getPreviewImageInfo } from "../../apis/dataset/datasetAPI";
 import { useCreateObject } from "../../apis/object/useCreateObject";
 import { useUpdateObject } from "../../apis/object/useUpdateObject";
 import { useUpdateObjectWithComponentLocations } from "../../apis/object/useUpdateObjectWithComponentLocations";
@@ -90,37 +90,18 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     const loadExistingImage = async () => {
       if ((mode === "edit" || mode === "view") && openbisSample && apiFacade) {
         try {
-          const datasets = await getSampleDatasets(apiFacade, openbisSample.getPermId().getPermId());
-          const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
+          const sessionToken = (apiFacade as any)?._private?.sessionToken;
+          if (!sessionToken) return;
 
-          if (elnPreviewDataset) {
-            const datasetPermId = elnPreviewDataset.getPermId().getPermId();
-            const sessionToken = (apiFacade as any)?._private?.sessionToken;
-            if (sessionToken) {
-              // Get the actual image filename - tries DSS API first, then storage, then metadata
-              const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
-
-              if (filename) {
-                // Construct URL with actual filename, matching openBIS format:
-                // /datastore_server/{datasetPermId}/original/{filename}?sessionID={sessionToken}
-                const encodedFilename = encodeURIComponent(filename);
-                const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
-
-                setExistingImageDataset({
-                  url: url,
-                  filename: filename,
-                  datasetId: datasetPermId
-                });
-              } else {
-                const directoryUrl = `/datastore_server/${datasetPermId}/original/?sessionID=${encodeURIComponent(sessionToken)}`;
-
-                setExistingImageDataset({
-                  url: directoryUrl,
-                  filename: "Preview Image",
-                  datasetId: datasetPermId
-                });
-              }
-            }
+          const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
+          if (info) {
+            const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
+            const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
+            setExistingImageDataset({
+              url,
+              filename: info.filePath.split('/').pop() ?? info.filePath,
+              datasetId: info.datasetPermId,
+            });
           }
         } catch (error) {
           console.error("Failed to load existing image:", error);
@@ -576,22 +557,17 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                                   // Upload the new image
                                   await uploadImageToObject(openbisSample.getPermId().getPermId(), file);
                                   // Reload the new image preview
-                                  const datasets = await getSampleDatasets(apiFacade, openbisSample.getPermId().getPermId());
-                                  const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
-                                  if (elnPreviewDataset) {
-                                    const datasetPermId = elnPreviewDataset.getPermId().getPermId();
-                                    const sessionToken = (apiFacade as any)?._private?.sessionToken;
-                                    if (sessionToken) {
-                                      const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
-                                      if (filename) {
-                                        const encodedFilename = encodeURIComponent(filename);
-                                        const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
-                                        setExistingImageDataset({
-                                          url: url,
-                                          filename: filename,
-                                          datasetId: datasetPermId
-                                        });
-                                      }
+                                  const sessionToken = (apiFacade as any)?._private?.sessionToken;
+                                  if (sessionToken) {
+                                    const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
+                                    if (info) {
+                                      const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
+                                      const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
+                                      setExistingImageDataset({
+                                        url,
+                                        filename: info.filePath.split('/').pop() ?? info.filePath,
+                                        datasetId: info.datasetPermId,
+                                      });
                                     }
                                   }
                                   // Reset file input

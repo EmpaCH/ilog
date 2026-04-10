@@ -1,11 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { 
   uploadFileAsDataset, 
   getSampleDatasets, 
   getDatasetFileDownloadUrl, 
-  deleteDataset 
+  deleteDataset,
+  getPreviewImageInfo,
 } from "./datasetAPI";
 
 export const DATASET_QUERY_PREFIX = "DATASET";
@@ -30,9 +31,12 @@ export const useUploadDataset = () => {
       return uploadFileAsDataset(apiFacade, samplePermId, file, datasetTypeCode);
     },
     onSuccess: (_, variables) => {
-      // Invalidate datasets query for this sample
+      // Invalidate datasets and preview queries for this sample
       queryClient.invalidateQueries({
         queryKey: [DATASET_QUERY_PREFIX, "sample", variables.samplePermId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [DATASET_QUERY_PREFIX, "preview", variables.samplePermId],
       });
     },
   });
@@ -88,4 +92,40 @@ export const useDatasetFileDownloadUrl = () => {
       return getDatasetFileDownloadUrl(apiFacade, datasetPermId, filePath);
     },
   });
+};
+
+/**
+ * Hook to load preview image URLs for a list of sample permIds in parallel.
+ * Returns a map of samplePermId -> URL string (or null if no preview).
+ * Results cached by TanStack Query with a 5-minute stale time.
+ */
+export const usePreviewImages = (
+  samplePermIds: string[],
+  sessionToken: string | undefined
+): { data: Record<string, string | null>; isLoaded: boolean } => {
+  const { apiFacade } = useContext(AuthContext);
+
+  const results = useQueries({
+    queries: samplePermIds.map((permId) => ({
+      queryKey: [DATASET_QUERY_PREFIX, "preview", permId],
+      queryFn: () => getPreviewImageInfo(apiFacade, permId),
+      staleTime: 5 * 60 * 1000,
+      enabled: !!permId && !!sessionToken,
+    })),
+  });
+
+  const isLoaded = results.every((r) => !r.isPending);
+
+  const data: Record<string, string | null> = {};
+  samplePermIds.forEach((permId, i) => {
+    const info = results[i].data;
+    if (info && sessionToken) {
+      const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
+      data[permId] = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
+    } else {
+      data[permId] = null;
+    }
+  });
+
+  return { data, isLoaded };
 };

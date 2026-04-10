@@ -1,6 +1,23 @@
 import openbis from "@openbis/openbis.esm";
 
 /**
+ * Resolve preview image info for a sample.
+ * Returns { datasetPermId, filePath } or null if no ELN_PREVIEW dataset exists.
+ */
+export async function getPreviewImageInfo(
+  api: openbis.OpenBISJavaScriptFacade,
+  samplePermId: string
+): Promise<{ datasetPermId: string; filePath: string } | null> {
+  const datasets = await getSampleDatasets(api, samplePermId);
+  const elnPreview = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
+  if (!elnPreview) return null;
+
+  const datasetPermId = elnPreview.getPermId().getPermId();
+  const filePath = await getImageFilenamviaAPI(api, datasetPermId);
+  return filePath ? { datasetPermId, filePath } : null;
+}
+
+/**
  * Upload a file as a dataset attached to a sample
  * @param api - The OpenBIS JavaScript facade instance
  * @param samplePermId - The permanent ID of the sample to attach the dataset to
@@ -177,71 +194,37 @@ async function getImageFilenamviaAPI(
 ): Promise<string | null> {
   try {
     const priv = (api as any)?._private;
-    if (!priv?.ajaxRequest || !priv?.sessionToken) {
-      return null;
-    }
+    if (!priv?.ajaxRequest || !priv?.sessionToken) return null;
 
-    // Call the DSS listFilesForDataSet API
-    // This returns a list of all files in the dataset
-    let result: any;
-    try {
-      result = await priv.ajaxRequest({
-        url: '/datastore_server/rmi-dss-api-v1.json',
-        data: {
-          method: 'listFilesForDataSet',
-          params: [priv.sessionToken, datasetPermId, "/", true], // list all files recursively
-        },
-        // Don't specify returnType - let it return raw JSON
-      });
-    } catch (deserializeError) {
-      // If deserialization fails, try making a raw fetch instead
-      const response = await fetch('/datastore_server/rmi-dss-api-v1.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          method: 'listFilesForDataSet',
-          params: [priv.sessionToken, datasetPermId, "/", true],
-          id: '1',
-          jsonrpc: '2.0'
-        })
-      });
+    // Use _private.ajaxRequest with the proxied DSS path instead of the DSS facade,
+    // which would resolve the registered absolute URL and fail with CORS.
+    const criteria = new openbis.DataSetFileSearchCriteria();
+    criteria.withDataSet().withPermId().thatEquals(datasetPermId);
 
-      if (!response.ok) {
-        throw new Error(`DSS API failed: ${response.status}`);
-      }
+    const result = await priv.ajaxRequest({
+      url: '/datastore_server/rmi-data-store-server-v3.json',
+      data: {
+        method: 'searchFiles',
+        params: [priv.sessionToken, criteria, new openbis.DataSetFileFetchOptions()],
+      },
+      returnType: 'SearchResult',
+    });
 
-      const json = await response.json();
-      result = json.result;
-    }
-
-    if (!result || !Array.isArray(result)) {
-      return null;
-    }
-
-    // Find the first image file (not a directory)
-    const imageFile = result.find((file: any) => {
-      // Handle both object methods and plain properties
-      const isDir = typeof file.isDirectory === 'function' 
-        ? file.isDirectory() 
-        : file.isDirectory;
-
-      if (isDir) return false;
-
-      const path = file.pathInDataSet || file.pathInListing || '';
-      return /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(path);
+    const files: openbis.DataSetFile[] = result.getObjects();
+    const imageFile = files.find((file) => {
+      if (file.isDirectory()) return false;
+      const path = file.getPath() ?? '';
+      return /\.(jpg|jpeg|png|gif|bmp|tiff?|webp|svg)$/i.test(path);
     });
 
     if (imageFile) {
-      const filename = imageFile.pathInDataSet || imageFile.pathInListing;
-      // Extract just the filename part (after the last /)
-      // e.g., "original/Magnet 0.14T.jpg" -> "Magnet 0.14T.jpg"
-      const lastSlash = filename.lastIndexOf('/');
-      const justFilename = lastSlash >= 0 ? filename.substring(lastSlash + 1) : filename;
-
-      return justFilename;
+      // Return the full path (strip leading slash) so the caller can build the URL correctly
+      const path = imageFile.getPath();
+      return path.startsWith('/') ? path.substring(1) : path;
     }
     return null;
   } catch (error) {
+    console.log('[datasetAPI] searchFiles error for', datasetPermId, error);
     return null;
   }
 }
@@ -259,33 +242,8 @@ export async function getDatasetImageFilenameFromObject(
   try {
     const datasetPermId = dataset.getPermId().getPermId();
 
-    // Primary method: try to fetch via DSS API
     if (api) {
-      const apiFilename = await getImageFilenamviaAPI(api, datasetPermId);
-      if (apiFilename) {
-        return apiFilename;
-      }
-    }
-
-    // Fallback: try to get from dataset object metadata
-    try {
-      const physicalData = dataset.getPhysicalData?.();
-      if (physicalData) {
-        const files = physicalData.getFiles?.();
-        if (files && files.length > 0) {
-          const imageFile = files.find((file: any) => {
-            const path = file.getRelativePath?.() || file.getPath?.();
-            return path && /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(path);
-          });
-
-          if (imageFile) {
-            const filename = imageFile.getRelativePath?.() || imageFile.getPath?.();
-            return filename;
-          }
-        }
-      }
-    } catch (innerError) {
-      console.log("Could not access physical data:", (innerError as Error).message);
+      return await getImageFilenamviaAPI(api, datasetPermId);
     }
     return null;
   } catch (error) {

@@ -311,7 +311,17 @@ export const List = (props: {
     const cells = Object.entries(row).map(([key, value]) => (
       (<TableCell key={`${permId}-${key}`} style={{ color: key === "type" ? color : "inherit" }}>
         {key === "preview" ? (
-          <img src={value} alt="preview" style={{ width: "90px", height: "90px", objectFit: "cover" }} />
+          value === undefined ? (
+            <div style={{ width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f4f4f5", borderRadius: "6px", color: "#d4d4d8", fontSize: "11px" }}>
+              …
+            </div>
+          ) : value ? (
+            <img src={value} alt="preview" style={{ width: "90px", height: "90px", objectFit: "cover" }} />
+          ) : (
+            <div style={{ width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f4f4f5", borderRadius: "6px", color: "#a1a1aa", fontSize: "11px", textAlign: "center", lineHeight: "1.3" }}>
+              No preview
+            </div>
+          )
         ) : (
           printText(value)
         )}
