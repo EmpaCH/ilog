@@ -23,13 +23,14 @@ function InnerApp() {
 function App() {
   const facade = useOpenBIS();
   useInitializeDatasetTypes();
-  const client = new QueryClient({
-    defaultOptions: { queries: { staleTime: 10000 } },
-  });
+  const authValue = { ...facade, id: facade.id.toISOString() };
+    const client = new QueryClient({
+      defaultOptions: { queries: { staleTime: 10000 } },
+    });
 
   return (
     <QueryClientProvider client={client}>
-      <AuthContext.Provider value={facade}>
+      <AuthContext.Provider value={authValue}>
         <InnerApp />
       </AuthContext.Provider>
     </QueryClientProvider>
