@@ -21,7 +21,7 @@ export interface TypeRow {
 
 export interface ObjectRow {
   permId: openbis.SamplePermId;
-  preview: string;
+  preview: string | null | undefined;
   code: string;
   name: string;
   type: string;

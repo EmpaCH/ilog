@@ -1,4 +1,4 @@
-import { useMemo, useReducer, useState, useEffect, useContext } from "react";
+import { useMemo, useReducer, useState, useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { useNavigate } from "@tanstack/react-router";
 import { useGetObjects } from "../../apis/object/useGetObjects";
@@ -19,7 +19,7 @@ import {
   logbookCollectionName,
 } from "../../apis/shared/environment";
 import openbis from "@openbis/openbis.esm";
-import { getSampleDatasets, getDatasetImageFilenameFromObject } from "../../apis/dataset/datasetAPI";
+import { usePreviewImages } from "../../apis/dataset/useDatasets";
 
 export const ObjectList = () => {
   const { apiFacade } = useContext(AuthContext);
@@ -28,57 +28,19 @@ export const ObjectList = () => {
   const navigate = useNavigate();
 
   const [objects, setObjects] = useState<openbis.Sample[]>([]);
-  const [previewImages, setPreviewImages] = useState<{ [permId: string]: string | null }>({});
   const [state, dispatch] = useReducer(objectListLocalReducer,
     EMPTY_OBJECT_LIST_DEFINITION,
   );
+
+  const sessionToken = (apiFacade as any)?._private?.sessionToken as string | undefined;
+  const samplePermIds = objects.map(o => o.getPermId().getPermId());
+  const { data: previewImages, isLoaded: imagesLoaded } = usePreviewImages(samplePermIds, sessionToken);
 
   useMemo(() => {
     if (allObjectsResult.status == "success") {
       setObjects(allObjectsResult.data);
     }
   }, [allObjectsResult.status, allObjectsResult.data]);
-
-  // Load preview images for all objects
-  useEffect(() => {
-    const fetchImages = async () => {
-      if (objects.length === 0) return;
-      const newPreviewImages: { [permId: string]: string | null } = {};
-      // Get session token from apiFacade (same as ObjectCreator)
-      const sessionToken = (apiFacade as any)?._private?.sessionToken;
-      for (const obj of objects) {
-        try {
-          // Use apiFacade instead of openbis for session context
-          const datasets = await getSampleDatasets(apiFacade, obj.getPermId().getPermId());
-          const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
-          if (elnPreviewDataset) {
-            const datasetPermId = elnPreviewDataset.getPermId().getPermId();
-            // Try to get the filename
-            const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
-            if (filename && sessionToken) {
-              // Construct URL as in ObjectCreator
-              const encodedFilename = encodeURIComponent(filename);
-              const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
-              newPreviewImages[obj.getPermId().getPermId()] = url;
-            } else if (filename) {
-              // fallback if no session token
-              const encodedFilename = encodeURIComponent(filename);
-              newPreviewImages[obj.getPermId().getPermId()] = `/datastore_server/${datasetPermId}/original/${encodedFilename}`;
-            } else {
-              // fallback to directory
-              newPreviewImages[obj.getPermId().getPermId()] = `/datastore_server/${datasetPermId}/original/`;
-            }
-          } else {
-            newPreviewImages[obj.getPermId().getPermId()] = null;
-          }
-        } catch (e) {
-          newPreviewImages[obj.getPermId().getPermId()] = null;
-        }
-      }
-      setPreviewImages(newPreviewImages);
-    };
-    fetchImages();
-  }, [objects, apiFacade]);
 
   const onDelete = async (
     permId: any,
@@ -224,7 +186,7 @@ export const ObjectList = () => {
       return {
         permId: obj.getPermId(),
         code: obj.getCode(),
-        preview: previewImages[permId] || "",
+        preview: imagesLoaded ? (previewImages[permId] ?? null) : undefined,
         name: obj.getProperty("NAME") || obj.getCode(),
         type: obj.getType().getCode(),
         baseType: getCollectionName(collectionType),
