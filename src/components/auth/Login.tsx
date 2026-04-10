@@ -8,7 +8,7 @@ import '../../assets/styles/Login.css';
 import { router } from '../../router';
 
 function Login() {
-  const { login } = useContext(AuthContext);
+  const { login, loginWithToken } = useContext(AuthContext);
 
   const [isVisible, setIsVisible] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'credentials' | 'token'>('credentials');
@@ -19,29 +19,51 @@ function Login() {
 
   const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.currentTarget as HTMLFormElement;
-    const formValues = form.elements as typeof form.elements & {
-      username: { value: string };
-      password: { value: string };
-    };
+    if (loginMethod === 'token') {
+      const form = event.currentTarget as HTMLFormElement;
+      const formValues = form.elements as typeof form.elements & {
+        token: { value: string };
+      };
+      setShowError(false);
 
-    // Clear any previous errors
-    setShowError(false);
-    
-    try {
-      const result = await login(formValues.username.value, formValues.password.value);
-      if (result) {
-        console.log('Login successful.');
-        setTimeout(async () => {
-          await router.invalidate();
-        }, 50);
-      } else {
+      try {
+        const result = await loginWithToken(formValues.token.value);
+        if (result) {
+          console.log('Login successful.');
+          setTimeout(async () => {
+            await router.invalidate();
+          }, 50);
+        } else {
+          setShowError(true);
+          setErrorMessage('Login failed - invalid credentials');
+        }
+      } catch (error: any) {
         setShowError(true);
-        setErrorMessage('Login failed - invalid credentials');
+        setErrorMessage(error?.message || 'Login failed');
       }
-    } catch (error: any) {
-      setShowError(true);
-      setErrorMessage(error?.message || 'Login failed');
+    } else {
+      const form = event.currentTarget as HTMLFormElement;
+      const formValues = form.elements as typeof form.elements & {
+        username: { value: string };
+        password: { value: string };
+      };
+      setShowError(false);
+
+      try {
+        const result = await login(formValues.username.value, formValues.password.value);
+        if (result) {
+          console.log('Login successful.');
+          setTimeout(async () => {
+            await router.invalidate();
+          }, 50);
+        } else {
+          setShowError(true);
+          setErrorMessage('Login failed - invalid credentials');
+        }
+      } catch (error: any) {
+        setShowError(true);
+        setErrorMessage(error?.message || 'Login failed');
+      }
     }
   };
 
@@ -56,7 +78,7 @@ function Login() {
       </header>
       <div className="login-div">
         <h2 className="mb-4">Log In</h2>
-
+        <Divider className="my-4" />
         {/* Login method toggle */}
         <div className="mb-6">
           <span className="text-sm mr-4">Select Login Method:</span>
@@ -113,11 +135,9 @@ function Login() {
               isRequired
               id="token"
               name="token"
-              label="Personal Access Token"
+              label="PAT"
               type="password"
-              placeholder="Enter your personal access token"
               className="form-field"
-              description="Use your OpenBIS personal access token to authenticate"
             />
           )}
           <Button 

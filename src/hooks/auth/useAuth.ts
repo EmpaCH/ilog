@@ -117,6 +117,25 @@ export const openBISHookFactory = (url: string) => {
       }
     };
 
+    // Login with personal access token function
+    const loginWithToken = async (
+      personalAccessToken: string,
+    ): Promise<string | null> => {
+      idLogger("Logging in with token...");
+      try {
+        apiFacade.setSessionToken(personalAccessToken);
+        await apiFacade.getServerInformation();
+        idLogger("Token login successful");
+        const username = "token-user";
+        setLoginInfo(username, personalAccessToken);
+        return personalAccessToken;
+      } catch (e: any) {
+        idLogger("Token login failed", e?.message || e);
+        removeLoginInfo();
+        return null;
+      }
+    };
+
     // Logout function
     const logout = async () => {
       try {
@@ -134,6 +153,7 @@ export const openBISHookFactory = (url: string) => {
       user,
       token,
       login,
+      loginWithToken,
       logout,
       apiFacade,
       url: url,
