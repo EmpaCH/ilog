@@ -1,12 +1,13 @@
 import { useContext } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import openbis from '@openbis/openbis.esm';
 import { createObject } from './objectAPI';
 import { AuthContext } from '../../context/auth/authContext';
 import { useGetSpace } from "../space/useGetSpace";
 import { useGetProject } from "../project/useGetProject";
 import { useGetCollection } from "../collection/useGetCollection";
-import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetObjects';
+import { GET_ALL_ILOG_OBJECTS_QUERY_PREFIX } from './useGetIlogObjects';
+import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetAllObjects';
+import { GET_ALL_OBJECTS_OF_TYPE_QUERY_PREFIX } from './useGetObjectsOfType';
 import { iLogID, labID, componentCollectionID, instrumentCollectionID } from "../shared/common";
 
 const CREATE_OBJECT_MUTATION_KEY = "CREATE_OBJECT_MUTATION_KEY";
@@ -52,7 +53,9 @@ export const useCreateObject = () => {
       return "success";
     },
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [GET_ALL_ILOG_OBJECTS_QUERY_PREFIX] });
+      queryClient.invalidateQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
+      queryClient.invalidateQueries({ queryKey: [GET_ALL_OBJECTS_OF_TYPE_QUERY_PREFIX] });
     }
   });
 };

@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
+import { Link } from "@tanstack/react-router";
 import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
-import { useGetObjects } from "../../apis/object/useGetObjects";
+import { useGetAllObjects } from "../../apis/object/useGetAllObjects";
 import {
   Dropdown,
   DropdownTrigger,
@@ -23,7 +24,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import openbis from "@openbis/openbis.esm";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
-import { getSampleDatasets, getDatasetImageFilenameFromObject } from "../../apis/dataset/datasetAPI";
+import { usePreviewImages } from "../../apis/dataset/useDatasets";
 import { logbookCollectionID } from "../../apis/shared/environment";
 
 interface ComponentListPropertyEditorProps {
@@ -36,6 +37,8 @@ interface ComponentListPropertyEditorProps {
   currentInstrumentPermId?: string;
   isReadOnly?: boolean;
   logentries?: any[]; // If provided, use as table data and omit preview column
+  onlyIlog?: boolean; // If true, only show objects with "ilog:true" in their metadata
+  onlyLogbook?: boolean; // If true, only show logbook entries
 }
 
 export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorProps> = ({
@@ -48,18 +51,31 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   currentInstrumentPermId,
   isReadOnly,
   logentries,
+  onlyIlog,
+  onlyLogbook: _onlyLogbook,
 }) => {
-  // console.log(value);
   const { apiFacade } = useContext(AuthContext);
-  const getObjectsResult = useGetObjects();
+  // Always use the single cached getAll query — getIlogObjects and getObjectsOfType
+  // both perform the same full searchSamples request anyway and only filter client-side.
+  // Calling a different hook conditionally violates Rules of Hooks and causes the
+  // TanStack Query subscription to return undefined even when data is cached.
+  const getObjectsResult = useGetAllObjects();
   const lastDispatchedRef = useRef<string>('');
   const hasInitializedRef = useRef<boolean>(false);
   const lastValueRef = useRef<any>(null);
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
   const [allComponents, setAllComponents] = useState<openbis.Sample[]>([]);
   const [components, setComponents] = useState<openbis.Sample[]>([]);
-  const [previewImages, setPreviewImages] = useState<{ [permId: string]: string | null }>({});
   const [storedCurrentObjectCode, setStoredCurrentObjectCode] = useState<string | undefined>(currentObjectCode);
+
+  const sessionToken = (apiFacade as any)?._private?.sessionToken as string | undefined;
+  // Limit preview image fetches to the first 20 visible rows to avoid
+  // launching hundreds of parallel requests when the table has many objects.
+  const componentPermIds = useMemo(
+    () => (logentries ? [] : components.slice(0, 20).map(c => c.getPermId().getPermId())),
+    [components, logentries]
+  );
+  const { data: previewImages } = usePreviewImages(componentPermIds, sessionToken);
   
   // Remember the first non-empty currentObjectCode provided by the parent
   useEffect(() => {
@@ -69,46 +85,18 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentObjectCode]);
 
-  // Load preview images for all components
-  useEffect(() => {
-    if (logentries) return; // Don't fetch images if using logentries
-    const fetchImages = async () => {
-      if (!components || components.length === 0) return;
-      const newPreviewImages: { [permId: string]: string | null } = {};
-      const sessionToken = (apiFacade as any)?._private?.sessionToken;
-      for (const obj of components) {
-        try {
-          const datasets = await getSampleDatasets(apiFacade, obj.getPermId().getPermId());
-          const elnPreviewDataset = datasets.find(ds => ds.getType()?.getCode() === "ELN_PREVIEW");
-          if (elnPreviewDataset) {
-            const datasetPermId = elnPreviewDataset.getPermId().getPermId();
-            const filename = await getDatasetImageFilenameFromObject(elnPreviewDataset, apiFacade);
-            if (filename && sessionToken) {
-              const encodedFilename = encodeURIComponent(filename);
-              const url = `/datastore_server/${datasetPermId}/original/${encodedFilename}?sessionID=${encodeURIComponent(sessionToken)}`;
-              newPreviewImages[obj.getPermId().getPermId()] = url;
-            } else if (filename) {
-              const encodedFilename = encodeURIComponent(filename);
-              newPreviewImages[obj.getPermId().getPermId()] = `/datastore_server/${datasetPermId}/original/${encodedFilename}`;
-            } else {
-              newPreviewImages[obj.getPermId().getPermId()] = null;
-            }
-          } else {
-            newPreviewImages[obj.getPermId().getPermId()] = null;
-          }
-        } catch (e) {
-          newPreviewImages[obj.getPermId().getPermId()] = null;
-        }
-      }
-      setPreviewImages(newPreviewImages);
-    };
-    fetchImages();
-  }, [components, apiFacade, logentries]);
-
   // Track missing selected permIds (not in allComponents)
   const selectedPermIdsFromValue = useMemo(() => {
     if (!value) return [];
-    return Array.isArray(value) ? value : [value];
+    // A multi-value property stored by openBIS may come back as a comma-separated
+    // string (e.g. "permId1,permId2") or as an array whose elements are themselves
+    // comma-separated strings. Normalise to a flat array of individual permIds.
+    const toPermIds = (v: any): string[] => {
+      if (typeof v === 'string') return v.split(',').map(s => s.trim()).filter(Boolean);
+      return [];
+    };
+    if (Array.isArray(value)) return value.flatMap(toPermIds);
+    return toPermIds(value);
   }, [value]);
 
   // Find selected permIds not present in allComponents
@@ -158,9 +146,16 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     }
     if (getObjectsResult.status === "success") {
       let filteredData = getObjectsResult.data;
+      // Apply onlyIlog filter
+      if (onlyIlog) {
+        filteredData = filteredData.filter(
+          (s) => s.getType().getMetaData()?.["ilog"] === "true"
+        );
+      }
+      // Apply objectType filter
       if (objectType && objectType !== "any") {
-        filteredData = filteredData.filter((component) => 
-          component.getType().getCode() === objectType
+        filteredData = filteredData.filter(
+          (s) => s.getType().getCode() === objectType
         );
       }
       if (storedCurrentObjectCode) {
@@ -168,16 +163,13 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           component.getCode() !== storedCurrentObjectCode
         );
       }
-      // Filter based on LOCATION property
+      // Filter based on LOCATION property — only when this editor is tied to a
+      // specific instrument. Without an instrument context, show all objects.
       if (currentInstrumentPermId) {
         filteredData = filteredData.filter((component) => {
           const location = component.getProperty("LOCATION");
-          return !location || location === "" || location === null || location === undefined || location === currentInstrumentPermId;
-        });
-      } else {
-        filteredData = filteredData.filter((component) => {
-          const location = component.getProperty("LOCATION");
-          return !location || location === "" || location === null || location === undefined;
+          const hasNoLocation = !location || location === "" || location === "-";
+          return hasNoLocation || location === currentInstrumentPermId;
         });
       }
       setAllComponents(filteredData);
@@ -213,9 +205,15 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     if (allComponents.length === 0) return;
     let filteredComponents = [...allComponents];
     if (isReadOnly) {
-      // In read-only mode always constrain to the selected value(s)
-      // An empty value means no parent is assigned, so an empty table
-      const selectedPermIds = Array.isArray(value) ? value : value ? [value] : [];
+      // In read-only mode always constrain to the selected value(s).
+      // Split comma-separated strings the same way selectedPermIdsFromValue does.
+      const toPermIds = (v: any): string[] => {
+        if (typeof v === 'string') return v.split(',').map((s: string) => s.trim()).filter(Boolean);
+        return [];
+      };
+      const selectedPermIds = Array.isArray(value)
+        ? value.flatMap(toPermIds)
+        : value ? toPermIds(value) : [];
       filteredComponents = filteredComponents.filter((component) =>
         selectedPermIds.includes(component.getPermId().getPermId())
       );
@@ -232,9 +230,18 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           selectedTypes.includes(component.getType().getCode())
         );
       }
+      // Pin selected items to the top so they are always visible
+      if (selectedKeys !== "all") {
+        const selectedSet = new Set(Array.from(selectedKeys).map(k => k.valueOf() as string));
+        if (selectedSet.size > 0) {
+          const sel = filteredComponents.filter(c => selectedSet.has(c.getPermId().getPermId()));
+          const unsel = filteredComponents.filter(c => !selectedSet.has(c.getPermId().getPermId()));
+          filteredComponents = [...sel, ...unsel];
+        }
+      }
     }
     setComponents(filteredComponents);
-  }, [codeFilter, typeFilter, objectType, componentTypes, allComponents, isReadOnly, value]);
+  }, [codeFilter, typeFilter, objectType, componentTypes, allComponents, isReadOnly, value, selectedKeys]);
 
   const selectedPermIds = useMemo(() => {
     return getSelectedPermIds();
@@ -245,9 +252,11 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     if (lastDispatchedRef.current === currentValue) {
       return;
     }
-    // Only dispatch if we have actually initialized or if this is a user interaction
-    // This prevents the initial empty dispatch that causes the feedback loop
-    if (!hasInitializedRef.current && selectedPermIds.length === 0) {
+    // Block ALL dispatches until the selection has been fully initialized from
+    // the value prop. Dispatching a partial selection (e.g. first match found
+    // before second is available) would overwrite state with the incomplete list,
+    // making value permanently shrink to that partial set.
+    if (!hasInitializedRef.current) {
       return;
     }
     dispatch(selectedPermIds);
@@ -256,16 +265,18 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   }, [selectedPermIds, dispatch, onSelectedComponentsChange]);
 
   useEffect(() => {
-    // console.log('effect');
     const currentValueString = JSON.stringify(value);
-    // console.log(currentValueString);
-
     if (lastValueRef.current === currentValueString && hasInitializedRef.current) {
       return;
     }
-    // Create normalized value array
-    const valueArray = Array.isArray(value) ? [...value] : value ? [value] : [];
-    // console.log(valueArray);
+    // Create normalized value array — split comma-separated strings the same way
+    // selectedPermIdsFromValue does, as a safety net for values that come through
+    // as comma-separated strings rather than proper arrays.
+    const toPermIds = (v: any): string[] => {
+      if (typeof v === 'string') return v.split(',').map((s: string) => s.trim()).filter(Boolean);
+      return [];
+    };
+    const valueArray = Array.isArray(value) ? value.flatMap(toPermIds) : value ? toPermIds(value) : [];
     // If there is no value to select, clear selection
     if (valueArray.length === 0) {
       setSelectedKeys(new Set());
@@ -293,11 +304,10 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     }
 
     setSelectedKeys(matchingPermIds);
-    // Only mark as fully initialized when we actually resolved the value into
-    // matching components. If value is non-empty but nothing matched yet
-    // (e.g. logentries haven't been populated yet), keep hasInitializedRef false
-    // so this effect re-runs when components changes and tries again.
-    const fullyResolved = valueArray.length === 0 || matchingPermIds.size > 0;
+    // Only mark as fully initialized when ALL values have been resolved into
+    // matching components. If value is non-empty but not everything matched yet,
+    // keep hasInitializedRef false so this effect re-runs when components changes.
+    const fullyResolved = valueArray.length === 0 || matchingPermIds.size >= valueArray.length;
     if (fullyResolved) {
       lastValueRef.current = currentValueString;
       hasInitializedRef.current = true;
@@ -326,6 +336,16 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         return second.localeCompare(first, undefined, { numeric: true });
       }
     });
+    // Re-apply selected-first pinning after sorting in edit mode
+    if (!isReadOnly && selectedKeys !== "all") {
+      const selectedSet = new Set(Array.from(selectedKeys).map(k => k.valueOf() as string));
+      if (selectedSet.size > 0) {
+        const sel = sortedComponents.filter(c => selectedSet.has(c.getPermId().getPermId()));
+        const unsel = sortedComponents.filter(c => !selectedSet.has(c.getPermId().getPermId()));
+        setComponents([...sel, ...unsel]);
+        return;
+      }
+    }
     setComponents(sortedComponents);
   };
 
@@ -375,11 +395,13 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
             ? component.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
             : ""}
           </TableCell>
-          <TableCell>{component.getRegistrator().getPermId().getPermId() || ""}</TableCell>
+          <TableCell>{(() => { try { return component.getRegistrator()?.getPermId()?.getPermId() || ""; } catch { return ""; } })()}</TableCell>
         </TableRow>
       );
     }
     // Default: show preview column
+    const isIlog = component.getType().getMetaData()?.["ilog"] === "true";
+    const componentCode = component.getCode();
     return (
       <TableRow key={component.getPermId().getPermId()}>
         <TableCell>
@@ -395,7 +417,17 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           )}
         </TableCell>
         <TableCell>{component.getProperty("NAME")}</TableCell>
-        <TableCell>{component.getCode()}</TableCell>
+        <TableCell>
+          {isReadOnly && isIlog ? (
+            <Link
+              to="/objects/creator"
+              search={{ mode: "view", objectcode: componentCode } as any}
+              className="text-blue-600 hover:underline"
+            >
+              {componentCode}
+            </Link>
+          ) : componentCode}
+        </TableCell>
         <TableCell>{component.getType().getCode()}</TableCell>
       </TableRow>
     );

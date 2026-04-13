@@ -1,5 +1,32 @@
 import openbis from "@openbis/openbis.esm";
 
+/**
+ * Get all objects from the iLog inventory Equipment collection.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param labID - The lab ID to search in.
+ * @returns A promise that resolves to an array of Sample objects.
+ */
+export async function getAllObjects(
+  api: openbis.OpenBISJavaScriptFacade,
+): Promise<openbis.Sample[]> {
+  const sc = new openbis.SampleSearchCriteria();
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  fo.withProperties();
+  fo.withPropertiesHistory();
+  fo.withExperiment().withProject().withSpace();
+
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withType().withPropertyAssignmentsUsing(ao);
+
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects();
+}
 
 /**
  * Get all objects from the iLog inventory Equipment collection.
@@ -7,13 +34,10 @@ import openbis from "@openbis/openbis.esm";
  * @param labID - The lab ID to search in.
  * @returns A promise that resolves to an array of Sample objects.
  */
-export async function getObjects(
+export async function getIlogObjects(
   api: openbis.OpenBISJavaScriptFacade,
-  // labID: string,
 ): Promise<openbis.Sample[]> {
   const sc = new openbis.SampleSearchCriteria();
-  // sc.withSpace().withCode().thatEquals(labID);
-  // sc.withProject().withCode().thatEquals(iLogID);
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
   fo.withProperties();
@@ -31,6 +55,37 @@ export async function getObjects(
   const result = await api.searchSamples(sc, fo);
   return result.getObjects().filter(
     (sample) => sample.getType().getMetaData()?.["ilog"] === "true"
+  );
+}
+
+/**
+ * Get all objects from the iLog inventory Equipment collection.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param labID - The lab ID to search in.
+ * @returns A promise that resolves to an array of Sample objects.
+ */
+export async function getObjectsOfType(
+  api: openbis.OpenBISJavaScriptFacade,
+  type: string,
+): Promise<openbis.Sample[]> {
+  const sc = new openbis.SampleSearchCriteria();
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  fo.withProperties();
+  fo.withPropertiesHistory();
+  fo.withExperiment().withProject().withSpace();
+
+  const ao = new openbis.PropertyAssignmentFetchOptions();
+  const po = new openbis.PropertyTypeFetchOptions();
+  po.withSampleType();
+  po.withVocabulary();
+  ao.withEntityType();
+  ao.withPropertyTypeUsing(po);
+  fo.withType().withPropertyAssignmentsUsing(ao);
+
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects().filter(
+    (sample) => sample.getType().getCode() === type
   );
 }
 
@@ -122,7 +177,7 @@ export async function updateObject(
       updateObj.setProperty(key, value[0]);
     } else if (Array.isArray(value) && value.length > 1) {
       updateObj.setProperty(key, value.join(','));
-    } else if (value === "" || value === undefined) {
+    } else if (value === "" || value === undefined || value === null) {
       updateObj.setProperty(key, "-");
     } else {
       updateObj.setProperty(key, value);

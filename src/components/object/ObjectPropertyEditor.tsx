@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Tabs, Tab } from "@mui/material";
 import { ObjectCreatorState, ObjectCreatorActions } from "./ObjectActions";
 import { SpecificPropertyEditor } from "./SpecificPropertyEditor";
@@ -28,6 +28,10 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
   isReadOnly,
 }) => {
   const [selectedTab, setSelectedTab] = React.useState(0);
+
+  useEffect(() => {
+    setSelectedTab(0);
+  }, [state.type]);
 
   const handleTabChange = (_event: React.ChangeEvent<{}>, newValue: number) => {
     setSelectedTab(newValue);

@@ -238,6 +238,7 @@ export async function removeObjectTypeFromIlog(
 
   const existingMetadata: Record<string, string> = { ...(sampleType.getMetaData() ?? {}) };
   delete existingMetadata["ilog"];
+  delete existingMetadata["collectionType"];
 
   const update = new openbis.SampleTypeUpdate();
   update.setTypeId(sampleType.getPermId());

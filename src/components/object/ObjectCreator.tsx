@@ -217,12 +217,21 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         const latestSampleState = latestKey ? reconstructedHistory[latestKey] : [];
         const objectTemplate = convertOpenBISPropertyHistoryEntryListToObjectDefinition(openbisSample, latestSampleState);
 
-        // For any property missing from history, populate from current sample properties so nothing is silently dropped
-        const currentProperties = openbisSample.getProperties() as { [key: string]: string } | null;
+        // Always use the current sample's getProperties() to populate propertyValues.
+        // The history-based reconstruction loses multi-value properties because openBIS
+        // creates one history entry per value (all at the same timestamp), and
+        // accumulated.set() overwrites the first with the second — leaving only one item.
+        // getProperties() returns the true current state, including proper arrays for
+        // multi-value OBJECT properties.
+        const currentProperties = openbisSample.getProperties() as Record<string, any> | null;
         if (currentProperties) {
-          Object.entries(currentProperties).forEach(([key, value]) => {
-            if ((objectTemplate.propertyValues[key] === undefined || objectTemplate.propertyValues[key] === null) && value !== undefined && value !== null) {
-              objectTemplate.propertyValues[key] = stripVocabularyName(String(value));
+          Object.entries(currentProperties).forEach(([key, val]) => {
+            if (val !== undefined && val !== null) {
+              if (Array.isArray(val)) {
+                objectTemplate.propertyValues[key] = val;
+              } else {
+                objectTemplate.propertyValues[key] = stripVocabularyName(String(val));
+              }
             }
           });
         }

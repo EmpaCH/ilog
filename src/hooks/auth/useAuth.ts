@@ -126,7 +126,8 @@ export const openBISHookFactory = (url: string) => {
         apiFacade.setSessionToken(personalAccessToken);
         await apiFacade.getServerInformation();
         idLogger("Token login successful");
-        const username = "token-user";
+        const sessionInfo = await apiFacade.getSessionInformation();
+        const username = sessionInfo.getPerson().getUserId();
         setLoginInfo(username, personalAccessToken);
         return personalAccessToken;
       } catch (e: any) {

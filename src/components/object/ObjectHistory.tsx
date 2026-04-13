@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from "@tanstack/react-router";
-import { useGetObjects } from "../../apis/object/useGetObjects";
+import { useGetIlogObjects } from "../../apis/object/useGetIlogObjects";
 import openbis from "@openbis/openbis.esm";
 import { Accordion, AccordionItem, Button, Card, CardBody, Divider } from "@heroui/react";
 import {
@@ -21,7 +21,7 @@ interface ObjectHistoryProps {
 }
 
 export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
-  const allObjectsResult = useGetObjects();
+  const allObjectsResult = useGetIlogObjects();
   const navigate = useNavigate();
   const [history, setHistory] = useState<GroupedHistory>({});
 
