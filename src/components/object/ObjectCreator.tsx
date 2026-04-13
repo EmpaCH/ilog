@@ -158,8 +158,11 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       }
 
       return false;
+    }).filter((oj) => {
+      if (!localState.searchTerm) return true;
+      return oj.getCode().toLowerCase().includes(localState.searchTerm.toLowerCase());
     });
-  }, [objectTypes.data, state.collection]);
+  }, [objectTypes.data, state.collection, localState.searchTerm]);
 
   const createObjectSchemaBasedOnType = (
     type: string,
@@ -693,6 +696,18 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 ]}
                 currentObjectCode={objectCode}
                 onSelectedComponentsChange={(propertyCode, permIds) => {
+                  // Only track permIds for properties whose objectType belongs to the
+                  // component collection — this excludes person-type properties and
+                  // prevents updateComponentLocations from trying to set LOCATION on persons.
+                  const allProperties = Object.values(state.propertiesSchema).flat();
+                  const propertyDef = allProperties.find((p) => p.code === propertyCode);
+                  const objectTypeCode = (propertyDef as any)?.objectType;
+                  const resolvedType = objectTypeCode
+                    ? objectTypes.data?.find((t) => t.getCode() === objectTypeCode)
+                    : null;
+                  const isComponentType =
+                    resolvedType?.getMetaData()?.["collectionType"] === componentCollectionID;
+                  if (!isComponentType) return;
                   setSelectedComponentsByProperty((prev) => ({
                     ...prev,
                     [propertyCode]: permIds,

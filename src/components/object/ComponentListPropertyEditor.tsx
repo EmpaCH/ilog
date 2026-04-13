@@ -163,9 +163,9 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           component.getCode() !== storedCurrentObjectCode
         );
       }
-      // Filter based on LOCATION property — only when this editor is tied to a
-      // specific instrument. Without an instrument context, show all objects.
-      if (currentInstrumentPermId) {
+      // In read-only (view) mode, hide components not belonging to this instrument.
+      // In edit mode, keep them visible so they can be seen as disabled rows.
+      if (isReadOnly && currentInstrumentPermId) {
         filteredData = filteredData.filter((component) => {
           const location = component.getProperty("LOCATION");
           const hasNoLocation = !location || location === "" || location === "-";
@@ -313,6 +313,23 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       hasInitializedRef.current = true;
     }
   }, [value, components, missingObjectQuery.data, allComponents]);
+
+  // PermIds of components already assigned to a different instrument.
+  // These rows are shown but not selectable in edit mode.
+  const disabledPermIds = useMemo(() => {
+    if (isReadOnly) return new Set<string>();
+    return new Set(
+      allComponents
+        .filter((c) => {
+          const location = c.getProperty("LOCATION");
+          if (!location || location === "" || location === "-") return false;
+          // If creating a new instrument (no permId yet), any assigned component is disabled.
+          // If editing, only disable if assigned to a DIFFERENT instrument.
+          return !currentInstrumentPermId || location !== currentInstrumentPermId;
+        })
+        .map((c) => c.getPermId().getPermId())
+    );
+  }, [allComponents, currentInstrumentPermId, isReadOnly]);
 
   const sortComponents = (descriptor: SortDescriptor) => {
     const sortedComponents = [...components].sort((a, b) => {
@@ -525,6 +542,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         topContent={topContent}
         topContentPlacement="outside"
         selectedKeys={selectedKeys}
+        disabledKeys={disabledPermIds}
         onSelectionChange={isReadOnly ? () => {} : setSelectedKeys}
         classNames={{
           wrapper: "max-h-[300px]",
