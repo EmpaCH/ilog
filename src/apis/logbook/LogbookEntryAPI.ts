@@ -48,6 +48,7 @@ export async function getLogbookEntry(
   fo.withPropertiesHistory();
   fo.withParents();
   fo.withParents().withExperiment();
+  fo.withRegistrator();
 
   const ao = new openbis.PropertyAssignmentFetchOptions();
   const po = new openbis.PropertyTypeFetchOptions();

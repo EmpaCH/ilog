@@ -1,7 +1,7 @@
 import { useMemo, useReducer, useState, useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { useNavigate } from "@tanstack/react-router";
-import { useGetObjects } from "../../apis/object/useGetObjects";
+import { useGetIlogObjects } from "../../apis/object/useGetIlogObjects";
 import { useDeleteObject } from "../../apis/object/useDeleteObject";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
@@ -23,7 +23,7 @@ import { usePreviewImages } from "../../apis/dataset/useDatasets";
 
 export const ObjectList = () => {
   const { apiFacade } = useContext(AuthContext);
-  const allObjectsResult = useGetObjects();
+  const allObjectsResult = useGetIlogObjects();
   const deleteObjectResult = useDeleteObject();
   const navigate = useNavigate();
 

@@ -3,7 +3,9 @@ import { deleteObject } from './objectAPI';
 import { useContext } from 'react';
 import { AuthContext } from '../../context/auth/authContext';
 import openbis from "@openbis/openbis.esm";
-import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetObjects';
+import { GET_ALL_ILOG_OBJECTS_QUERY_PREFIX } from './useGetIlogObjects';
+import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetAllObjects';
+import { GET_ALL_OBJECTS_OF_TYPE_QUERY_PREFIX } from './useGetObjectsOfType';
 import { GET_ALL_TRASHED_OBJECTS_QUERY_PREFIX } from '../trashcan/useGetTrashedObjects';
 
 const DELETE_OBJECT_MUTATION_KEY = "DELETE_OBJECT_MUTATION_KEY";
@@ -23,8 +25,10 @@ export const useDeleteObject = () => {
       );
     },
     onSuccess: () => {
-      queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [GET_ALL_ILOG_OBJECTS_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [GET_ALL_TRASHED_OBJECTS_QUERY_PREFIX] });
+      queryClient.invalidateQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
+      queryClient.invalidateQueries({ queryKey: [GET_ALL_OBJECTS_OF_TYPE_QUERY_PREFIX] });
     }
   });
 };

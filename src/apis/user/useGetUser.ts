@@ -19,7 +19,6 @@ export const useGetUser = (user: string) => {
       fo.withSpace();
       fo.withRoleAssignments().withSpace();
       const queryResult = await apiFacade.searchPersons(sc, fo);
-      console.log("useGetUser result", queryResult.getObjects());
       return queryResult.getObjects();
     },
     enabled: isAuthenticated && !!user && !!apiFacade,

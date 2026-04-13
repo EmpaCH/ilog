@@ -362,6 +362,8 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
         <div className="mb-4">
           <h4>Parent Object</h4>
           <ComponentListPropertyEditor
+            onlyIlog={true}
+            onlyLogbook={true}
             dispatch={(permIds: string[]) => {
               setParentObjectPermId(permIds.length > 0 ? permIds[0] : "");
               if (permIds.length > 0) localDispatch({ type: "CLEAR" });

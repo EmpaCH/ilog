@@ -443,6 +443,11 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
               dispatch({ type: "SET_COLLECTION_TYPE", payload: value });
               handleSelectBaseType(value === instrumentCollectionID ? INSTRUMENT_SCHEMA : COMPONENT_SCHEMA);
               filterObjectTypesByCollection(value);
+              const newTemplate = objectTypes.find((el) => el.code === value.replace("_COLLECTION", ""));
+              if (newTemplate !== undefined) {
+                setObjectBaseType(newTemplate);
+                dispatch({ type: "SET_BASE_TYPE", payload: { newBaseType: newTemplate } });
+              }
             }}
           >
             <Radio value={instrumentCollectionID}>Instrument</Radio>

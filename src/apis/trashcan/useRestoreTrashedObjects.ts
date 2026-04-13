@@ -4,7 +4,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/auth/authContext';
 import openbis from "@openbis/openbis.esm";
 import { GET_ALL_TRASHED_OBJECTS_QUERY_PREFIX } from './useGetTrashedObjects';
-import { GET_ALL_OBJECTS_QUERY_PREFIX } from '../object/useGetObjects';
+import { GET_ALL_ILOG_OBJECTS_QUERY_PREFIX } from '../object/useGetIlogObjects';
 
 export const RESTORE_TRASHED_OBJECTS_MUTATION_KEY = "RESTORE_TRASHED_OBJECTS_MUTATION_KEY";
 
@@ -24,7 +24,7 @@ export const useRestoreTrashedObjects = () => {
     },
     onSuccess: () => {
       queryClient.refetchQueries({ queryKey: [GET_ALL_TRASHED_OBJECTS_QUERY_PREFIX] });
-      queryClient.refetchQueries({ queryKey: [GET_ALL_OBJECTS_QUERY_PREFIX] });
+      queryClient.refetchQueries({ queryKey: [GET_ALL_ILOG_OBJECTS_QUERY_PREFIX] });
     }
   });
 };

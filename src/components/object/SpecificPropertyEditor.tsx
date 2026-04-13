@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "@tanstack/react-router";
 import {
   AutocompleteItem,
   Autocomplete,
@@ -78,14 +79,25 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       }
 
       return (
-        <Input
-          isDisabled
-          id={propertyDefinition.code}
-          aria-label={propertyDefinition.code}
-          placeholder="Not attached to any instrument"
-          value={displayValue}
-          type="text"
-        />
+        <div className="flex items-center gap-2">
+          <Input
+            isDisabled
+            id={propertyDefinition.code}
+            aria-label={propertyDefinition.code}
+            placeholder="Not attached to any instrument"
+            value={displayValue}
+            type="text"
+          />
+          {instrumentQuery.data && (
+            <Link
+              to="/objects/creator"
+              search={{ mode: "view", objectcode: instrumentQuery.data.getCode() } as any}
+              className="text-sm text-blue-600 hover:underline whitespace-nowrap"
+            >
+              Open
+            </Link>
+          )}
+        </div>
       );
     } else {
       // For instruments: show that it's managed automatically

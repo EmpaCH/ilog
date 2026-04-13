@@ -52,7 +52,7 @@ export function convertOpenBISPropertyHistoryEntryListToObjectDefinition(
 
   return {
     id: sample.getIdentifier(),
-    collection: "",//sample.getExperiment().getCode(),
+    collection: sample.getExperiment()?.getCode() ?? "",
     type: sample.getType().getCode(),
     propertiesSchema: {},
     propertyValues: transformedHistory,
