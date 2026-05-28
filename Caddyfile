@@ -9,25 +9,51 @@
 
 (openbis) {
     log default
-    handle /openbis/* {
-    reverse_proxy {$OPENBIS_URL} {
-            header_up Host {upstream_hostport}
+
+    # Proxy for all openBIS instances.
+    # The openbis-instance cookie (set at login) carries the target hostname.
+    # Adding a new instance only requires a new entry in src/config/instances.ts.
+
+    @openbis {
+        path /openbis/*
+        header_regexp instance Cookie "openbis-instance=([^;]+)"
+    }
+    handle @openbis {
+        reverse_proxy https://{re.instance.1} {
+            header_up Host {re.instance.1}
         }
     }
+
     handle /datastore_server/* {
     reverse_proxy {$OPENBIS_URL} {
             header_up Host {upstream_hostport}
         }
     }
+
+    @datastore_server {
+        path /datastore_server/*
+        header_regexp instance Cookie "openbis-instance=([^;]+)"
+    }
+    handle @datastore_server {
+        reverse_proxy https://{re.instance.1} {
+            header_up Host {re.instance.1}
+        }
+    }
+
     handle {
+        header {
+            # Prevent XSS: the main attack vector for localStorage token theft.
+            # - script-src 'self': no inline scripts, no eval, no external scripts
+            # - style-src 'unsafe-inline': needed for HeroUI/Tailwind runtime styles
+            # - connect-src 'self': XHR/fetch only to same origin (proxy handles routing)
+            # - frame-ancestors 'none': prevents the app from being embedded in an iframe on another site
+            Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+        }
         root * /var/www/html
+        try_files {path} /index.html
         file_server
     }
 }
-
-# localhost:443 {
-#     import openbis
-# }
 
 :80 {
     import openbis

@@ -3,10 +3,9 @@ import {
   Link,
   Outlet,
   useNavigate,
-  useRouter,
   redirect,
 } from "@tanstack/react-router";
-import { useContext } from "react";
+import { useContext, useEffect } from "react";
 import { AuthContext } from "../context/auth/authContext";
 import { Button } from "@heroui/react";
 
@@ -15,33 +14,31 @@ export const Route = createFileRoute("/_auth")({
     if (!context.auth.isAuthenticated) {
       // Store the redirect path in sessionStorage
       const currentPath = location.pathname + (location.searchStr || '');
-      if (currentPath !== "/login" && currentPath !== "/" && currentPath !== "") {
+      if (currentPath !== "/" && currentPath !== "") {
         sessionStorage.setItem('redirectAfterLogin', currentPath);
       }
-      console.log("User is not authenticated, redirecting to /login, storing path:", sessionStorage.getItem('redirectAfterLogin'));
-      throw redirect({ to: "/login" });
+      console.log("User is not authenticated, redirecting and storing path:", sessionStorage.getItem('redirectAfterLogin'));
+      throw redirect({ to: "/" });
     }
   },
   component: AuthLayout,
 });
 
 function AuthLayout() {
-  const router = useRouter();
   const navigate = useNavigate();
-  const { logout, isLoading } = useContext(AuthContext);
+  const { logout, isAuthenticated } = useContext(AuthContext);
 
-  // Show loading state while checking authentication
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate({ to: "/" });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
       try {
         await logout();
-        await router.invalidate();
         sessionStorage.removeItem('redirectAfterLogin');
-        navigate({ to: "/" });
       } catch (error) {
         console.error('Logout failed:', error);
       }
