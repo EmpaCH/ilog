@@ -99,7 +99,9 @@ export const useOpenBIS = () => {
     try {
       _facade.setSessionToken(personalAccessToken);
       await _facade.getServerInformation();
-      setLoginInfo("token-user", personalAccessToken);
+      const sessionInfo = await _facade.getSessionInformation();
+      const username = sessionInfo.getUserName();
+      setLoginInfo(username, personalAccessToken);
       return personalAccessToken;
     } catch {
       if (instanceHostname) clearInstanceCookie();
