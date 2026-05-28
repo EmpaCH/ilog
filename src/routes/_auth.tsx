@@ -12,7 +12,7 @@ import { Button } from "@heroui/react";
 
 export const Route = createFileRoute("/_auth")({
   beforeLoad: ({ context, location }) => {
-    if (!context.auth.isAuthenticated) {
+    if (!context.auth.isAuthenticated && !context.auth.isLoading) {
       // Store the redirect path in sessionStorage
       const currentPath = location.pathname + (location.searchStr || '');
       if (currentPath !== "/login" && currentPath !== "/" && currentPath !== "") {

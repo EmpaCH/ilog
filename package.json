@@ -11,7 +11,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@ckeditor/ckeditor5-react": "^11.1.0",
+    "@ckeditor/ckeditor5-react": "^11.1.2",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@heroui/react": "2.6.14",

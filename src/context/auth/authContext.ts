@@ -6,6 +6,7 @@ export interface AuthContextType {
   loginWithToken: (token: string) => Promise<string | null>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isLoading: boolean;
   user: string | null;
   url: string;
   apiFacade: openbis.OpenBISJavaScriptFacade;

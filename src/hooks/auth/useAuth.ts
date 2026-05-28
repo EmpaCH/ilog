@@ -1,4 +1,6 @@
 import openbis from "@openbis/openbis.esm";
+import { log } from "console";
+import { browserFrames } from "happy-dom/lib/PropertySymbol.js";
 import { useState, useEffect } from "react";
 
 // Use proxy endpoints for openBIS communication
@@ -13,80 +15,85 @@ export class OpenBISApiFacade {
   private constructor() {}
 
   public static getInstance(url: string): openbis.openbis {
-    if (url === undefined || url === null) {
+    const urlDynamic = url ?? window.location.host;
+    if (urlDynamic === undefined || urlDynamic === null) {
       throw new Error("URL cannot be null or undefined");
     }
-    if (OpenBISApiFacade.instances.get(url) === undefined) {
-      OpenBISApiFacade.instances.set(url, new openbis.openbis(url));
+    if (OpenBISApiFacade.instances.get(urlDynamic) === undefined) {
+      OpenBISApiFacade.instances.set(urlDynamic, new openbis.openbis(urlDynamic));
     }
-    const current = OpenBISApiFacade.instances.get(url) as openbis.openbis;
+    const current = OpenBISApiFacade.instances.get(urlDynamic) as openbis.openbis;
     return current;
   }
 }
 
-export const TOKEN_KEY = "token";
-export const USER_KEY = "user";
+export const TOKEN_KEY = "openbis";
+// export const USER_KEY = "user";
 
 export const openBISHookFactory = (url: string) => {
   return () => {
     const apiFacade = OpenBISApiFacade.getInstance(url);
-
+    // User for logging
     // @ts-ignore
     apiFacade._private.log = () => {};
     const id = new Date();
     const idLogger = (...msgs: any) => {};
     idLogger(`${id}, Creating hook with URL:`, url);
 
-    const storedToken = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
-    const storedUser = typeof window !== "undefined" ? localStorage.getItem(USER_KEY) : null;
 
-    const [isAuthenticated, setIsAuthenticated] = useState(!!storedToken && !!storedUser);
-    const [user, setUser] = useState<string | null>(storedUser);
-    const [token, setToken] = useState<string | null>(storedToken);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState<string | null>(null);
+    const [token, setToken] = useState<string | null>(null);
 
-    // Check for token and user in localStorage on initialization
+    // On initialization, retreive the cookie and verify it
     useEffect(() => {
-      idLogger(`Stored token: ${storedToken}`);
-      const checkStoredToken = async () => {
-        if (storedToken && storedUser) {
-          const result = await verifyToken(storedToken, storedUser);
-          idLogger("Token verified");
-          if (result) {
-            idLogger("Token is valid");
-            setLoginInfo(storedUser, storedToken);
-          } else {
-            idLogger("Token is invalid");
-            removeLoginInfo();
+      const init = async () => {
+        try {
+          const cookie = typeof window !== "undefined" ? await cookieStore.get(TOKEN_KEY) : null;
+          const storedToken = cookie?.value ?? null;
+          if(storedToken){
+            console.log(`Found token ${storedToken}`);
+            const valid = await verifyToken(storedToken);
+            if(valid){
+              apiFacade.setSessionToken(storedToken);
+              const sessionInfo = await apiFacade.getSessionInformation();
+              const username = sessionInfo.getPerson().getUserId();
+              console.log(`Valid user ${username}`)
+              setIsAuthenticated(true);
+              setToken(storedToken);
+              setUser(username);
+              return;
+            }
+            else await removeLoginInfo();
           }
-        } else {
-          idLogger("No token stored");
+        } finally {
+          setIsLoading(false);
         }
-      };
-      checkStoredToken();
+      }
+      init()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Function to set login info
-    const setLoginInfo = (username: string, sessionToken: string) => {
+     const setLoginInfo = async (username: string, sessionToken: string) => {
       setUser(username);
       setToken(sessionToken);
       setIsAuthenticated(true);
-      localStorage.setItem(TOKEN_KEY, sessionToken);
-      localStorage.setItem(USER_KEY, username);
+      await cookieStore.set(TOKEN_KEY, sessionToken)
       apiFacade.setSessionToken(sessionToken);
     };
 
     // Function to remove login info
-    const removeLoginInfo = () => {
+    const removeLoginInfo = async () => {
       setUser(null);
       setToken(null);
       setIsAuthenticated(false);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
+      await cookieStore.delete(TOKEN_KEY);
     };
 
     // Function to verify token validity
-    const verifyToken = async (token: string, _user: string) => {
+    const verifyToken = async (token: string) => {
       try {
         apiFacade.setSessionToken(token);
         await apiFacade.getServerInformation();
@@ -108,7 +115,7 @@ export const openBISHookFactory = (url: string) => {
         if (sessionToken === undefined) {
           return null;
         }
-        setLoginInfo(username, sessionToken);
+        await setLoginInfo(username, sessionToken);
         return sessionToken;
       } catch (e: any) {
         idLogger("Login failed", e?.message || e);
@@ -128,7 +135,7 @@ export const openBISHookFactory = (url: string) => {
         idLogger("Token login successful");
         const sessionInfo = await apiFacade.getSessionInformation();
         const username = sessionInfo.getPerson().getUserId();
-        setLoginInfo(username, personalAccessToken);
+        await setLoginInfo(username, personalAccessToken);
         return personalAccessToken;
       } catch (e: any) {
         idLogger("Token login failed", e?.message || e);
@@ -151,6 +158,7 @@ export const openBISHookFactory = (url: string) => {
 
     return {
       isAuthenticated,
+      isLoading,
       user,
       token,
       login,
