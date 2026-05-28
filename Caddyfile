@@ -19,14 +19,12 @@
         header_regexp instance Cookie "openbis-instance=([^;]+)"
     }
     handle @openbis {
-        reverse_proxy https://{re.instance.1} {
+        reverse_proxy {re.instance.1}:443 {
+            transport http {
+                tls
+                tls_insecure_skip_verify
+            }
             header_up Host {re.instance.1}
-        }
-    }
-
-    handle /datastore_server/* {
-    reverse_proxy {$OPENBIS_URL} {
-            header_up Host {upstream_hostport}
         }
     }
 
@@ -35,7 +33,11 @@
         header_regexp instance Cookie "openbis-instance=([^;]+)"
     }
     handle @datastore_server {
-        reverse_proxy https://{re.instance.1} {
+        reverse_proxy {re.instance.1}:443 {
+            transport http {
+                tls
+                tls_insecure_skip_verify
+            }
             header_up Host {re.instance.1}
         }
     }

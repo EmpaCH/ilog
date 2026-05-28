@@ -3,10 +3,12 @@ kind: Ingress
 metadata:
   name: ilog
   namespace: ilog
-  annotations:
-    spec.ingressClassName: traefik
-    traefik.ingress.kubernetes.io/rewrite-target: /
+annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    external-dns.alpha.kubernetes.io/managed: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-http"
 spec:
+  ingressClassName: traefik
   rules:
       - host: ilog.empa.ch
         http:
