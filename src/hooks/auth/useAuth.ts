@@ -1,166 +1,129 @@
 import openbis from "@openbis/openbis.esm";
 import { useState, useEffect } from "react";
 
-// Use proxy endpoints for openBIS communication
-export const PROXIED_AS_URL = "/openbis/";
-
-/**
- * A factory to create singleton instances of the openBIS API facade.
- */
-export class OpenBISApiFacade {
-  private static instances: Map<string, openbis.openbis> = new Map();
-
-  private constructor() {}
-
-  public static getInstance(url: string): openbis.openbis {
-    if (url === undefined || url === null) {
-      throw new Error("URL cannot be null or undefined");
-    }
-    if (OpenBISApiFacade.instances.get(url) === undefined) {
-      OpenBISApiFacade.instances.set(url, new openbis.openbis(url));
-    }
-    const current = OpenBISApiFacade.instances.get(url) as openbis.openbis;
-    return current;
-  }
-}
-
+export const INSTANCE_COOKIE = "openbis-instance";
 export const TOKEN_KEY = "token";
 export const USER_KEY = "user";
 
-export const openBISHookFactory = (url: string) => {
-  return () => {
-    const apiFacade = OpenBISApiFacade.getInstance(url);
+/**
+ * The openBIS SDK ignores any path component in the URL passed to its constructor.
+ * It only extracts protocol://authority and then always appends the hardcoded path /openbis/openbis/rmi-application-server-v3.json.
+ * Passing "" causes the SDK to use a bare relative path, which the browser resolves against the current origin
+ * (localhost:5173 in dev, the app domain in production).
+ * The Vite plugin and Caddy then read the `openbis-instance` cookie that is set at login to determine which openBIS server to proxy to.
+ * The browser automatically includes the cookie in every XHR the SDK fires.
+ */
 
-    // @ts-ignore
-    apiFacade._private.log = () => {};
-    const id = new Date();
-    const idLogger = (...msgs: any) => {};
-    idLogger(`${id}, Creating hook with URL:`, url);
+const _facade = new openbis.openbis("");
+// @ts-ignore
+_facade._private.log = () => {};
 
-    const storedToken = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
-    const storedUser = typeof window !== "undefined" ? localStorage.getItem(USER_KEY) : null;
+function getInstanceCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/openbis-instance=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
-    const [isAuthenticated, setIsAuthenticated] = useState(!!storedToken && !!storedUser);
-    const [user, setUser] = useState<string | null>(storedUser);
-    const [token, setToken] = useState<string | null>(storedToken);
+function setInstanceCookie(hostname: string): void {
+  document.cookie = `${INSTANCE_COOKIE}=${encodeURIComponent(hostname)}; path=/; SameSite=Strict; Max-Age=${60 * 60 * 24 * 30}`;
+}
 
-    // Check for token and user in localStorage on initialization
-    useEffect(() => {
-      idLogger(`Stored token: ${storedToken}`);
-      const checkStoredToken = async () => {
-        if (storedToken && storedUser) {
-          const result = await verifyToken(storedToken, storedUser);
-          idLogger("Token verified");
-          if (result) {
-            idLogger("Token is valid");
-            setLoginInfo(storedUser, storedToken);
-          } else {
-            idLogger("Token is invalid");
-            removeLoginInfo();
-          }
-        } else {
-          idLogger("No token stored");
+function clearInstanceCookie(): void {
+  document.cookie = `${INSTANCE_COOKIE}=; path=/; Max-Age=0`;
+}
+
+export const useOpenBIS = () => {
+  const storedToken = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
+  const storedUser = typeof window !== "undefined" ? localStorage.getItem(USER_KEY) : null;
+
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    !!storedToken && !!storedUser && !!getInstanceCookie(),
+  );
+  const [user, setUser] = useState<string | null>(storedUser);
+  const [token, setToken] = useState<string | null>(storedToken);
+
+  // On mount: if a stored token and instance cookie exist, verify the session is still valid.
+  useEffect(() => {
+    const checkStoredToken = async () => {
+      if (storedToken && storedUser && getInstanceCookie()) {
+        try {
+          _facade.setSessionToken(storedToken);
+          await _facade.getServerInformation();
+          setLoginInfo(storedUser, storedToken);
+        } catch {
+          removeLoginInfo();
         }
-      };
-      checkStoredToken();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    // Function to set login info
-    const setLoginInfo = (username: string, sessionToken: string) => {
-      setUser(username);
-      setToken(sessionToken);
-      setIsAuthenticated(true);
-      localStorage.setItem(TOKEN_KEY, sessionToken);
-      localStorage.setItem(USER_KEY, username);
-      apiFacade.setSessionToken(sessionToken);
-    };
-
-    // Function to remove login info
-    const removeLoginInfo = () => {
-      setUser(null);
-      setToken(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USER_KEY);
-    };
-
-    // Function to verify token validity
-    const verifyToken = async (token: string, _user: string) => {
-      try {
-        apiFacade.setSessionToken(token);
-        await apiFacade.getServerInformation();
-        return true;
-      } catch (e) {
-        return false;
       }
     };
+    checkStoredToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    // Login function
-    const login = async (
-      username: string,
-      password: string
-    ): Promise<string | null> => {
-      idLogger("Logging in...");
-      try {
-        const sessionToken = await apiFacade.login(username, password);
-        idLogger("Login successful");
-        if (sessionToken === undefined) {
-          return null;
-        }
-        setLoginInfo(username, sessionToken);
-        return sessionToken;
-      } catch (e: any) {
-        idLogger("Login failed", e?.message || e);
-        removeLoginInfo();
-        return null;
-      }
-    };
+  const setLoginInfo = (username: string, sessionToken: string) => {
+    setUser(username);
+    setToken(sessionToken);
+    setIsAuthenticated(true);
+    localStorage.setItem(TOKEN_KEY, sessionToken);
+    localStorage.setItem(USER_KEY, username);
+    _facade.setSessionToken(sessionToken);
+  };
 
-    // Login with personal access token function
-    const loginWithToken = async (
-      personalAccessToken: string,
-    ): Promise<string | null> => {
-      idLogger("Logging in with token...");
-      try {
-        apiFacade.setSessionToken(personalAccessToken);
-        await apiFacade.getServerInformation();
-        idLogger("Token login successful");
-        const sessionInfo = await apiFacade.getSessionInformation();
-        const username = sessionInfo.getPerson().getUserId();
-        setLoginInfo(username, personalAccessToken);
-        return personalAccessToken;
-      } catch (e: any) {
-        idLogger("Token login failed", e?.message || e);
-        removeLoginInfo();
-        return null;
-      }
-    };
+  const removeLoginInfo = () => {
+    setUser(null);
+    setToken(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    clearInstanceCookie();
+  };
 
-    // Logout function
-    const logout = async () => {
-      try {
-        if (token) {
-          await apiFacade.logout();
-        }
-      } catch (e) {
-        idLogger("Logout error", e);
-      }
+  const login = async (username: string, password: string): Promise<string | null> => {
+    try {
+      const sessionToken = await _facade.login(username, password);
+      if (sessionToken === undefined) return null;
+      setLoginInfo(username, sessionToken);
+      return sessionToken;
+    } catch {
       removeLoginInfo();
-    };
+      return null;
+    }
+  };
 
-    return {
-      isAuthenticated,
-      user,
-      token,
-      login,
-      loginWithToken,
-      logout,
-      apiFacade,
-      url: url,
-      id,
-    };
+  const loginWithToken = async (
+    personalAccessToken: string,
+    instanceHostname?: string,
+  ): Promise<string | null> => {
+    if (instanceHostname) {
+      setInstanceCookie(instanceHostname);
+    }
+    try {
+      _facade.setSessionToken(personalAccessToken);
+      await _facade.getServerInformation();
+      setLoginInfo("token-user", personalAccessToken);
+      return personalAccessToken;
+    } catch {
+      if (instanceHostname) clearInstanceCookie();
+      removeLoginInfo();
+      return null;
+    }
+  };
+
+  const logout = async () => {
+    try {
+      if (token) await _facade.logout();
+    } catch {}
+    removeLoginInfo();
+  };
+
+  return {
+    isAuthenticated,
+    user,
+    token,
+    login,
+    loginWithToken,
+    logout,
+    apiFacade: _facade as openbis.OpenBISJavaScriptFacade,
+    url: getInstanceCookie() ?? "",
+    id: new Date(),
   };
 };
-
-export const useOpenBIS = openBISHookFactory(PROXIED_AS_URL);

@@ -10,5 +10,4 @@ resources:
 
 configMapGenerator:
   - name: ilog-env
-    literals:
-      - OPENBIS_URL=https://openbis-empa-lab205.ethz.ch
+    literals: []
