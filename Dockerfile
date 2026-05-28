@@ -13,7 +13,6 @@ RUN npm install --verbose
 
 COPY src /app/src
 COPY public /app/public 
-ENV OPENBIS_URL=
 CMD ["npm", "run", "dev"]
 
 FROM env AS build
@@ -21,7 +20,6 @@ FROM env AS build
 RUN npm run build --verbose
 
 FROM caddy AS serve
-ENV OPENBIS_URL=
 ENV CADDY_LOG_LEVEL=INFO
 
 COPY --from=build /app/dist /var/www/html
