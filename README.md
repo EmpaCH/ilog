@@ -1,23 +1,7 @@
 ## Configuration
 
-Do not forget to add a `.env` file in the root folder, with the following information:
-
-```
-OPENBIS_ADMIN_PASS=
-OPENBIS_DB_ADMIN_PASS=
-OPENBIS_DB_ADMIN_USER=
-OPENBIS_DB_APP_PASS=
-OPENBIS_DB_APP_USER=
-OPENBIS_DB_HOST=
-OPENBIS_FQDN=
-file-server.repository-path=
-OPENBIS_DSS_PORT=
-OPENBIS_AS_PORT=
-OPENBIS_URL=
-```
-
-`OPENBIS_URL` is also used to point to the DSS base URL that serves `/datastore_server/*`.
+Do not forget to add a `.env` in the root folder, see [.env.example](.env.example) file.
 
 ## Execution
 
-`task dev`
+`task dev` or  `npm run dev`
