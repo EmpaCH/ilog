@@ -172,13 +172,13 @@ export async function updateObject(
   updateObj.setSampleId(sampleId);
   for (const [key, value] of Object.entries(properties)) {
     if (Array.isArray(value) && value.length === 0) {
-      updateObj.setProperty(key, "-");
+      updateObj.setProperty(key, null);
     } else if (Array.isArray(value) && value.length === 1) {
       updateObj.setProperty(key, value[0]);
     } else if (Array.isArray(value) && value.length > 1) {
       updateObj.setProperty(key, value.join(','));
     } else if (value === "" || value === undefined || value === null) {
-      updateObj.setProperty(key, "-");
+      updateObj.setProperty(key, null);
     } else {
       updateObj.setProperty(key, value);
     }

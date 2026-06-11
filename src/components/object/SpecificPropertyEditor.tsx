@@ -236,9 +236,9 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       return (
         <Autocomplete
           isDisabled={isReadOnly}
+          aria-label="Select vocabulary term"
           defaultSelectedKey={propertyValue}
-          onSelectionChange={(value) => onValueChange(value?.toString() ?? "")}
-        >
+          onSelectionChange={(value) => onValueChange(value?.toString() ?? "")}>
           {vocabularyRes.data.terms.map((term) => {
             return (
               <AutocompleteItem key={term.code} value={term.code}>
