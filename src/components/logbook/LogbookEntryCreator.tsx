@@ -410,7 +410,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             }
           }}
         >
-          {(type) => <AutocompleteItem key={type.key}>{type.description}</AutocompleteItem>}
+          {(type) => <AutocompleteItem key={type.key} aria-label={type.description || type.key}>{type.description}</AutocompleteItem>}
         </Autocomplete>
         {state.type !== "" ? (
           <LogbookEntryPropertyEditor

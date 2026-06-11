@@ -12,6 +12,7 @@ import {
 import { AuthContext } from "../../context/auth/authContext";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
 import { uploadFileAsDataset, deleteDataset, getPreviewImageInfo } from "../../apis/dataset/datasetAPI";
+import { uploadAfsDataSet, listAfsEntries, deleteAfsFile } from "../../apis/dataset/afsDatasetAPI";
 import { useCreateObject } from "../../apis/object/useCreateObject";
 import { useUpdateObject } from "../../apis/object/useUpdateObject";
 import { useUpdateObjectWithComponentLocations } from "../../apis/object/useUpdateObjectWithComponentLocations";
@@ -74,6 +75,10 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   let [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   let [existingImageDataset, setExistingImageDataset] = useState<{url: string, filename: string, datasetId: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  let [selectedAfsFiles, setSelectedAfsFiles] = useState<File[]>([]);
+  const afsFileInputRef = useRef<HTMLInputElement>(null);
+  let [existingAfsEntries, setExistingAfsEntries] = useState<{ path: string; name: string; size?: number }[]>([]);
+  let [pendingAfsDeletes, setPendingAfsDeletes] = useState<string[]>([]);
 
   const [state, dispatch] = useReducer(objectCreatorReducer, objectTemplate);
   const [localState, localDispatch] = useReducer(objectCreatorLocalReducer,
@@ -110,6 +115,22 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     };
 
     loadExistingImage();
+  }, [mode, openbisSample, apiFacade]);
+
+  // Load existing AFS files when editing/viewing
+  useEffect(() => {
+    const loadExistingAfs = async () => {
+      if ((mode === "edit" || mode === "view") && openbisSample && apiFacade) {
+        try {
+          const permId = openbisSample.getPermId().getPermId();
+          const entries = await listAfsEntries(apiFacade, { owner: permId, source: '/', recursively: true });
+          setExistingAfsEntries(entries.filter((e) => !e.directory));
+        } catch (error) {
+          console.error("Failed to load existing AFS files:", error);
+        }
+      }
+    };
+    loadExistingAfs();
   }, [mode, openbisSample, apiFacade]);
 
   // Function to upload image to object
@@ -322,6 +343,23 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             } else {
               handleMessage("Instrument updated successfully!", true, true);
             }
+            if (selectedAfsFiles.length > 0 && apiFacade && openbisSample) {
+              try {
+                for (const file of selectedAfsFiles) {
+                  await uploadAfsDataSet(apiFacade, { samplePermId: openbisSample.getPermId().getPermId(), experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
+                }
+                setSelectedAfsFiles([]);
+              } catch (err: any) {
+                console.error("AFS upload failed:", err);
+              }
+            }
+            if (pendingAfsDeletes.length > 0 && apiFacade && openbisSample) {
+              for (const path of pendingAfsDeletes) {
+                try { await deleteAfsFile(apiFacade, openbisSample.getPermId().getPermId(), path); } catch (err) { console.error('AFS delete failed:', err); }
+              }
+              setPendingAfsDeletes([]);
+              setExistingAfsEntries((prev) => prev.filter((e) => !pendingAfsDeletes.includes(e.path)));
+            }
             setTimeout(() => {
               onBack();
             }, 2000);
@@ -340,8 +378,25 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             handleMessage(err.message, false, true);
             localDispatch({ type: "SET_LOADING", payload: false });
           },
-          onSuccess: () => {
+          onSuccess: async () => {
             handleMessage("Object updated successfully!", true, true);
+            if (selectedAfsFiles.length > 0 && apiFacade && openbisSample) {
+              try {
+                for (const file of selectedAfsFiles) {
+                  await uploadAfsDataSet(apiFacade, { samplePermId: openbisSample.getPermId().getPermId(), experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
+                }
+                setSelectedAfsFiles([]);
+              } catch (err: any) {
+                console.error("AFS upload failed:", err);
+              }
+            }
+            if (pendingAfsDeletes.length > 0 && apiFacade && openbisSample) {
+              for (const path of pendingAfsDeletes) {
+                try { await deleteAfsFile(apiFacade, openbisSample.getPermId().getPermId(), path); } catch (err) { console.error('AFS delete failed:', err); }
+              }
+              setPendingAfsDeletes([]);
+              setExistingAfsEntries((prev) => prev.filter((e) => !pendingAfsDeletes.includes(e.path)));
+            }
             setTimeout(() => {
               onBack();
             }, 2000);
@@ -389,15 +444,16 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 const instrumentPermId = newObject.getPermId().getPermId();
                 await updateComponentLocations(instrumentPermId);
 
-                // Upload image if one is selected
                 if (selectedImageFile && apiFacade) {
-                  await uploadImageToObject(newObject.getPermId().getPermId(), selectedImageFile);
-                  handleMessage("Object created successfully with component locations updated and image uploaded!", true, true);
-                  onClear(2000);
-                } else {
-                  handleMessage("Object created successfully with component locations updated!", true, true);
-                  onClear(2000);
+                  await uploadImageToObject(instrumentPermId, selectedImageFile);
                 }
+                if (selectedAfsFiles.length > 0 && apiFacade) {
+                  for (const file of selectedAfsFiles) {
+                    await uploadAfsDataSet(apiFacade, { samplePermId: instrumentPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
+                  }
+                }
+                handleMessage("Object created successfully with component locations updated!", true, true);
+                onClear(2000);
               } else {
                 handleMessage("Object created but could not be located for image upload", false, true);
               }
@@ -422,17 +478,22 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 });
 
                 const newObject = sortedObjects[0]; // Get the first object (most recently created)
-                if (newObject && selectedImageFile && apiFacade) {
+                if (newObject) {
+                  const newPermId = newObject.getPermId().getPermId();
                   try {
-                    const datasetId = await uploadImageToObject(newObject.getPermId().getPermId(), selectedImageFile);
-                    handleMessage("Object created successfully and image uploaded with dataset ID: " + datasetId, true, true);
+                    if (selectedImageFile && apiFacade) {
+                      await uploadImageToObject(newPermId, selectedImageFile);
+                    }
+                    if (selectedAfsFiles.length > 0 && apiFacade) {
+                      for (const file of selectedAfsFiles) {
+                        await uploadAfsDataSet(apiFacade, { samplePermId: newPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
+                      }
+                    }
+                    handleMessage("Object created successfully!", true, true);
                     onClear(2000);
                   } catch (uploadError) {
-                    handleMessage("Object created but image upload failed: " + uploadError, false, true);
+                    handleMessage("Object created but file upload failed: " + uploadError, false, true);
                   }
-                } else if (newObject) {
-                  handleMessage("Object created successfully!", true, true);
-                  onClear(2000);
                 } else {
                   handleMessage("Object created but could not be located", false, true);
                 }
@@ -459,8 +520,10 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         localDispatch({ type: "CLEAR" });
       }, ms);
     }
-    // Clear the selected image as well
+    // Clear the selected image and AFS file as well
     setSelectedImageFile(null);
+    setSelectedAfsFiles([]);
+    setPendingAfsDeletes([]);
   };
 
   const onBack = () => {
@@ -486,204 +549,303 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       <div>
         <h2>{mode === "create" ? "Create Object" : (mode === "edit" || (mode === "view" && isEditMode)) ? "Edit Object" : "View Object"}</h2>
         <form onSubmit={onSubmit}>
-          <div className="w-full max-w-5xl mx-auto flex flex-col md:flex-row gap-8 bg-white rounded-lg shadow p-6 mb-8">
-            <div className="flex-1 min-w-[260px] max-w-[25rem]">
-              <div className="mb-4">
-                <div className="flex gap-3" style={{ alignItems: "baseline"}}>
-                  <p className="text-lg font-semibold text-left">Preview</p>
-                  {selectedImageFile ? (
-                    <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
-                      {selectedImageFile.name}
-                    </span>
-                  ) : existingImageDataset ? (
-                    <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
-                      {existingImageDataset.filename}
-                    </span>
+          <div className="w-full max-w-5xl mx-auto flex flex-col gap-6 bg-white rounded-lg shadow p-6 mb-8">
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="flex-1 min-w-[260px] max-w-[25rem]">
+                <div className="mb-4">
+                  <div className="flex gap-3" style={{ alignItems: "baseline"}}>
+                    <p className="text-lg font-semibold text-left">Preview</p>
+                    {selectedImageFile ? (
+                      <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
+                        {selectedImageFile.name}
+                      </span>
+                    ) : existingImageDataset ? (
+                      <span className="text-sm text-gray-600 whitespace-nowrap overflow-hidden text-ellipsis max-w-xs" style={{lineHeight: '1.75rem', display: 'inline-block'}}>
+                        {existingImageDataset.filename}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">No image selected</span>
+                    )}
+                  </div>
+                </div>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "1rem" }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    key={selectedImageFile ? 'with-file' : 'no-file'}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      setSelectedImageFile(file || null);
+                    }}
+                    className="hidden"
+                    id="image-upload"
+                    disabled={!isEditMode}
+                  />
+                  <label htmlFor="image-upload" className={isEditMode ? "cursor-pointer" : "cursor-default"}>
+                    {selectedImageFile ? (
+                      <div className="space-y-2">
+                        <img
+                          src={URL.createObjectURL(selectedImageFile)}
+                          alt="Preview"
+                          className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
+                        />
+                        {isEditMode && (
+                          <div className="flex gap-2 justify-center">
+                            <p className="text-xs text-blue-600 hover:text-blue-800">
+                              Click to change image
+                            </p>
+                            <span className="text-xs text-gray-400">•</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setSelectedImageFile(null);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800 underline"
+                            >
+                              Remove image
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : existingImageDataset ? (
+                      <div className="space-y-2">
+                        <img
+                          src={existingImageDataset.url}
+                          alt="Preview"
+                          className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
+                        />
+                        {isEditMode && (
+                          <div className="flex gap-2 justify-center">
+                            <input
+                              ref={fileInputRef}
+                              type="file"
+                              accept="image/*"
+                              style={{ display: "none" }}
+                              onChange={async (e) => {
+                                const file = e.currentTarget.files?.[0];
+                                if (file && openbisSample && apiFacade && existingImageDataset) {
+                                  try {
+                                    // Delete the old image
+                                    await deleteDataset(apiFacade, existingImageDataset.datasetId);
+                                    // Upload the new image
+                                    await uploadImageToObject(openbisSample.getPermId().getPermId(), file);
+                                    // Reload the new image preview
+                                    const sessionToken = (apiFacade as any)?._private?.sessionToken;
+                                    if (sessionToken) {
+                                      const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
+                                      if (info) {
+                                        const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
+                                        const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
+                                        setExistingImageDataset({
+                                          url,
+                                          filename: info.filePath.split('/').pop() ?? info.filePath,
+                                          datasetId: info.datasetPermId,
+                                        });
+                                      }
+                                    }
+                                    // Reset file input
+                                    if (fileInputRef.current) {
+                                      fileInputRef.current.value = "";
+                                    }
+                                  } catch (error) {
+                                    console.error("Failed to replace image:", error);
+                                  }
+                                }
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Replace image
+                            </button>
+                            <span className="text-xs text-gray-400">•</span>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (apiFacade && existingImageDataset) {
+                                  try {
+                                    await deleteDataset(apiFacade, existingImageDataset.datasetId);
+                                    setExistingImageDataset(null);
+                                  } catch (error) {
+                                    console.error("Failed to delete dataset:", error);
+                                  }
+                                }
+                              }}
+                              className="text-xs text-red-600 hover:text-red-800 underline"
+                            >
+                              Remove image
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-gray-700">
+                          {isEditMode ? "Click to select a preview image" : "No preview image"}
+                        </p>
+                        {isEditMode && (
+                          <p className="text-xs text-gray-500">
+                            Single image only - Optional
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+              <div className="flex-1 min-w-[260px] max-w-xl flex flex-col gap-4 justify-start">
+                <div className="flex flex-col gap-4">
+                  <RadioGroup
+                    isRequired
+                    isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
+                    label="What is the base type of this object?"
+                    orientation="horizontal"
+                    style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
+                    value={state.collection}
+                    onValueChange={(value) => {
+                      dispatch({ type: "SET_COLLECTION", payload: value })
+                    }}
+                  >
+                    <Radio value={instrumentCollectionID}>Instrument</Radio>
+                    <Radio value={componentCollectionID}>Component</Radio>
+                  </RadioGroup>
+                  {mode === "edit" ? (
+                    <Input
+                      isReadOnly
+                      id="type"
+                      label="Type"
+                      value={state.type}
+                      className="form-field"
+                    />
                   ) : (
-                    <span className="text-sm text-gray-400">No image selected</span>
+                    <Autocomplete
+                      isRequired
+                      isReadOnly={mode === "view" && !isEditMode}
+                      id="type"
+                      label="Type"
+                      placeholder="Type to search..."
+                      className="form-field"
+                      defaultItems={objectTypesFilteredByCollection}
+                      items={objectTypesFilteredByCollection}
+                      onInputChange={(value) => {
+                        localDispatch({ type: "SET_SEARCH_TERM", payload: value });
+                      }}
+                      selectedKey={state.type || ""}
+                      onSelectionChange={(value) => {
+                        const newType = value?.toString() ?? "";
+                        dispatch({ type: "SET_TYPE", payload: newType });
+                        createObjectSchemaBasedOnType(newType, "create");
+                      }}
+                    >
+                      {(type) => <AutocompleteItem key={type.getPermId().getPermId()}>{type.getCode()}</AutocompleteItem>}
+                    </Autocomplete>
                   )}
                 </div>
               </div>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "1rem" }}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  key={selectedImageFile ? 'with-file' : 'no-file'}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    setSelectedImageFile(file || null);
-                  }}
-                  className="hidden"
-                  id="image-upload"
-                  disabled={!isEditMode}
-                />
-                <label htmlFor="image-upload" className={isEditMode ? "cursor-pointer" : "cursor-default"}>
-                  {selectedImageFile ? (
-                    <div className="space-y-2">
-                      <img
-                        src={URL.createObjectURL(selectedImageFile)}
-                        alt="Preview"
-                        className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
-                      />
-                      {isEditMode && (
-                        <div className="flex gap-2 justify-center">
-                          <p className="text-xs text-blue-600 hover:text-blue-800">
-                            Click to change image
-                          </p>
-                          <span className="text-xs text-gray-400">•</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setSelectedImageFile(null);
-                            }}
-                            className="text-xs text-red-600 hover:text-red-800 underline"
-                          >
-                            Remove image
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : existingImageDataset ? (
-                    <div className="space-y-2">
-                      <img
-                        src={existingImageDataset.url}
-                        alt="Preview"
-                        className="max-w-full max-h-48 mx-auto rounded-lg shadow-md"
-                      />
-                      {isEditMode && (
-                        <div className="flex gap-2 justify-center">
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            style={{ display: "none" }}
-                            onChange={async (e) => {
-                              const file = e.currentTarget.files?.[0];
-                              if (file && openbisSample && apiFacade && existingImageDataset) {
-                                try {
-                                  // Delete the old image
-                                  await deleteDataset(apiFacade, existingImageDataset.datasetId);
-                                  // Upload the new image
-                                  await uploadImageToObject(openbisSample.getPermId().getPermId(), file);
-                                  // Reload the new image preview
-                                  const sessionToken = (apiFacade as any)?._private?.sessionToken;
-                                  if (sessionToken) {
-                                    const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
-                                    if (info) {
-                                      const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
-                                      const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
-                                      setExistingImageDataset({
-                                        url,
-                                        filename: info.filePath.split('/').pop() ?? info.filePath,
-                                        datasetId: info.datasetPermId,
-                                      });
-                                    }
-                                  }
-                                  // Reset file input
-                                  if (fileInputRef.current) {
-                                    fileInputRef.current.value = "";
-                                  }
-                                } catch (error) {
-                                  console.error("Failed to replace image:", error);
-                                }
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-xs text-blue-600 hover:text-blue-800 underline"
-                          >
-                            Replace image
-                          </button>
-                          <span className="text-xs text-gray-400">•</span>
-                          <button
-                            type="button"
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              if (apiFacade && existingImageDataset) {
-                                try {
-                                  await deleteDataset(apiFacade, existingImageDataset.datasetId);
-                                  setExistingImageDataset(null);
-                                } catch (error) {
-                                  console.error("Failed to delete dataset:", error);
-                                }
-                              }
-                            }}
-                            className="text-xs text-red-600 hover:text-red-800 underline"
-                          >
-                            Remove image
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-gray-700">
-                        {isEditMode ? "Click to select a preview image" : "No preview image"}
-                      </p>
-                      {isEditMode && (
-                        <p className="text-xs text-gray-500">
-                          Single image only - Optional
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </label>
-              </div>
             </div>
-            <div className="flex-1 min-w-[260px] max-w-xl flex flex-col gap-4 justify-start">
-              <div className="flex flex-col gap-4">
-                <RadioGroup
-                  isRequired
-                  isDisabled={mode === "edit" || (mode === "view" && !isEditMode)}
-                  label="What is the base type of this object?"
-                  orientation="horizontal"
-                  style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
-                  value={state.collection}
-                  onValueChange={(value) => {
-                    dispatch({ type: "SET_COLLECTION", payload: value })
-                  }}
-                >
-                  <Radio value={instrumentCollectionID}>Instrument</Radio>
-                  <Radio value={componentCollectionID}>Component</Radio>
-                </RadioGroup>
-                {mode === "edit" ? (
-                  <Input
-                    isReadOnly
-                    id="type"
-                    label="Type"
-                    value={state.type}
-                    className="form-field"
-                  />
-                ) : (
-                  <Autocomplete
-                    isRequired
-                    isReadOnly={mode === "view" && !isEditMode}
-                    id="type"
-                    label="Type"
-                    placeholder="Type to search..."
-                    className="form-field"
-                    defaultItems={objectTypesFilteredByCollection}
-                    items={objectTypesFilteredByCollection}
-                    onInputChange={(value) => {
-                      localDispatch({ type: "SET_SEARCH_TERM", payload: value });
-                    }}
-                    selectedKey={state.type || ""}
-                    onSelectionChange={(value) => {
-                      const newType = value?.toString() ?? "";
-                      dispatch({ type: "SET_TYPE", payload: newType });
-                      createObjectSchemaBasedOnType(newType, "create");
-                    }}
-                  >
-                    {(type) => <AutocompleteItem key={type.getPermId().getPermId()}>{type.getCode()}</AutocompleteItem>}
-                  </Autocomplete>
-                )}
+              <div className="w-full">
+              <div className="mb-2">
+                <p className="text-lg font-semibold text-left">AFS Files</p>
               </div>
+
+              {/* Existing uploaded files */}
+              {existingAfsEntries.length > 0 && (
+                <div className="mb-3 space-y-1">
+                  <p className="text-xs text-gray-500 text-left mb-1">Uploaded</p>
+                  {existingAfsEntries.map((entry) => (
+                    <div key={entry.path} className={`flex items-center justify-between rounded px-2 py-1 text-sm ${pendingAfsDeletes.includes(entry.path) ? 'bg-red-50 opacity-60' : 'bg-gray-50'}`}>
+                      <span className="break-all text-gray-700">{entry.name}</span>
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        {entry.size !== undefined && (
+                          <span className="text-xs text-gray-400">{(entry.size / 1024).toFixed(1)} KB</span>
+                        )}
+                        {isEditMode && (
+                          pendingAfsDeletes.includes(entry.path) ? (
+                            <button
+                              type="button"
+                              onClick={() => setPendingAfsDeletes((prev) => prev.filter((p) => p !== entry.path))}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Undo
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setPendingAfsDeletes((prev) => [...prev, entry.path])}
+                              className="text-xs text-red-600 hover:text-red-800 underline"
+                            >
+                              Remove
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Queued new files */}
+              {selectedAfsFiles.length > 0 && (
+                <div className="mb-3 space-y-1">
+                  <p className="text-xs text-gray-500 text-left mb-1">Queued for upload</p>
+                  {selectedAfsFiles.map((file, i) => (
+                    <div key={i} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1 text-sm">
+                      <span className="break-all text-gray-700">{file.name}</span>
+                      <div className="flex items-center gap-2 ml-2 shrink-0">
+                        <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedAfsFiles((prev) => prev.filter((_, j) => j !== i))}
+                          className="text-xs text-red-600 hover:text-red-800 underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Drop zone / add button */}
+              {isEditMode && (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "0.75rem" }}>
+                  <input
+                    key="afs-file-input"
+                    type="file"
+                    multiple={true}
+                    ref={afsFileInputRef}
+                    onChange={(e) => {
+                      const picked = Array.from(e.target.files ?? []);
+                      if (picked.length > 0) setSelectedAfsFiles((prev) => [...prev, ...picked]);
+                      if (afsFileInputRef.current) afsFileInputRef.current.value = '';
+                    }}
+                    className="hidden"
+                    id="afs-file-upload"
+                  />
+                  <label
+                    htmlFor="afs-file-upload"
+                    className="cursor-pointer"
+                    onClick={() => { if (afsFileInputRef.current) afsFileInputRef.current.multiple = true; }}
+                  >
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Click to add files</p>
+                      <p className="text-xs text-gray-500">Any file type - Optional - Multiple allowed</p>
+                    </div>                    
+                  </label>
+                </div>
+              )}
+
+              {/* View-only empty state */}
+              {!isEditMode && existingAfsEntries.length === 0 && (
+                <p className="text-sm text-gray-400">No AFS files</p>
+              )}
             </div>
           </div>
           <div className="md-size-div">
