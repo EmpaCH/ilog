@@ -44,6 +44,7 @@ import {
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { MessageModal } from "../shared/messageModal";
+import { AfsFileTree } from "../shared/AfsFileTree";
 
 // define whether this will be an Object Creator or Editor component
 const creatorModes = ["create", "edit", "view"] as const;
@@ -77,7 +78,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   let [selectedAfsFiles, setSelectedAfsFiles] = useState<File[]>([]);
   const afsFileInputRef = useRef<HTMLInputElement>(null);
-  let [existingAfsEntries, setExistingAfsEntries] = useState<{ path: string; name: string; size?: number }[]>([]);
+  let [existingAfsEntries, setExistingAfsEntries] = useState<{ path: string; name: string; directory: boolean; size?: number }[]>([]);
   let [pendingAfsDeletes, setPendingAfsDeletes] = useState<string[]>([]);
 
   const [state, dispatch] = useReducer(objectCreatorReducer, objectTemplate);
@@ -303,6 +304,15 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     }
   };
 
+  // Sort files by path depth ascending so that AFS auto-creates parent directories
+  // before we attempt to write into nested subdirectories.
+  const sortedByDepth = (files: File[]) =>
+    [...files].sort((a, b) => {
+      const depthA = (a.webkitRelativePath || a.name).split('/').length;
+      const depthB = (b.webkitRelativePath || b.name).split('/').length;
+      return depthA - depthB;
+    });
+
   const onSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -345,7 +355,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             }
             if (selectedAfsFiles.length > 0 && apiFacade && openbisSample) {
               try {
-                for (const file of selectedAfsFiles) {
+                for (const file of sortedByDepth(selectedAfsFiles)) {
                   await uploadAfsDataSet(apiFacade, { samplePermId: openbisSample.getPermId().getPermId(), experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
                 }
                 setSelectedAfsFiles([]);
@@ -382,7 +392,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             handleMessage("Object updated successfully!", true, true);
             if (selectedAfsFiles.length > 0 && apiFacade && openbisSample) {
               try {
-                for (const file of selectedAfsFiles) {
+                for (const file of sortedByDepth(selectedAfsFiles)) {
                   await uploadAfsDataSet(apiFacade, { samplePermId: openbisSample.getPermId().getPermId(), experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
                 }
                 setSelectedAfsFiles([]);
@@ -448,7 +458,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                   await uploadImageToObject(instrumentPermId, selectedImageFile);
                 }
                 if (selectedAfsFiles.length > 0 && apiFacade) {
-                  for (const file of selectedAfsFiles) {
+                  for (const file of sortedByDepth(selectedAfsFiles)) {
                     await uploadAfsDataSet(apiFacade, { samplePermId: instrumentPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
                   }
                 }
@@ -485,7 +495,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                       await uploadImageToObject(newPermId, selectedImageFile);
                     }
                     if (selectedAfsFiles.length > 0 && apiFacade) {
-                      for (const file of selectedAfsFiles) {
+                      for (const file of sortedByDepth(selectedAfsFiles)) {
                         await uploadAfsDataSet(apiFacade, { samplePermId: newPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file });
                       }
                     }
@@ -755,39 +765,17 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 <p className="text-lg font-semibold text-left">AFS Files</p>
               </div>
 
-              {/* Existing uploaded files */}
+              {/* Existing uploaded files as tree */}
               {existingAfsEntries.length > 0 && (
-                <div className="mb-3 space-y-1">
+                <div className="mb-3">
                   <p className="text-xs text-gray-500 text-left mb-1">Uploaded</p>
-                  {existingAfsEntries.map((entry) => (
-                    <div key={entry.path} className={`flex items-center justify-between rounded px-2 py-1 text-sm ${pendingAfsDeletes.includes(entry.path) ? 'bg-red-50 opacity-60' : 'bg-gray-50'}`}>
-                      <span className="break-all text-gray-700">{entry.name}</span>
-                      <div className="flex items-center gap-2 ml-2 shrink-0">
-                        {entry.size !== undefined && (
-                          <span className="text-xs text-gray-400">{(entry.size / 1024).toFixed(1)} KB</span>
-                        )}
-                        {isEditMode && (
-                          pendingAfsDeletes.includes(entry.path) ? (
-                            <button
-                              type="button"
-                              onClick={() => setPendingAfsDeletes((prev) => prev.filter((p) => p !== entry.path))}
-                              className="text-xs text-blue-600 hover:text-blue-800 underline"
-                            >
-                              Undo
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setPendingAfsDeletes((prev) => [...prev, entry.path])}
-                              className="text-xs text-red-600 hover:text-red-800 underline"
-                            >
-                              Remove
-                            </button>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                  <AfsFileTree
+                    entries={existingAfsEntries}
+                    pendingDeletes={pendingAfsDeletes}
+                    isEditMode={isEditMode}
+                    onDelete={(path) => setPendingAfsDeletes((prev) => [...prev, path])}
+                    onUndoDelete={(path) => setPendingAfsDeletes((prev) => prev.filter((p) => p !== path))}
+                  />
                 </div>
               )}
 
@@ -797,7 +785,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                   <p className="text-xs text-gray-500 text-left mb-1">Queued for upload</p>
                   {selectedAfsFiles.map((file, i) => (
                     <div key={i} className="flex items-center justify-between bg-blue-50 rounded px-2 py-1 text-sm">
-                      <span className="break-all text-gray-700">{file.name}</span>
+                      <span className="break-all text-gray-700">{file.webkitRelativePath || file.name}</span>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
                         <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</span>
                         <button
@@ -815,30 +803,50 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
 
               {/* Drop zone / add button */}
               {isEditMode && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "0.75rem" }}>
-                  <input
-                    key="afs-file-input"
-                    type="file"
-                    multiple={true}
-                    ref={afsFileInputRef}
-                    onChange={(e) => {
-                      const picked = Array.from(e.target.files ?? []);
-                      if (picked.length > 0) setSelectedAfsFiles((prev) => [...prev, ...picked]);
-                      if (afsFileInputRef.current) afsFileInputRef.current.value = '';
-                    }}
-                    className="hidden"
-                    id="afs-file-upload"
-                  />
-                  <label
-                    htmlFor="afs-file-upload"
-                    className="cursor-pointer"
-                    onClick={() => { if (afsFileInputRef.current) afsFileInputRef.current.multiple = true; }}
-                  >
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Click to add files</p>
-                      <p className="text-xs text-gray-500">Any file type - Optional - Multiple allowed</p>
-                    </div>                    
-                  </label>
+                <div className="flex gap-2">
+                  <div className="flex-1 border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "0.75rem" }}>
+                    <input
+                      key="afs-file-input"
+                      type="file"
+                      multiple={true}
+                      ref={afsFileInputRef}
+                      onChange={(e) => {
+                        const picked = Array.from(e.target.files ?? []);
+                        if (picked.length > 0) setSelectedAfsFiles((prev) => [...prev, ...picked]);
+                        if (afsFileInputRef.current) afsFileInputRef.current.value = '';
+                      }}
+                      className="hidden"
+                      id="afs-file-upload"
+                    />
+                    <label htmlFor="afs-file-upload" className="cursor-pointer">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-gray-700">Add files</p>
+                        <p className="text-xs text-gray-500">Any type, multiple allowed</p>
+                      </div>
+                    </label>
+                  </div>
+                  <div className="flex-1 border-2 border-dashed border-blue-200 rounded-lg text-center" style={{ padding: "0.75rem" }}>
+                    <input
+                      key="afs-folder-input"
+                      type="file"
+                      // @ts-ignore – webkitdirectory is not in the TS types but is supported in all modern browsers
+                      webkitdirectory=""
+                      multiple={true}
+                      onChange={(e) => {
+                        const picked = Array.from(e.target.files ?? []);
+                        if (picked.length > 0) setSelectedAfsFiles((prev) => [...prev, ...picked]);
+                        (e.target as HTMLInputElement).value = '';
+                      }}
+                      className="hidden"
+                      id="afs-folder-upload"
+                    />
+                    <label htmlFor="afs-folder-upload" className="cursor-pointer">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-blue-700">Add folder</p>
+                        <p className="text-xs text-blue-400">Uploads with structure intact</p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               )}
 

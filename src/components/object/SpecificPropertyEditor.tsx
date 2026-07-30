@@ -62,7 +62,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
     if (isComponent) {
       // For components: show the attached instrument name/code
       let instrumentPermId: string | undefined;
-      
+
       if (typeof propertyValue === "string" && propertyValue.trim() !== "") {
         instrumentPermId = propertyValue;
       } else if (Array.isArray(propertyValue) && (propertyValue as any[]).length > 0 && typeof (propertyValue as any[])[0] === "string") {
@@ -70,7 +70,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       }
 
       const instrumentQuery = useGetObjectByPermId(instrumentPermId);
-      
+
       let displayValue = "";
       if (instrumentQuery.isLoading) {
         displayValue = "Loading...";
@@ -100,13 +100,11 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
         </div>
       );
     } else {
-      // For instruments: show that it's managed automatically
+      // For instruments: TODO
       return (
         <Input
-          isDisabled
           id={propertyDefinition.code}
           aria-label={propertyDefinition.code}
-          placeholder="Managed automatically through component attachment"
           value=""
           type="text"
         />
@@ -154,6 +152,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       <ComponentListPropertyEditor
         dispatch={onValueChange}
         objectType={propertyDefinition.objectType}
+        objectSubtypes={propertyDefinition.metadata?.["object_subtypes"]}
         multivalued={propertyDefinition.multivalued}
         value={propertyValue}
         currentObjectCode={currentObjectCode}

@@ -5,6 +5,7 @@ import { useGetIlogObjects } from "../../apis/object/useGetIlogObjects";
 import { useDeleteObject } from "../../apis/object/useDeleteObject";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
+import { DeleteReasonModal } from "../shared/deleteReasonModal";
 import { Column, ObjectRow } from "../shared/list.types";
 import {
   objectListLocalReducer,
@@ -31,6 +32,7 @@ export const ObjectList = () => {
   const [state, dispatch] = useReducer(objectListLocalReducer,
     EMPTY_OBJECT_LIST_DEFINITION,
   );
+  const [deleteTarget, setDeleteTarget] = useState<{ permId: any; code: string } | null>(null);
 
   const sessionToken = (apiFacade as any)?._private?.sessionToken as string | undefined;
   const samplePermIds = objects.map(o => o.getPermId().getPermId());
@@ -66,13 +68,24 @@ export const ObjectList = () => {
       }
     }
 
+    setDeleteTarget({ permId, code });
+  };
+
+  const handleDeleteConfirm = async (reason: string) => {
+    if (!deleteTarget) return;
+    const { permId, code } = deleteTarget;
+    setDeleteTarget(null);
     await deleteObjectResult.mutateAsync(
-      permId as openbis.SamplePermId,
+      { sampleId: permId as openbis.SamplePermId, reason },
     ).then(() => {
       handleMessage(`Object '${code}' deleted successfully.`, true, true);
     }).catch((e) => {
       handleMessage(e.message.replace(/\s*\([^)]*\)/g, ""), false, true);
     });
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteTarget(null);
   };
 
   const onEdit = async (
@@ -214,6 +227,12 @@ export const ObjectList = () => {
         message={state.deletionMessage}
         isOpen={state.showMessage}
         isSuccess={state.isSuccess}
+      />
+      <DeleteReasonModal
+        isOpen={deleteTarget !== null}
+        itemName={deleteTarget?.code ?? ""}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
       />
     </>
   );

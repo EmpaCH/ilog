@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Link } from "@tanstack/react-router";
 import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
 import { useGetAllObjects } from "../../apis/object/useGetAllObjects";
 import {
@@ -39,6 +38,7 @@ interface ComponentListPropertyEditorProps {
   logentries?: any[]; // If provided, use as table data and omit preview column
   onlyIlog?: boolean; // If true, only show objects with "ilog:true" in their metadata
   onlyLogbook?: boolean; // If true, only show logbook entries
+  objectSubtypes?: string; // Comma-separated object type codes to filter by when objectType is 'any'
 }
 
 export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorProps> = ({
@@ -53,6 +53,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   logentries,
   onlyIlog,
   onlyLogbook: _onlyLogbook,
+  objectSubtypes,
 }) => {
   const { apiFacade } = useContext(AuthContext);
   // Always use the single cached getAll query — getIlogObjects and getObjectsOfType
@@ -146,7 +147,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     }
     if (getObjectsResult.status === "success") {
       let filteredData = getObjectsResult.data;
-      // Apply onlyIlog filter
+      // Apply only ilog filter
       if (onlyIlog) {
         filteredData = filteredData.filter(
           (s) => s.getType().getMetaData()?.["ilog"] === "true"
@@ -157,6 +158,13 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         filteredData = filteredData.filter(
           (s) => s.getType().getCode() === objectType
         );
+      } else if (objectSubtypes) {
+        const allowedTypes = objectSubtypes.split(",").map((t) => t.trim()).filter(Boolean);
+        if (allowedTypes.length > 0) {
+          filteredData = filteredData.filter(
+            (s) => allowedTypes.includes(s.getType().getCode())
+          );
+        }
       }
       if (storedCurrentObjectCode) {
         filteredData = filteredData.filter((component) => 
@@ -179,7 +187,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       });
       setComponentTypes([...new Set(componentTypes)]);
     }
-  }, [getObjectsResult.status, getObjectsResult.data, objectType, storedCurrentObjectCode, currentInstrumentPermId, logentries]);
+  }, [getObjectsResult.status, getObjectsResult.data, objectType, objectSubtypes, storedCurrentObjectCode, currentInstrumentPermId, logentries]);
 
   // Separately, additively merge a missing selected object into allComponents.
   // Keeping this decoupled prevents an oscillation loop: if we merged and removed
@@ -417,8 +425,8 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       );
     }
     // Default: show preview column
-    const isIlog = component.getType().getMetaData()?.["ilog"] === "true";
-    const componentCode = component.getCode();
+    const isDisabled = disabledPermIds.has(permId);
+    const isSelected = selectedKeys === "all" || (selectedKeys as Set<React.Key>).has(permId);
     return (
       <TableRow key={component.getPermId().getPermId()}>
         <TableCell>
@@ -434,18 +442,16 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           )}
         </TableCell>
         <TableCell>{component.getProperty("NAME")}</TableCell>
-        <TableCell>
-          {isReadOnly && isIlog ? (
-            <Link
-              to="/objects/creator"
-              search={{ mode: "view", objectcode: componentCode } as any}
-              className="text-blue-600 hover:underline"
-            >
-              {componentCode}
-            </Link>
-          ) : componentCode}
-        </TableCell>
         <TableCell>{component.getType().getCode()}</TableCell>
+        <TableCell>
+          {isSelected ? (
+            <span className="text-xs text-brown-600 font-medium">Selected</span>
+          ) : isDisabled ? (
+            <span className="text-xs text-red-500">Already in use</span>
+          ) : (
+            <span className="text-xs text-green-600">Available</span>
+          )}
+        </TableCell>
       </TableRow>
     );
   };
@@ -527,8 +533,8 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       <TableHeader>
         <TableColumn key="preview">Preview</TableColumn>
         <TableColumn key="name" allowsSorting>Name</TableColumn>
-        <TableColumn key="code" allowsSorting>Code</TableColumn>
         <TableColumn key="type" allowsSorting>Type</TableColumn>
+        <TableColumn key="status">Status</TableColumn>
       </TableHeader>
     );
   }
