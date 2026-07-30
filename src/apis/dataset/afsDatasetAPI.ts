@@ -169,7 +169,15 @@ export async function downloadAfsEntry(apiFacade: any, input: DownloadAfsEntryIn
   return { fileName }
 }
 
-/** Upload a file to AFS using write-then-move pattern. */
+/** Sanitize a single path segment so AFS accepts it.
+ * Keeps letters, digits, spaces, dots, hyphens, underscores, and parentheses.
+ * Everything else (en/em dashes, accented chars, etc.) is replaced with '_'.
+ */
+function sanitizeAfsSegment(segment: string): string {
+  return segment.replace(/[^a-zA-Z0-9 .\-_()[\]]/g, '_')
+}
+
+/** Upload a file to AFS using write-then-move pattern, preserving relative folder structure. */
 export async function uploadAfsDataSet(apiFacade: any, input: UploadAfsDataSetInput): Promise<UploadAfsDataSetResult> {
   if (!input.file) {
     throw new Error('Please choose a file to upload.')
@@ -180,9 +188,16 @@ export async function uploadAfsDataSet(apiFacade: any, input: UploadAfsDataSetIn
     throw new Error('AFS upload requires an Experiment, Sample, or explicit AFS owner.')
   }
 
+  // Preserve relative path for folder uploads; fall back to flat file name.
+  // Sanitize each segment to strip characters the AFS server rejects (e.g. en/em dashes).
   const relativeName = input.file.webkitRelativePath || input.file.name
-  const afsPath = '/' + generateUploadId('upload') + '-' + String(relativeName).split('/').filter(Boolean).join('_')
-  const partPath = afsPath + '.part'
+  const cleanRelative = relativeName
+    .split('/')
+    .filter(Boolean)
+    .map(sanitizeAfsSegment)
+    .join('/')
+  const afsPath = '/' + cleanRelative
+  const partPath = afsPath + '.__part__' + generateUploadId('u')
   const fileBytes = new Uint8Array(await input.file.arrayBuffer())
 
   await writeAfsFile(apiFacade, {

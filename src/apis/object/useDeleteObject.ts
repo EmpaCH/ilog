@@ -16,12 +16,17 @@ export const useDeleteObject = () => {
 
   return useMutation({
     mutationKey: [DELETE_OBJECT_MUTATION_KEY],
-    mutationFn: async (
-      sampleId: openbis.SamplePermId,
-    ) => {
+    mutationFn: async ({
+      sampleId,
+      reason,
+    }: {
+      sampleId: openbis.SamplePermId;
+      reason: string;
+    }) => {
       return deleteObject(
         apiFacade,
         sampleId,
+        reason,
       );
     },
     onSuccess: () => {
