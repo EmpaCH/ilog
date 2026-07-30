@@ -194,8 +194,9 @@ export async function updateObject(
 export async function deleteObject(
   api: openbis.OpenBISJavaScriptFacade,
   sampleId: openbis.SamplePermId,
+  reason: string,
 ): Promise<void> {
   const sdo = new openbis.SampleDeletionOptions();
-  sdo.setReason('Object no longer needed.');
+  sdo.setReason(reason);
   await api.deleteSamples([sampleId], sdo);
 }

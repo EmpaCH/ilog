@@ -124,6 +124,7 @@ export const Trashcan = () => {
         <TableCell>{item.getIdentifier().split("/").slice(-1)[0]}</TableCell>
         <TableCell>{getItemCategory(item)}</TableCell>
         <TableCell>{item.getEntityTypeCode()}</TableCell>
+        <TableCell>{deletion.getReason()}</TableCell>
         <TableCell style={{ width: "155px"}}>
           <Button
             type="button"
@@ -174,6 +175,7 @@ export const Trashcan = () => {
           <TableColumn>Name</TableColumn>
           <TableColumn>Category</TableColumn>
           <TableColumn>Type</TableColumn>
+          <TableColumn>Reason</TableColumn>
           <TableColumn> </TableColumn>
         </TableHeader>
         <TableBody emptyContent={"Trashcan is empty"}>
