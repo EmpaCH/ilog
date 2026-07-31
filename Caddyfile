@@ -42,6 +42,20 @@
         }
     }
 
+    @afs_server {
+        path /afs-server/*
+        header_regexp instance Cookie "openbis-instance=([^;]+)"
+    }
+    handle @afs_server {
+        reverse_proxy {re.instance.1}:443 {
+            transport http {
+                tls
+                tls_insecure_skip_verify
+            }
+            header_up Host {re.instance.1}
+        }
+    }
+
     handle {
         header {
             # Prevent XSS: the main attack vector for localStorage token theft.
