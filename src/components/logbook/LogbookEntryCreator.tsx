@@ -372,6 +372,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             value={parentObjectPermId ? [parentObjectPermId] : undefined}
             isReadOnly={mode === "view" && !isEditMode}
             currentObjectCode={logbookEntryCode}
+            usedForLogentry={true}
           />
         </div>
         <div className="mb-4">

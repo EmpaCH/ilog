@@ -39,6 +39,7 @@ interface ComponentListPropertyEditorProps {
   onlyIlog?: boolean; // If true, only show objects with "ilog:true" in their metadata
   onlyLogbook?: boolean; // If true, only show logbook entries
   objectSubtypes?: string; // Comma-separated object type codes to filter by when objectType is 'any'
+  usedForLogentry?: boolean; // If true, the component is being used in the logbook entry creator
 }
 
 export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorProps> = ({
@@ -54,6 +55,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   onlyIlog,
   onlyLogbook: _onlyLogbook,
   objectSubtypes,
+  usedForLogentry,
 }) => {
   const { apiFacade } = useContext(AuthContext);
   // Always use the single cached getAll query — getIlogObjects and getObjectsOfType
@@ -325,7 +327,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   // PermIds of components already assigned to a different instrument.
   // These rows are shown but not selectable in edit mode.
   const disabledPermIds = useMemo(() => {
-    if (isReadOnly) return new Set<string>();
+    if (isReadOnly || usedForLogentry) return new Set<string>();
     return new Set(
       allComponents
         .filter((c) => {
@@ -337,7 +339,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         })
         .map((c) => c.getPermId().getPermId())
     );
-  }, [allComponents, currentInstrumentPermId, isReadOnly]);
+  }, [allComponents, currentInstrumentPermId, isReadOnly, usedForLogentry]);
 
   const sortComponents = (descriptor: SortDescriptor) => {
     const sortedComponents = [...components].sort((a, b) => {
@@ -427,20 +429,32 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     // Default: show preview column
     const isDisabled = disabledPermIds.has(permId);
     const isSelected = selectedKeys === "all" || (selectedKeys as Set<React.Key>).has(permId);
+    const previewCell = (
+      <TableCell>
+        {previewImages[permId] ? (
+          <img
+            src={previewImages[permId] as string}
+            alt="Preview"
+            className="max-w-[70px] max-h-[70px] rounded shadow border"
+            style={{ objectFit: "cover" }}
+          />
+        ) : (
+          <span className="text-gray-400">No image</span>
+        )}
+      </TableCell>
+    );
+    if (usedForLogentry) {
+      return (
+        <TableRow key={component.getPermId().getPermId()}>
+          {previewCell}
+          <TableCell>{component.getProperty("NAME")}</TableCell>
+          <TableCell>{component.getType().getCode()}</TableCell>
+        </TableRow>
+      );
+    }
     return (
       <TableRow key={component.getPermId().getPermId()}>
-        <TableCell>
-          {previewImages[permId] ? (
-            <img
-              src={previewImages[permId] as string}
-              alt="Preview"
-              className="max-w-[70px] max-h-[70px] rounded shadow border"
-              style={{ objectFit: "cover" }}
-            />
-          ) : (
-            <span className="text-gray-400">No image</span>
-          )}
-        </TableCell>
+        {previewCell}
         <TableCell>{component.getProperty("NAME")}</TableCell>
         <TableCell>{component.getType().getCode()}</TableCell>
         <TableCell>
@@ -528,6 +542,15 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         <TableColumn key="validFrom" allowsSorting>Valid From</TableColumn>
         <TableColumn key="responsible" allowsSorting>Responsible</TableColumn>
       </TableHeader>
+    }
+    if (usedForLogentry) {
+      return (
+        <TableHeader>
+          <TableColumn key="preview">Preview</TableColumn>
+          <TableColumn key="name" allowsSorting>Name</TableColumn>
+          <TableColumn key="type" allowsSorting>Type</TableColumn>
+        </TableHeader>
+      );
     }
     return (
       <TableHeader>
