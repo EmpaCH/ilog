@@ -152,7 +152,9 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       // Apply only ilog filter
       if (onlyIlog) {
         filteredData = filteredData.filter(
-          (s) => s.getType().getMetaData()?.["ilog"] === "true"
+          // (s) => s.getType().getMetaData()?.["ilog"] === "true"
+          (s) => s.getType().getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION"
+            || s.getType().getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION"
         );
       }
       // Apply objectType filter

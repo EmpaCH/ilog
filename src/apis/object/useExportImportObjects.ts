@@ -230,7 +230,7 @@ export const useExportImportObjects = ({
       creation.setExperimentId(experimentPermId);
     }
     if (projectPermId) {
-      creation.setProperty("ILOG", true);
+      // creation.setProperty("ILOG", true);
       creation.setProjectId(projectPermId);
     }
 

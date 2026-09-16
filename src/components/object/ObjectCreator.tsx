@@ -153,18 +153,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   };
 
   const objectTypes = useGetIlogObjectTypes();
-  // const objectTypes = useQuery({
-  //   queryKey: ["getSampleTypes", localState.searchTerm, state.collection],
-  //   queryFn: async () => {
-  //     const types = await getObjectTypes(apiFacade, localState.searchTerm);
-  //     return types.map(type => ({
-  //       key: type.getCode(),
-  //       code: type.getCode(),
-  //       sampleType: type,
-  //     }));
-  //   },
-  //   staleTime: 5000,
-  // });
 
   const objectTypesFilteredByCollection = useMemo(() => {
     if (!objectTypes.data || !state.collection) return [];
