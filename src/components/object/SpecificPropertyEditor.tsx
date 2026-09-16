@@ -15,6 +15,7 @@ import {
 } from "@internationalized/date";
 import {
   CUSTOM_WIDGET_KEY,
+  OBJECT_SUBTYPES_KEY,
   LocalPropertyTypeVariants,
 } from "../../apis/propertyType/commonPropertyType";
 import { ImagePropertyEditor } from "../widgets/ImagePropertyEditor";
@@ -152,7 +153,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       <ComponentListPropertyEditor
         dispatch={onValueChange}
         objectType={propertyDefinition.objectType}
-        objectSubtypes={propertyDefinition.metadata?.["object_subtypes"]}
+        objectSubtypes={propertyDefinition.metadata?.[OBJECT_SUBTYPES_KEY]}
         multivalued={propertyDefinition.multivalued}
         value={propertyValue}
         currentObjectCode={currentObjectCode}
