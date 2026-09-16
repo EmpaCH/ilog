@@ -2,12 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { ALL_PROPERTY_TYPES_QUERY_PREFIX, useGetPropertyTypes } from "../propertyType/useGetPropertyTypes";
-import { ILOG_BASE_TYPES_PROPERTY } from "./types";
-import { useSearchPropertyType } from "../propertyType/useSearchPropertyType";
 import openbis from "@openbis/openbis.esm";
-import { LocalPropertyType, PropertyType, convertPropertyTypeToCreation } from "./commonPropertyType";
-import { convertDataTypeToOpenBISDataType } from "../type/commonType";
-
+import { LocalPropertyType, convertPropertyTypeToCreation } from "./commonPropertyType";
 
 
 export const useCreatePropertyType = (type: LocalPropertyType) => {

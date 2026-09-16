@@ -1,5 +1,6 @@
 import {
   CUSTOM_WIDGET_KEY,
+  OBJECT_SUBTYPES_KEY,
   LocalPropertyTypeVariants,
 } from "../../apis/propertyType/commonPropertyType";
 import { DataType } from "../../apis/type/commonType";
@@ -8,6 +9,7 @@ export type PropertyTypeEditorActions =
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_DATA_TYPE"; payload: DataType }
   | { type: "SET_OBJECT_TYPE"; payload: string }
+  | { type: "SET_OBJECT_SUBTYPES"; payload: string[] }
   | { type: "SET_VOCABULARY"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
   | { type: "SET_LABEL"; payload: string }
@@ -27,6 +29,15 @@ export const propertyTypeEditorReducer = (
       return { ...state, dataType: action.payload };
     case "SET_OBJECT_TYPE":
       return { ...state, objectType: action.payload, dataType: "OBJECT" };
+    case "SET_OBJECT_SUBTYPES": {
+      const metadata = { ...(state.metadata || {}) };
+      if (action.payload.length > 0) {
+        metadata[OBJECT_SUBTYPES_KEY] = action.payload.join(",");
+      } else {
+        delete metadata[OBJECT_SUBTYPES_KEY];
+      }
+      return { ...state, metadata };
+    }
     case "SET_VOCABULARY":
       return {
         ...state,
@@ -42,7 +53,10 @@ export const propertyTypeEditorReducer = (
     case "SET_WIDGET":
       return {
         ...state,
-        metadata: { [CUSTOM_WIDGET_KEY]: action.payload.widget || "" },
+        metadata: {
+          ...(state.metadata || {}),
+          [CUSTOM_WIDGET_KEY]: action.payload.widget || "",
+        },
       };
     default:
       return state;

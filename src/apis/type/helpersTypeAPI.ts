@@ -222,7 +222,7 @@ export function convertObjectTypeDefinitionToOperations(
     sampleTypeCreation.setDescription(objectDefinition.description);
     sampleTypeCreation.setListable(true);
     let metadata: Record<string, string> = {
-      ilog: "true",
+      // ilog: "true",
       collectionType: objectDefinition.collectionType,
     }
     if (objectDefinition.baseType) {

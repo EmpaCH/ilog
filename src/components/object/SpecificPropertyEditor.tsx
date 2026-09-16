@@ -15,14 +15,51 @@ import {
 } from "@internationalized/date";
 import {
   CUSTOM_WIDGET_KEY,
+  OBJECT_SUBTYPES_KEY,
   LocalPropertyTypeVariants,
 } from "../../apis/propertyType/commonPropertyType";
 import { ImagePropertyEditor } from "../widgets/ImagePropertyEditor";
 import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
 import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
+import { useGetObject } from "../../apis/object/useGetObject";
+import { useGetAllObjects } from "../../apis/object/useGetAllObjects";
+import { roomObjectTypeCode } from "../../apis/shared/environment";
 import { Editor } from "@monaco-editor/react";
 import { ComponentListPropertyEditor } from "./ComponentListPropertyEditor";
 import { RichTextEditor } from "../shared/RichTextEditor";
+
+// Lets the user pick a single Room object (openBIS type ROOM) as a LOCATION value.
+// Rooms aren't part of iLog's Instrument/Component collections, so they're found
+// the same way ComponentListPropertyEditor finds every object: an instance-wide search.
+const RoomLocationPicker: React.FC<{
+  propertyCode: string;
+  selectedPermId?: string;
+  onSelectionChange: (permId: string) => void;
+  isReadOnly?: boolean;
+}> = ({ propertyCode, selectedPermId, onSelectionChange, isReadOnly }) => {
+  const allObjectsResult = useGetAllObjects();
+  const rooms = (allObjectsResult.data ?? []).filter(
+    (o) => o.getType().getCode() === roomObjectTypeCode
+  );
+
+  return (
+    <Autocomplete
+      aria-label={propertyCode}
+      placeholder="Select a room..."
+      isDisabled={isReadOnly}
+      isLoading={allObjectsResult.isLoading}
+      selectedKey={selectedPermId || null}
+      defaultItems={rooms}
+      onSelectionChange={(key) => onSelectionChange(key ? String(key) : "")}
+    >
+      {(room) => (
+        <AutocompleteItem key={room.getPermId().getPermId()}>
+          {room.getProperty("NAME") || room.getCode()}
+        </AutocompleteItem>
+      )}
+    </Autocomplete>
+  );
+};
 
 interface SpecificPropertyEditorProps {
   propertyDefinition: LocalPropertyTypeVariants;
@@ -57,59 +94,87 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   isComponent,
   isReadOnly,
 }) => {
-  // For LOCATION property - always show disabled field
   if (propertyCode === "LOCATION") {
     if (isComponent) {
-      // For components: show the attached instrument name/code
-      let instrumentPermId: string | undefined;
+      let linkedPermId: string | undefined;
 
       if (typeof propertyValue === "string" && propertyValue.trim() !== "") {
-        instrumentPermId = propertyValue;
+        linkedPermId = propertyValue;
       } else if (Array.isArray(propertyValue) && (propertyValue as any[]).length > 0 && typeof (propertyValue as any[])[0] === "string") {
-        instrumentPermId = (propertyValue as any[])[0];
+        linkedPermId = (propertyValue as any[])[0];
       }
 
-      const instrumentQuery = useGetObjectByPermId(instrumentPermId);
+      // LOCATION should always hold a perm ID, but some existing components were
+      // written with the instrument's CODE instead (a since-fixed bug in the
+      // instrument save flow) - fall back to a code lookup so those still
+      // resolve correctly here without requiring the instrument to be re-saved.
+      const permIdPattern = /^\d+-\d+$/;
+      const looksLikePermId = !!linkedPermId && permIdPattern.test(linkedPermId);
 
-      let displayValue = "";
-      if (instrumentQuery.isLoading) {
-        displayValue = "Loading...";
-      } else if (instrumentQuery.data) {
-        displayValue = instrumentQuery.data.getProperty("NAME") || instrumentQuery.data.getCode() || "";
+      const linkedByPermIdQuery = useGetObjectByPermId(looksLikePermId ? linkedPermId : undefined);
+      const linkedByCodeQuery = useGetObject(!looksLikePermId && linkedPermId ? linkedPermId : "");
+
+      const linkedData = looksLikePermId ? linkedByPermIdQuery.data ?? undefined : linkedByCodeQuery.data?.[0];
+      const linkedIsLoading = looksLikePermId ? linkedByPermIdQuery.isLoading : linkedByCodeQuery.isLoading;
+      const isRoom = linkedData?.getType().getCode() === roomObjectTypeCode;
+
+      // Still resolving what the current value points to - avoid flashing the
+      // wrong branch (instrument link vs. room picker) while that's unknown.
+      if (linkedPermId && linkedIsLoading) {
+        return (
+          <Input isDisabled id={propertyDefinition.code} aria-label={propertyDefinition.code} value="Loading..." type="text" />
+        );
       }
 
+      if (linkedPermId && !isRoom) {
+        // Attached to an instrument (via the instrument's own component-selection
+        // UI) - shown read-only here; detach it from that side, not this field.
+        const displayValue = linkedData?.getProperty("NAME") || linkedData?.getCode() || "";
+        return (
+          <div className="flex items-center gap-2">
+            <Input
+              isDisabled
+              id={propertyDefinition.code}
+              aria-label={propertyDefinition.code}
+              placeholder="Not attached to any instrument"
+              value={displayValue}
+              type="text"
+            />
+            {linkedData && (
+              <Link
+                to="/objects/creator"
+                search={{ mode: "view", objectcode: linkedData.getCode() } as any}
+                className="text-sm text-blue-600 hover:underline whitespace-nowrap"
+              >
+                Open
+              </Link>
+            )}
+          </div>
+        );
+      }
+
+      // Not attached to any instrument - the component's own location can be set
+      // directly to a room (never to an instrument, which only happens via the
+      // instrument's own component-selection UI).
       return (
-        <div className="flex items-center gap-2">
-          <Input
-            isDisabled
-            id={propertyDefinition.code}
-            aria-label={propertyDefinition.code}
-            placeholder="Not attached to any instrument"
-            value={displayValue}
-            type="text"
-          />
-          {instrumentQuery.data && (
-            <Link
-              to="/objects/creator"
-              search={{ mode: "view", objectcode: instrumentQuery.data.getCode() } as any}
-              className="text-sm text-blue-600 hover:underline whitespace-nowrap"
-            >
-              Open
-            </Link>
-          )}
-        </div>
-      );
-    } else {
-      // For instruments: TODO
-      return (
-        <Input
-          id={propertyDefinition.code}
-          aria-label={propertyDefinition.code}
-          value=""
-          type="text"
+        <RoomLocationPicker
+          propertyCode={propertyDefinition.code}
+          selectedPermId={isRoom ? linkedPermId : undefined}
+          onSelectionChange={onValueChange}
+          isReadOnly={isReadOnly}
         />
       );
     }
+
+    // Instruments: location is always a room.
+    return (
+      <RoomLocationPicker
+        propertyCode={propertyDefinition.code}
+        selectedPermId={typeof propertyValue === "string" && propertyValue.trim() !== "" ? propertyValue : undefined}
+        onSelectionChange={onValueChange}
+        isReadOnly={isReadOnly}
+      />
+    );
   }
 
   if (
@@ -152,7 +217,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       <ComponentListPropertyEditor
         dispatch={onValueChange}
         objectType={propertyDefinition.objectType}
-        objectSubtypes={propertyDefinition.metadata?.["object_subtypes"]}
+        objectSubtypes={propertyDefinition.metadata?.[OBJECT_SUBTYPES_KEY]}
         multivalued={propertyDefinition.multivalued}
         value={propertyValue}
         currentObjectCode={currentObjectCode}

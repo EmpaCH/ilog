@@ -11,7 +11,6 @@ import {
 } from "@heroui/react";
 import SearchIcon from "@mui/icons-material/Search";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
-import { useImportObjectTypeToIlog } from "../../apis/type/useImportObjectTypeToIlog";
 import { useRemoveObjectTypeFromIlog } from "../../apis/type/useRemoveObjectTypeFromIlog";
 import { useSetObjectTypeCollectionType } from "../../apis/type/useSetObjectTypeCollectionType";
 import { componentCollectionID, instrumentCollectionID } from "../../apis/shared/environment";
@@ -20,7 +19,7 @@ const generalListFilter = "general";
 const initialFilterState: Record<string, string> = { [generalListFilter]: "" };
 
 const isImportedToIlog = (type: any): boolean =>
-  type.getMetaData()?.["ilog"] === "true";
+  type.getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION" || type.getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION";
 
 const getIlogType = (type: any): string | undefined => {
  const base = type.getMetaData()?.["collectionType"];
@@ -36,7 +35,6 @@ const getIlogType = (type: any): string | undefined => {
 
 export const ImportTypesToIlog: React.FC = () => {
   const allObjectTypes = useGetAllObjectTypes();
-  const importMutation = useImportObjectTypeToIlog();
   const removeMutation = useRemoveObjectTypeFromIlog();
   const collectionTypeMutation = useSetObjectTypeCollectionType();
   const [selectedKeys, setSelectedKeys] = useState<Set<string> | "all">(new Set());
@@ -69,7 +67,6 @@ export const ImportTypesToIlog: React.FC = () => {
       .map((t) => t.getCode())
   );
 
-  const canImport = selectedTypes.length > 0 && selectedTypes.every((t) => !isImportedToIlog(t));
   const canRemove = selectedTypes.length > 0 && selectedTypes.every((t) => isImportedToIlog(t));
   const canSetInstrument = selectedTypes.length > 0;
   const canSetComponent = selectedTypes.length > 0;
@@ -129,22 +126,6 @@ export const ImportTypesToIlog: React.FC = () => {
                 />
                 <div className="flex justify-end gap-2">
                   <Button
-                    color="primary"
-                    isDisabled={!canImport}
-                    isLoading={importMutation.isPending}
-                    onPress={() => importMutation.mutate(selectedCodes)}
-                  >
-                    Import
-                  </Button>
-                  <Button
-                    color="danger"
-                    isDisabled={!canRemove}
-                    isLoading={removeMutation.isPending}
-                    onPress={() => removeMutation.mutate(selectedCodes)}
-                  >
-                    Remove
-                  </Button>
-                  <Button
                     color="secondary"
                     isDisabled={!canSetInstrument}
                     isLoading={collectionTypeMutation.isPending}
@@ -159,6 +140,14 @@ export const ImportTypesToIlog: React.FC = () => {
                     onPress={() => collectionTypeMutation.mutate({ codes: selectedCodes, collectionType: componentCollectionID })}
                   >
                     Set as Component
+                  </Button>
+                  <Button
+                    color="danger"
+                    isDisabled={!canRemove}
+                    isLoading={removeMutation.isPending}
+                    onPress={() => removeMutation.mutate(selectedCodes)}
+                  >
+                    Remove
                   </Button>
                 </div>
               </div>
@@ -179,25 +168,6 @@ export const ImportTypesToIlog: React.FC = () => {
                   <div className="flex gap-1 min-h-[32px] items-center">
                   {disabledKeys.has(type.getCode()) ? null : (
                     <>
-                      {isImportedToIlog(type) ? (
-                        <Button
-                          size="sm"
-                          color="danger"
-                          variant="light"
-                          onPress={() => removeMutation.mutate([type.getCode()])}
-                        >
-                          Remove
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          color="primary"
-                          variant="light"
-                          onPress={() => importMutation.mutate([type.getCode()])}
-                        >
-                          Import
-                        </Button>
-                      )}
                       <Button
                         size="sm"
                         color="secondary"
@@ -214,6 +184,16 @@ export const ImportTypesToIlog: React.FC = () => {
                       >
                         Set as Component
                       </Button>
+                      {isImportedToIlog(type) && 
+                        <Button
+                          size="sm"
+                          color="danger"
+                          variant="light"
+                          onPress={() => removeMutation.mutate([type.getCode()])}
+                        >
+                          Remove
+                        </Button>
+                      }
                     </>
                   )}
                   </div>

@@ -69,7 +69,9 @@ export async function getIlogObjectTypes(
   // return result.getObjects();
 
   const allTypes = await getAllObjectTypes(api, search);
-  return allTypes.filter((type) => type.getMetaData()?.["ilog"] === "true");
+  return allTypes.filter((type) => type.getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION"
+    || type.getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION"
+  );
 }
 
 /**
@@ -199,29 +201,29 @@ export async function deleteObjectType(
  * @param api - The OpenBIS JavaScript facade instance.
  * @param permId - The ID of the type to update.
  */
-export async function importObjectTypeToIlog(
-  api: openbis.OpenBISJavaScriptFacade,
-  permId: string,
-): Promise<void> {
-  const sc = new openbis.SampleTypeSearchCriteria();
-  sc.withCode().thatEquals(permId);
-  const fo = createObjectTypeFetchOptions();
-  const result = await api.searchSampleTypes(sc, fo);
-  const sampleType = result.getObjects()[0];
-  if (!sampleType) return;
+// export async function importObjectTypeToIlog(
+//   api: openbis.OpenBISJavaScriptFacade,
+//   permId: string,
+// ): Promise<void> {
+//   const sc = new openbis.SampleTypeSearchCriteria();
+//   sc.withCode().thatEquals(permId);
+//   const fo = createObjectTypeFetchOptions();
+//   const result = await api.searchSampleTypes(sc, fo);
+//   const sampleType = result.getObjects()[0];
+//   if (!sampleType) return;
 
-  const existingMetadata: Record<string, string> = sampleType.getMetaData() ?? {};
-  const update = new openbis.SampleTypeUpdate();
-  update.setTypeId(sampleType.getPermId());
-  update.getMetaData().set([{ ...existingMetadata, ilog: "true" }]);
+//   const existingMetadata: Record<string, string> = sampleType.getMetaData() ?? {};
+//   const update = new openbis.SampleTypeUpdate();
+//   update.setTypeId(sampleType.getPermId());
+//   update.getMetaData().set([{ ...existingMetadata, ilog: "true" }]);
 
-  const props = new openbis.SynchronousOperationExecutionOptions();
-  props.setExecuteInOrder(true);
-  await api.executeOperations([new openbis.UpdateSampleTypesOperation([update])], props);
-}
+//   const props = new openbis.SynchronousOperationExecutionOptions();
+//   props.setExecuteInOrder(true);
+//   await api.executeOperations([new openbis.UpdateSampleTypesOperation([update])], props);
+// }
 
 /**
- * Remove an existing object type from iLog by removing the ilog key from its metadata.
+ * Remove an existing object type from iLog by removing the collectionType key from its metadata.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param permId - The ID of the type to update.
  */
@@ -237,7 +239,6 @@ export async function removeObjectTypeFromIlog(
   if (!sampleType) return;
 
   const existingMetadata: Record<string, string> = { ...(sampleType.getMetaData() ?? {}) };
-  delete existingMetadata["ilog"];
   delete existingMetadata["collectionType"];
 
   const update = new openbis.SampleTypeUpdate();

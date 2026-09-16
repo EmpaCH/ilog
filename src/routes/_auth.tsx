@@ -8,6 +8,7 @@ import {
 import { useContext, useEffect } from "react";
 import { AuthContext } from "../context/auth/authContext";
 import { Button } from "@heroui/react";
+import { useGetCurrentUser } from "../apis/user/useGetCurrentUser";
 
 export const Route = createFileRoute("/_auth")({
   beforeLoad: ({ context, location }) => {
@@ -26,7 +27,12 @@ export const Route = createFileRoute("/_auth")({
 
 function AuthLayout() {
   const navigate = useNavigate();
-  const { logout, isAuthenticated } = useContext(AuthContext);
+  const { logout, isAuthenticated, user } = useContext(AuthContext);
+  const { data: currentUser } = useGetCurrentUser();
+  const person = currentUser?.[0];
+  const displayName = person
+    ? `${person.getFirstName()} ${person.getLastName()}`.trim() || person.getUserId()
+    : user;
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -50,16 +56,12 @@ function AuthLayout() {
       <div className="main-menu">
         <div className="main-menu-container">
           <div className="main-menu-buttons">
-            <Link to="/home" className="[&.active]:font-bold">
-              Home
+            <Link to="/objects" className="[&.active]:font-bold">
+              Objects
             </Link>
             {" | "}
             <Link to="/types" className="[&.active]:font-bold">
               Types
-            </Link>
-            {" | "}
-            <Link to="/objects" className="[&.active]:font-bold">
-              Objects
             </Link>
             {" | "}
             <Link to="/logbook" className="[&.active]:font-bold">
@@ -69,10 +71,15 @@ function AuthLayout() {
             <Link to="/trashcan" className="[&.active]:font-bold">
               Trashcan
             </Link>
+            {" | "}
+            <Link to="/import" className="[&.active]:font-bold">
+              Import
+            </Link>
           </div>
         </div>
         <div className="main-menu-container">
           <div className="logout-button">
+            {displayName && <span className="current-user-name">{displayName}</span>}
             <Button
               type="button"
               color="primary"

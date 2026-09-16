@@ -3,6 +3,7 @@ import { DataType, ALL_DATA_TYPES } from "../../apis/type/commonType";
 import {
   CUSTOM_WIDGETS,
   CUSTOM_WIDGET_KEY,
+  OBJECT_SUBTYPES_KEY,
   LocalPropertyTypeVariants,
   PropertyType,
 } from "../../apis/propertyType/commonPropertyType";
@@ -15,6 +16,7 @@ import {
   Checkbox,
   Autocomplete,
   AutocompleteItem,
+  Selection,
 } from "@heroui/react";
 import { propertyTypeEditorReducer } from "./PropertyTypeActions";
 import { useGetVocabularies } from "../../apis/vocabulary/useGetVocabularies";
@@ -86,6 +88,42 @@ const ObjectTypeAutoComplete: React.FC<ObjectTypeAutoCompleteProps> = ({
         );
       })}
     </Autocomplete>
+  );
+};
+
+type ObjectSubtypesSelectProps = {
+  objectTypes: string[];
+  selectedCodes: string[];
+  onSelectionChange: (codes: string[]) => void;
+};
+
+// Lets the user pick several object types to restrict a multivalued OBJECT
+// property to, working around openBIS only supporting "All" or a single
+// specific sample type for the property type itself.
+const ObjectSubtypesSelect: React.FC<ObjectSubtypesSelectProps> = ({
+  objectTypes,
+  selectedCodes,
+  onSelectionChange,
+}) => {
+  return (
+    <Select
+      label="Restrict 'All' to these object types (optional)"
+      description="Leave empty to allow every object type."
+      placeholder="All object types allowed"
+      selectionMode="multiple"
+      selectedKeys={new Set(selectedCodes)}
+      onSelectionChange={(selection: Selection) => {
+        if (selection === "all") {
+          onSelectionChange(objectTypes);
+        } else {
+          onSelectionChange(Array.from(selection).map(String));
+        }
+      }}
+    >
+      {objectTypes.map((objectType) => (
+        <SelectItem key={objectType}>{objectType}</SelectItem>
+      ))}
+    </Select>
   );
 };
 
@@ -212,6 +250,28 @@ export const PropertyEditor = ({
                 selectedKey={(state as any).objectType || (state as any).sampleType}
                 onSelectionChange={(value) =>
                   dispatch({ type: "SET_OBJECT_TYPE", payload: value })
+                }
+              />
+            </div>
+          ) : null}
+          {state.dataType === "OBJECT" &&
+          state.multivalued &&
+          (!(state as any).objectType || (state as any).objectType === "any") ? (
+            <div className="form-field">
+              <ObjectSubtypesSelect
+                objectTypes={
+                  allObjectTypes.data?.map((type) => type.getCode()) ?? []
+                }
+                selectedCodes={
+                  state.metadata?.[OBJECT_SUBTYPES_KEY]
+                    ? state.metadata[OBJECT_SUBTYPES_KEY]
+                        .split(",")
+                        .map((code) => code.trim())
+                        .filter(Boolean)
+                    : []
+                }
+                onSelectionChange={(codes) =>
+                  dispatch({ type: "SET_OBJECT_SUBTYPES", payload: codes })
                 }
               />
             </div>
