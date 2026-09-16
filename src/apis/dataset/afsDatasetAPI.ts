@@ -189,8 +189,9 @@ export async function uploadAfsDataSet(apiFacade: any, input: UploadAfsDataSetIn
   }
 
   // Preserve relative path for folder uploads; fall back to flat file name.
+  // An explicit targetPath (e.g. from a user-selected destination folder) takes priority.
   // Sanitize each segment to strip characters the AFS server rejects (e.g. en/em dashes).
-  const relativeName = input.file.webkitRelativePath || input.file.name
+  const relativeName = input.targetPath || input.file.webkitRelativePath || input.file.name
   const cleanRelative = relativeName
     .split('/')
     .filter(Boolean)

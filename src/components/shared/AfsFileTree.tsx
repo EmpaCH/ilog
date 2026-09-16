@@ -69,6 +69,8 @@ interface TreeNodeRowProps {
   isEditMode: boolean;
   onDelete: (path: string) => void;
   onUndoDelete: (path: string) => void;
+  selectedTargetDir?: string;
+  onSelectTargetDir?: (path: string) => void;
 }
 
 const TreeNodeRow: React.FC<TreeNodeRowProps> = ({
@@ -78,6 +80,8 @@ const TreeNodeRow: React.FC<TreeNodeRowProps> = ({
   isEditMode,
   onDelete,
   onUndoDelete,
+  selectedTargetDir,
+  onSelectTargetDir,
 }) => {
   const [open, setOpen] = useState(false);
   const isPendingDelete = pendingDeletes.includes(node.path);
@@ -86,11 +90,13 @@ const TreeNodeRow: React.FC<TreeNodeRowProps> = ({
     const allFilePaths = collectFilePaths(node);
     const allPending = allFilePaths.length > 0 && allFilePaths.every((p) => pendingDeletes.includes(p));
     const somePending = allFilePaths.some((p) => pendingDeletes.includes(p));
+    const relDirPath = node.path.replace(/^\//, '');
+    const isSelectedTarget = onSelectTargetDir !== undefined && selectedTargetDir === relDirPath;
 
     return (
       <div className={allPending ? 'opacity-60' : undefined}>
         <div
-          className={`flex items-center justify-between px-2 py-1 rounded text-sm select-none ${allPending ? 'bg-red-50' : 'hover:bg-gray-100'}`}
+          className={`flex items-center justify-between px-2 py-1 rounded text-sm select-none ${isSelectedTarget ? 'bg-blue-50' : allPending ? 'bg-red-50' : 'hover:bg-gray-100'}`}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           <div className="flex items-center gap-1 min-w-0 cursor-pointer" onClick={() => setOpen((o) => !o)}>
@@ -98,27 +104,36 @@ const TreeNodeRow: React.FC<TreeNodeRowProps> = ({
             <span className="text-gray-500 mr-1">📁</span>
             <span className="font-medium text-gray-700">{node.name}</span>
           </div>
-          {isEditMode && (
-            <div className="flex items-center ml-2 shrink-0">
-            {allPending ? (
+          <div className="flex items-center gap-2 ml-2 shrink-0">
+            {onSelectTargetDir && (
               <button
                 type="button"
-                onClick={() => allFilePaths.forEach((p) => onUndoDelete(p))}
-                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                onClick={() => onSelectTargetDir(relDirPath)}
+                className={`text-xs underline ${isSelectedTarget ? 'text-green-700 font-semibold' : 'text-blue-600 hover:text-blue-800'}`}
               >
-                Undo
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => allFilePaths.forEach((p) => onDelete(p))}
-                className={`text-xs underline ${somePending ? 'text-orange-500 hover:text-orange-700' : 'text-red-600 hover:text-red-800'}`}
-              >
-                Remove all
+                {isSelectedTarget ? '✓ Target' : 'Add here'}
               </button>
             )}
-            </div>
-          )}
+            {isEditMode && (
+              allPending ? (
+                <button
+                  type="button"
+                  onClick={() => allFilePaths.forEach((p) => onUndoDelete(p))}
+                  className="text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  Undo
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => allFilePaths.forEach((p) => onDelete(p))}
+                  className={`text-xs underline ${somePending ? 'text-orange-500 hover:text-orange-700' : 'text-red-600 hover:text-red-800'}`}
+                >
+                  Remove all
+                </button>
+              )
+            )}
+          </div>
         </div>
         {open && node.children.map((child) => (
           <TreeNodeRow
@@ -129,6 +144,8 @@ const TreeNodeRow: React.FC<TreeNodeRowProps> = ({
             isEditMode={isEditMode}
             onDelete={onDelete}
             onUndoDelete={onUndoDelete}
+            selectedTargetDir={selectedTargetDir}
+            onSelectTargetDir={onSelectTargetDir}
           />
         ))}
       </div>
@@ -182,6 +199,9 @@ interface AfsFileTreeProps {
   isEditMode: boolean;
   onDelete: (path: string) => void;
   onUndoDelete: (path: string) => void;
+  /** When provided, renders "Add here" controls letting the user pick which folder new uploads should go into. */
+  selectedTargetDir?: string;
+  onSelectTargetDir?: (path: string) => void;
 }
 
 export const AfsFileTree: React.FC<AfsFileTreeProps> = ({
@@ -190,6 +210,8 @@ export const AfsFileTree: React.FC<AfsFileTreeProps> = ({
   isEditMode,
   onDelete,
   onUndoDelete,
+  selectedTargetDir,
+  onSelectTargetDir,
 }) => {
   const tree = buildTree(entries);
 
@@ -197,6 +219,23 @@ export const AfsFileTree: React.FC<AfsFileTreeProps> = ({
 
   return (
     <div className="mb-3 border border-gray-200 rounded-lg overflow-hidden">
+      {onSelectTargetDir && (
+        <div
+          className={`flex items-center justify-between px-2 py-1 text-sm select-none border-b border-gray-100 ${selectedTargetDir === '' ? 'bg-blue-50' : 'hover:bg-gray-100'}`}
+        >
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-gray-500 mr-1">📁</span>
+            <span className="font-medium text-gray-700">/ (root)</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelectTargetDir('')}
+            className={`text-xs underline ${selectedTargetDir === '' ? 'text-green-700 font-semibold' : 'text-blue-600 hover:text-blue-800'}`}
+          >
+            {selectedTargetDir === '' ? '✓ Target' : 'Add here'}
+          </button>
+        </div>
+      )}
       {tree.map((node) => (
         <TreeNodeRow
           key={node.path}
@@ -206,6 +245,8 @@ export const AfsFileTree: React.FC<AfsFileTreeProps> = ({
           isEditMode={isEditMode}
           onDelete={onDelete}
           onUndoDelete={onUndoDelete}
+          selectedTargetDir={selectedTargetDir}
+          onSelectTargetDir={onSelectTargetDir}
         />
       ))}
     </div>
