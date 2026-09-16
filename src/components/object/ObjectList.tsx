@@ -48,23 +48,23 @@ export const ObjectList = () => {
     permId: any,
     code: string,
   ) => {
-    // Check if this is a component with a LOCATION (attached to an instrument)
+    // Check if this is a component attached to an instrument (LOCATION can also
+    // point at a room, which isn't an "attachment" and shouldn't block deletion).
     const objectToDelete = objects.find((obj) => obj.getCode() === code);
     if (objectToDelete) {
       const location = objectToDelete.getProperty("LOCATION");
       if (location && location.trim() !== "") {
-        // Find the instrument by matching LOCATION with existing objects
+        // `objects` only contains Instruments and Components (see useGetIlogObjects),
+        // so a match here can only be an instrument - a room location won't match.
         const instrument = objects.find((obj) => obj.getPermId().getPermId() === location);
-        const instrumentDisplay = instrument 
-          ? `'${instrument.getProperty("NAME") || instrument.getCode()}'`
-          : "an instrument";
-        
-        handleMessage(
-          `Cannot delete '${code}' - it is attached to ${instrumentDisplay}. Please detach it first.`,
-          false,
-          true
-        );
-        return;
+        if (instrument) {
+          handleMessage(
+            `Cannot delete '${code}' - it is attached to '${instrument.getProperty("NAME") || instrument.getCode()}'. Please detach it first.`,
+            false,
+            true
+          );
+          return;
+        }
       }
     }
 

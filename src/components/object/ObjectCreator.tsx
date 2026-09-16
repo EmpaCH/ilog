@@ -36,6 +36,7 @@ import {
 } from "../../apis/shared/environment";
 import { stripVocabularyName } from "../../apis/shared/common";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
+import { OBJECT_SUBTYPES_KEY } from "../../apis/propertyType/commonPropertyType";
 import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
@@ -907,11 +908,26 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                   const allProperties = Object.values(state.propertiesSchema).flat();
                   const propertyDef = allProperties.find((p) => p.code === propertyCode);
                   const objectTypeCode = (propertyDef as any)?.objectType;
-                  const resolvedType = objectTypeCode
-                    ? objectTypes.data?.find((t) => t.getCode() === objectTypeCode)
-                    : null;
-                  const isComponentType =
-                    resolvedType?.getMetaData()?.["collectionType"] === componentCollectionID;
+                  const resolveIsComponentType = (typeCode: string) =>
+                    objectTypes.data?.find((t) => t.getCode() === typeCode)
+                      ?.getMetaData()?.["collectionType"] === componentCollectionID;
+
+                  let isComponentType: boolean;
+                  if (objectTypeCode && objectTypeCode !== "any") {
+                    // A single specific object type is assigned - resolve it directly.
+                    isComponentType = resolveIsComponentType(objectTypeCode);
+                  } else {
+                    // "All" object types are allowed - if the property is restricted to a
+                    // specific set of subtypes (the object_subtypes workaround), treat it as
+                    // a component property only when every allowed subtype is a component.
+                    // With no restriction at all we can't tell what it points at (could be
+                    // persons, logbook entries, etc.), so leave it untracked.
+                    const subtypesStr = (propertyDef as any)?.metadata?.[OBJECT_SUBTYPES_KEY] as string | undefined;
+                    const subtypeCodes = subtypesStr
+                      ? subtypesStr.split(",").map((s: string) => s.trim()).filter(Boolean)
+                      : [];
+                    isComponentType = subtypeCodes.length > 0 && subtypeCodes.every(resolveIsComponentType);
+                  }
                   if (!isComponentType) return;
                   setSelectedComponentsByProperty((prev) => ({
                     ...prev,
