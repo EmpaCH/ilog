@@ -94,6 +94,8 @@ export type UploadAfsDataSetInput = {
   samplePermId: string
   afsOwnerText: string
   file?: File | null
+  /** Relative path (no leading slash) to upload to, overriding the file's own name/webkitRelativePath. */
+  targetPath?: string
 }
 
 export type UploadAfsDataSetResult = {

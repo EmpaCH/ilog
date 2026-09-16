@@ -24,7 +24,7 @@ import openbis from "@openbis/openbis.esm";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { usePreviewImages } from "../../apis/dataset/useDatasets";
-import { logbookCollectionID } from "../../apis/shared/environment";
+import { logbookCollectionID, instrumentCollectionID } from "../../apis/shared/environment";
 
 interface ComponentListPropertyEditorProps {
   dispatch: React.Dispatch<any>;
@@ -152,7 +152,9 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       // Apply only ilog filter
       if (onlyIlog) {
         filteredData = filteredData.filter(
-          (s) => s.getType().getMetaData()?.["ilog"] === "true"
+          // (s) => s.getType().getMetaData()?.["ilog"] === "true"
+          (s) => s.getType().getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION"
+            || s.getType().getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION"
         );
       }
       // Apply objectType filter
@@ -324,6 +326,17 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     }
   }, [value, components, missingObjectQuery.data, allComponents]);
 
+  // A component's LOCATION can now point at either an instrument (attached) or a
+  // room (just parked there) - only the former should count as "in use" below.
+  const instrumentPermIds = useMemo(() => {
+    if (getObjectsResult.status !== "success") return new Set<string>();
+    return new Set(
+      getObjectsResult.data
+        .filter((o) => o.getType().getMetaData()?.["collectionType"] === instrumentCollectionID)
+        .map((o) => o.getPermId().getPermId())
+    );
+  }, [getObjectsResult.status, getObjectsResult.data]);
+
   // PermIds of components already assigned to a different instrument.
   // These rows are shown but not selectable in edit mode.
   const disabledPermIds = useMemo(() => {
@@ -333,13 +346,15 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         .filter((c) => {
           const location = c.getProperty("LOCATION");
           if (!location || location === "" || location === "-") return false;
+          // A room location isn't an instrument attachment - still free to attach.
+          if (!instrumentPermIds.has(location)) return false;
           // If creating a new instrument (no permId yet), any assigned component is disabled.
           // If editing, only disable if assigned to a DIFFERENT instrument.
           return !currentInstrumentPermId || location !== currentInstrumentPermId;
         })
         .map((c) => c.getPermId().getPermId())
     );
-  }, [allComponents, currentInstrumentPermId, isReadOnly, usedForLogentry]);
+  }, [allComponents, currentInstrumentPermId, isReadOnly, usedForLogentry, instrumentPermIds]);
 
   const sortComponents = (descriptor: SortDescriptor) => {
     const sortedComponents = [...components].sort((a, b) => {

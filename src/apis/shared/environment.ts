@@ -10,6 +10,9 @@ export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
 export const instrumentCollectionName = "Instruments";
 export const logbookCollectionID = "LOGBOOK_COLLECTION";
 export const logbookCollectionName = "Logbook";
+// Rooms are a pre-existing openBIS inventory sample type, not managed by iLog's
+// own Instrument/Component collections, but usable as a LOCATION value.
+export const roomObjectTypeCode = "ROOM";
 
 // Helper functions
 export function getCurrentLabID(): string {

@@ -8,6 +8,14 @@ export const CUSTOM_WIDGET_KEY = "custom-widget";
 
 export const CUSTOM_WIDGETS = ["IMAGE"] as const;
 
+/**
+ * Metadata key holding a comma-separated list of object type codes that a
+ * multivalued OBJECT property type is restricted to, when the underlying
+ * openBIS sample type is set to "All" (openBIS itself only supports "All" or
+ * a single specific object type, not a multi-selection).
+ */
+export const OBJECT_SUBTYPES_KEY = "object_subtypes";
+
 export interface PropertyTypeCommon {
   code: string;
   description: string;
