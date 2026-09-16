@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useGetCurrentUser } from "../../apis/user/useGetCurrentUser";
 import { InitComponent } from "../../components/auth/Init";
-import { UserInfo } from "../../components/auth/UserInfo";
 import { ImportProgress } from "../../components/auth/ImportProgress";
 import { ImportTypesToIlog } from "../../components/auth/ImportTypesToIlog";
 import { useState, useContext, useRef } from "react";
@@ -10,7 +9,7 @@ import { AuthContext } from "../../context/auth/authContext";
 import { useExportImportObjectTypes } from "../../apis/type/useExportImportObjectTypes";
 import { useExportImportObjects } from "../../apis/object/useExportImportObjects";
 
-export const Route = createFileRoute("/_auth/home")({
+export const Route = createFileRoute("/_auth/import")({
   component: () => {
     const OPENBIS_URL = import.meta.env.VITE_OPENBIS_URL;
 
@@ -155,14 +154,8 @@ export const Route = createFileRoute("/_auth/home")({
       return <div>Error: {error?.message}</div>;
     }
     if (isSuccess) {
-      console.log("User is logged in, redirecting to /home from home");
-
       return (
         <>
-          <h2>Welcome, {currentUser?.[0]?.getUserId?.() ?? "User"} 👋</h2>
-          <Divider className="my-8" />
-          <UserInfo />
-          <Divider className="my-8" />
           {OPENBIS_URL && OPENBIS_URL.includes("localhost") ? (
             <>
               <div className="flex gap-4 items-center justify-center my-8">

@@ -13,7 +13,7 @@ function Index() {
 
   useEffect(() => {
     if (auth.isAuthenticated) {
-      navigate({ to: '/home' });
+      navigate({ to: '/objects' });
     }
   }, [auth.isAuthenticated, navigate]);
 
