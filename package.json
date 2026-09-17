@@ -14,7 +14,7 @@
     "@ckeditor/ckeditor5-react": "^11.1.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "@heroui/react": "2.6.14",
+    "@heroui/react": "^2.6.14",
     "@monaco-editor/react": "^4.7.0",
     "@mui/icons-material": "^6.1.5",
     "@mui/material": "^6.1.5",
@@ -42,7 +42,7 @@
     "@types/node": "^24.3.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react-swc": "^3.5.0",
+    "@vitejs/plugin-react-swc": "^4.3.3",
     "@vitest/browser": "^3.0.5",
     "autoprefixer": "^10.4.20",
     "concurrently": "^8.2.2",
@@ -50,7 +50,7 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
-    "happy-dom": "^17.1.0",
+    "happy-dom": "^20.14.5",
     "immer": "^10.1.1",
     "jsdom": "^26.0.0",
     "playwright": "^1.50.1",
@@ -58,7 +58,10 @@
     "tailwindcss": "^3.4.14",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.0.1",
-    "vite": "^5.4.1",
+    "vite": "^8.3.0",
     "vitest": "^3.0.5"
+  },
+  "overrides": {
+    "dompurify": "^3.4.15"
   }
 }

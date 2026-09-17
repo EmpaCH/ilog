@@ -4,3 +4,4 @@ package-lock.json
 src/routeTree.gen.ts
 .idea
 .vscode
+/dist
