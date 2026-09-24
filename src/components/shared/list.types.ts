@@ -26,6 +26,7 @@ export interface ObjectRow {
   name: string;
   type: string;
   baseType: string;
+  location: string;
 };
 
 export interface LogbookEntryRow {

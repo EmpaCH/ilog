@@ -14,7 +14,7 @@
     "@ckeditor/ckeditor5-react": "^11.1.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "@heroui/react": "2.6.14",
+    "@heroui/react": "^2.6.14",
     "@monaco-editor/react": "^4.7.0",
     "@mui/icons-material": "^6.1.5",
     "@mui/material": "^6.1.5",
