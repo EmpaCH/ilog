@@ -2,6 +2,7 @@ import { useMemo, useReducer, useState, useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { useNavigate } from "@tanstack/react-router";
 import { useGetIlogObjects } from "../../apis/object/useGetIlogObjects";
+import { useGetAllObjects } from "../../apis/object/useGetAllObjects";
 import { useDeleteObject } from "../../apis/object/useDeleteObject";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
@@ -25,6 +26,10 @@ import { usePreviewImages } from "../../apis/dataset/useDatasets";
 export const ObjectList = () => {
   const { apiFacade } = useContext(AuthContext);
   const allObjectsResult = useGetIlogObjects();
+  // LOCATION holds a permId pointing at either an instrument (component
+  // attachment) or a room - rooms live outside the iLog collections, so an
+  // instance-wide search is needed to resolve names for both.
+  const allInstanceObjectsResult = useGetAllObjects();
   const deleteObjectResult = useDeleteObject();
   const navigate = useNavigate();
 
@@ -141,6 +146,14 @@ export const ObjectList = () => {
     }, 3000);
   };
 
+  const locationNamesByPermId = useMemo(() => {
+    const map = new Map<string, string>();
+    (allInstanceObjectsResult.data ?? []).forEach((obj) => {
+      map.set(obj.getPermId().getPermId(), obj.getProperty("NAME") || obj.getCode());
+    });
+    return map;
+  }, [allInstanceObjectsResult.data]);
+
   const getCollectionName = (collectionType: string | undefined): string => {
     if (collectionType === instrumentCollectionID) {
       return instrumentCollectionName;
@@ -182,6 +195,13 @@ export const ObjectList = () => {
       filterable: true,
     },
     {
+      key: "location",
+      name: "Location",
+      sorting: true,
+      align: "start",
+      filterable: true,
+    },
+    {
       key: "btns",
       name: "",
       sorting: false,
@@ -195,6 +215,8 @@ export const ObjectList = () => {
       const metadata = obj.getType().getMetaData();
       const collectionType = metadata["collectionType"];
       const permId = obj.getPermId().getPermId();
+      const location = obj.getProperty("LOCATION");
+      const hasLocation = !!location && location.trim() !== "";
 
       return {
         permId: obj.getPermId(),
@@ -203,6 +225,7 @@ export const ObjectList = () => {
         name: obj.getProperty("NAME") || obj.getCode(),
         type: obj.getType().getCode(),
         baseType: getCollectionName(collectionType),
+        location: hasLocation ? (locationNamesByPermId.get(location) ?? location) : "Unknown",
       }
     }
   );

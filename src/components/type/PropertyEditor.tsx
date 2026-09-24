@@ -97,7 +97,7 @@ type ObjectSubtypesSelectProps = {
   onSelectionChange: (codes: string[]) => void;
 };
 
-// Lets the user pick several object types to restrict a multivalued OBJECT
+// Lets the user pick several object types to restrict an OBJECT
 // property to, working around openBIS only supporting "All" or a single
 // specific sample type for the property type itself.
 const ObjectSubtypesSelect: React.FC<ObjectSubtypesSelectProps> = ({
@@ -136,12 +136,6 @@ export const PropertyEditor = ({
     propertyTypeEditorReducer,
     propertyTypeDefinitions
   );
-
-  // This double effect
-  // and `stateToPass` are
-  // needed to only call onEdit after the local
-  // actions of this component are dispatched.
-  // TODO: find better solution
 
   const [stateToPass, setStateToPass] = useState<LocalPropertyTypeVariants>(
     state as LocalPropertyTypeVariants
@@ -255,7 +249,6 @@ export const PropertyEditor = ({
             </div>
           ) : null}
           {state.dataType === "OBJECT" &&
-          state.multivalued &&
           (!(state as any).objectType || (state as any).objectType === "any") ? (
             <div className="form-field">
               <ObjectSubtypesSelect
