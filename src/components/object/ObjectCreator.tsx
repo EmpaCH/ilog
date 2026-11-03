@@ -33,6 +33,7 @@ import {
   iLogID,
   componentCollectionID,
   instrumentCollectionID,
+  defaultCollectionMetadataKey,
 } from "../../apis/shared/environment";
 import { stripVocabularyName } from "../../apis/shared/common";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
@@ -46,6 +47,7 @@ import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { MessageModal } from "../shared/messageModal";
 import { AfsFileTree } from "../shared/AfsFileTree";
+import { CollectionSelect } from "../shared/CollectionSelect";
 
 // define whether this will be an Object Creator or Editor component
 const creatorModes = ["create", "edit", "view"] as const;
@@ -406,7 +408,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       }
     } else {
       objectCreation.mutate({
-        collection: state.collection,
+        collectionIdentifier: state.collectionIdentifier,
         type: state.type,
         properties: {
           ...state.propertyValues,
@@ -416,91 +418,33 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           handleMessage(err.message, false, true);
           localDispatch({ type: "SET_LOADING", payload: false });
         },
-        onSuccess: async () => {
+        onSuccess: async (samplePermId) => {
           try {
-            // Longer delay to ensure object is properly indexed
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Increased delay
+            const newPermId = samplePermId.getPermId();
             // If this is an instrument and we have selected components, update their locations
-            if (state.collection === instrumentCollectionID && Object.keys(selectedComponentsByProperty).length > 0) {
-              // Find the most recently created object of this type
-              const sc = new openbis.SampleSearchCriteria();
-              sc.withExperiment().withCode().thatEquals(state.collection);
-              sc.withType().withCode().thatEquals(state.type);
-              const fo = new openbis.SampleFetchOptions();
-              fo.withType();
-              fo.withProperties();
-
-              const result = await apiFacade?.searchSamples(sc, fo);
-              const objects = result?.getObjects() || [];
-
-              if (objects.length > 0) {
-                // Sort objects by PermId timestamp to get the truly most recent one
-                const sortedObjects = objects.sort((a, b) => {
-                  const timestampA = a.getPermId().getPermId().split('-')[0];
-                  const timestampB = b.getPermId().getPermId().split('-')[0];
-                  return timestampB.localeCompare(timestampA); // Descending order (newest first)
-                });
-
-                const newObject = sortedObjects[0]; // Get the first object (most recently created)
-                const instrumentPermId = newObject.getPermId().getPermId();
-                await updateComponentLocations(instrumentPermId);
-
-                if (selectedImageFile && apiFacade) {
-                  await uploadImageToObject(instrumentPermId, selectedImageFile);
-                }
-                if (selectedAfsFiles.length > 0 && apiFacade) {
-                  for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
-                    await uploadAfsDataSet(apiFacade, { samplePermId: instrumentPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file, targetPath });
-                  }
-                }
-                handleMessage("Object created successfully with component locations updated!", true, true);
-                onClear(2000);
-              } else {
-                handleMessage("Object created but could not be located for image upload", false, true);
+            const updatesComponents = state.collection === instrumentCollectionID && Object.keys(selectedComponentsByProperty).length > 0;
+            if (updatesComponents) {
+              await updateComponentLocations(newPermId);
+            }
+            try {
+              if (selectedImageFile && apiFacade) {
+                await uploadImageToObject(newPermId, selectedImageFile);
               }
-            } else {
-              // Find the most recently created object of this type
-              const sc = new openbis.SampleSearchCriteria();
-              sc.withExperiment().withCode().thatEquals(state.collection);
-              sc.withType().withCode().thatEquals(state.type);
-              const fo = new openbis.SampleFetchOptions();
-              fo.withType();
-              fo.withProperties();
-
-              const result = await apiFacade?.searchSamples(sc, fo);
-              const objects = result?.getObjects() || [];
-
-              if (objects.length > 0) {
-                // Sort objects by PermId timestamp to get the truly most recent one
-                const sortedObjects = objects.sort((a, b) => {
-                  const timestampA = a.getPermId().getPermId().split('-')[0];
-                  const timestampB = b.getPermId().getPermId().split('-')[0];
-                  return timestampB.localeCompare(timestampA); // Descending order (newest first)
-                });
-
-                const newObject = sortedObjects[0]; // Get the first object (most recently created)
-                if (newObject) {
-                  const newPermId = newObject.getPermId().getPermId();
-                  try {
-                    if (selectedImageFile && apiFacade) {
-                      await uploadImageToObject(newPermId, selectedImageFile);
-                    }
-                    if (selectedAfsFiles.length > 0 && apiFacade) {
-                      for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
-                        await uploadAfsDataSet(apiFacade, { samplePermId: newPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file, targetPath });
-                      }
-                    }
-                    handleMessage("Object created successfully!", true, true);
-                    onClear(2000);
-                  } catch (uploadError) {
-                    handleMessage("Object created but file upload failed: " + uploadError, false, true);
-                  }
-                } else {
-                  handleMessage("Object created but could not be located", false, true);
+              if (selectedAfsFiles.length > 0 && apiFacade) {
+                for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
+                  await uploadAfsDataSet(apiFacade, { samplePermId: newPermId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file, targetPath });
                 }
-              } else {
-                handleMessage("Object created but could not be located", false, true);
               }
+              handleMessage(
+                updatesComponents
+                  ? "Object created successfully with component locations updated!"
+                  : "Object created successfully!",
+                true,
+                true,
+              );
+              onClear(2000);
+            } catch (uploadError) {
+              handleMessage("Object created but file upload failed: " + uploadError, false, true);
             }
           } catch (err: any) {
             handleMessage("Object created but failed to complete additional operations: " + err.message, false, true);
@@ -744,10 +688,36 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                         const newType = value?.toString() ?? "";
                         dispatch({ type: "SET_TYPE", payload: newType });
                         createObjectSchemaBasedOnType(newType, "create");
+                        // Preselect the type's default collection; otherwise keep the current choice
+                        const defaultCollection = objectTypes.data
+                          ?.find((t) => t.getCode() === newType)
+                          ?.getMetaData()?.[defaultCollectionMetadataKey];
+                        if (defaultCollection) {
+                          dispatch({ type: "SET_COLLECTION_IDENTIFIER", payload: defaultCollection });
+                        }
                       }}
                     >
                       {(type) => <AutocompleteItem key={type.getPermId().getPermId()}>{type.getCode()}</AutocompleteItem>}
                     </Autocomplete>
+                  )}
+                  {mode === "create" ? (
+                    <CollectionSelect
+                      isRequired
+                      label="Collection"
+                      description="Where the new object is stored in openBIS."
+                      value={state.collectionIdentifier}
+                      onChange={(value) =>
+                        dispatch({ type: "SET_COLLECTION_IDENTIFIER", payload: value })
+                      }
+                    />
+                  ) : (
+                    <Input
+                      isReadOnly
+                      id="collection"
+                      label="Collection"
+                      value={state.collectionIdentifier}
+                      className="form-field"
+                    />
                   )}
                 </div>
               </div>

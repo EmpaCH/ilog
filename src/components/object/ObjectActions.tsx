@@ -7,6 +7,7 @@ export type ObjectCreatorActions =
   | { type: "CLEAR" }
   | { type: "RESET"; payload: ObjectDefinition }
   | { type: "SET_COLLECTION"; payload: string }
+  | { type: "SET_COLLECTION_IDENTIFIER"; payload: string }
   | { type: "SET_TYPE"; payload: string }
   | { type: "SET_PROPERTIES_SCHEMA"; payload: PropertyTypesSchema }
   | { type: "SET_PROPERTY_VALUES"; payload: any };
@@ -24,6 +25,8 @@ export const objectCreatorReducer = produce(
         return { ...state, type: action.payload };
       case "SET_COLLECTION":
         return { ...state, collection: action.payload };
+      case "SET_COLLECTION_IDENTIFIER":
+        return { ...state, collectionIdentifier: action.payload };
       case "SET_PROPERTIES_SCHEMA":
         return { ...state, propertiesSchema: action.payload };
       case "SET_PROPERTY_VALUES":

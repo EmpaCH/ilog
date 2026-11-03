@@ -10,6 +10,7 @@ export function createEmptyObjectDefinition(): ObjectDefinition {
   return {
     id: null,
     collection: "",
+    collectionIdentifier: "",
     type: "",
     propertiesSchema: {},
     propertyValues: {},
@@ -52,7 +53,9 @@ export function convertOpenBISPropertyHistoryEntryListToObjectDefinition(
 
   return {
     id: sample.getIdentifier(),
-    collection: sample.getExperiment()?.getCode() ?? "",
+    // The category comes from the type, since objects can live in any collection
+    collection: sample.getType().getMetaData()?.["collectionType"] ?? "",
+    collectionIdentifier: sample.getExperiment()?.getIdentifier()?.getIdentifier() ?? "",
     type: sample.getType().getCode(),
     propertiesSchema: {},
     propertyValues: transformedHistory,

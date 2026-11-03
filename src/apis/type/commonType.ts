@@ -8,6 +8,7 @@ import {
   LocalPropertyType,
 } from "../propertyType/commonPropertyType";
 import { iLogGeneralInfoGroup } from "../shared/types";
+import { defaultCollectionMetadataKey } from "../shared/environment";
 
 // Define primitive data types
 const PRIMITIVE_DATA_TYPES = [
@@ -63,6 +64,8 @@ export interface ObjectTypeDefinition {
   propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema;
   baseType?: string;
   collectionType: string;
+  // Identifier of the collection new objects of this type are stored in by default
+  defaultCollection?: string;
   metadata?: Record<string, string>;
 }
 
@@ -423,5 +426,6 @@ export function convertOpenBISSampleTypeToObjectTypeDefinition(
     ),
     baseType: sampleType.getMetaData()["baseType"],
     collectionType: sampleType.getMetaData()["collectionType"],
+    defaultCollection: sampleType.getMetaData()[defaultCollectionMetadataKey],
   };
 }

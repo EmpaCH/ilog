@@ -4,7 +4,7 @@ import {
   updateElnSettings,
   newTypeSettings,
 } from "../shared/common";
-import { getIsInitializing } from "../shared/environment";
+import { getIsInitializing, defaultCollectionMetadataKey } from "../shared/environment";
 import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
@@ -231,6 +231,12 @@ export function convertObjectTypeDefinitionToOperations(
         baseType: objectDefinition.baseType,
       };
     }
+    if (objectDefinition.defaultCollection) {
+      metadata = {
+        ...metadata,
+        [defaultCollectionMetadataKey]: objectDefinition.defaultCollection,
+      };
+    }
     sampleTypeCreation.setMetaData(metadata);
   } else {
     sampleTypeUpdate = new openbis.SampleTypeUpdate();
@@ -242,6 +248,7 @@ export function convertObjectTypeDefinitionToOperations(
         : objectDefinition.code.slice(0, 4);
     sampleTypeUpdate.setGeneratedCodePrefix(prefix.toUpperCase());
     sampleTypeUpdate.setListable(true);
+    setDefaultCollectionMetadata(sampleTypeUpdate, objectDefinition);
     const assigmentsOps = new openbis.PropertyAssignmentListUpdateValue();
     assigmentsOps.set(assignmentCreations);
     sampleTypeUpdate.setPropertyAssignmentActions(assigmentsOps.getActions());
@@ -330,6 +337,23 @@ export function convertPropertyTypesSchemaToUpdateOperations(
 }
 
 /**
+ * Set or remove the default collection metadata key on a sample type update.
+ * Only this key is touched, so the rest of the type's metadata is preserved.
+ * @param update - The sample type update to modify.
+ * @param objectDefinition - The object type definition holding the default collection.
+ */
+function setDefaultCollectionMetadata(
+  update: openbis.SampleTypeUpdate,
+  objectDefinition: ObjectTypeDefinition
+) {
+  if (objectDefinition.defaultCollection) {
+    update.getMetaData().put(defaultCollectionMetadataKey, objectDefinition.defaultCollection);
+  } else {
+    update.getMetaData().remove([defaultCollectionMetadataKey]);
+  }
+}
+
+/**
  * Convert an object type definition to update operations.
  * @param objectDefinition - The object type definition to convert.
  * @param existingObjectTypes - The existing object types to compare against.
@@ -362,6 +386,7 @@ export function convertObjectTypeDefinitionToUpdateOperations(
 
   update.setGeneratedCodePrefix(newPrefix.toUpperCase());
   update.setListable(true);
+  setDefaultCollectionMetadata(update, objectDefinition);
 
   const assignmentUpdates = new openbis.PropertyAssignmentListUpdateValue();
 
