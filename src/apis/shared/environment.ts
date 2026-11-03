@@ -10,6 +10,9 @@ export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
 export const instrumentCollectionName = "Instruments";
 export const logbookCollectionID = "LOGBOOK_COLLECTION";
 export const logbookCollectionName = "Logbook";
+// Object type metadata key holding the identifier of the collection new objects of that type
+// are stored in by default (e.g. "/SPACE/PROJECT/COLLECTION"). Can be overridden per object.
+export const defaultCollectionMetadataKey = "defaultCollection";
 // Rooms are a pre-existing openBIS inventory sample type, not managed by iLog's
 // own Instrument/Component collections, but usable as a LOCATION value.
 export const roomObjectTypeCode = "ROOM";

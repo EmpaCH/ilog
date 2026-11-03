@@ -39,6 +39,7 @@ import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { TypeInheritanceChain } from "./TypeInheritanceChain";
 import { MessageModal } from "../shared/messageModal";
+import { CollectionSelect } from "../shared/CollectionSelect";
 import {
   typeCreatorLocalReducer,
   EMPTY_TYPE_CREATOR_LOCAL_DEFINITION,
@@ -543,6 +544,15 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             value={state.schema.description ?? ""}
             onValueChange={(value) =>
               dispatch({ type: "SET_DESCRIPTION", payload: value })
+            }
+          />
+          <CollectionSelect
+            isReadOnly={mode === "view" && !isEditMode}
+            label="Default collection"
+            description="Optional. Preselected when creating objects of this type; can be changed per object."
+            value={state.schema.defaultCollection ?? ""}
+            onChange={(value) =>
+              dispatch({ type: "SET_DEFAULT_COLLECTION", payload: value })
             }
           />
           <Divider className="my-4" />

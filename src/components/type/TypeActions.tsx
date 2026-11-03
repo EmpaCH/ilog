@@ -8,6 +8,7 @@ export type TypeCreatorActions =
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
   | { type: "SET_COLLECTION_TYPE"; payload: string }
+  | { type: "SET_DEFAULT_COLLECTION"; payload: string }
   | { type: "SET_BASE_TYPE"; payload: { newBaseType: ObjectTypeDefinition } }
   | {
       type: "SET_NEW_PROPERTY";
@@ -60,6 +61,9 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
         break;
       case "SET_COLLECTION_TYPE":
         draft.schema.collectionType = action.payload;
+        break;
+      case "SET_DEFAULT_COLLECTION":
+        draft.schema.defaultCollection = action.payload;
         break;
       case "SET_BASE_TYPE":
         draft.schema.baseType = action.payload.newBaseType.code;
