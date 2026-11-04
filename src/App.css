@@ -5,6 +5,11 @@
   width: 100%;
 }
 
+/* Description and error text below form fields (HeroUI helper wrapper) is left-aligned like the field itself */
+#root [data-slot="helper-wrapper"] {
+  text-align: left;
+}
+
 .main-div {
   height: 92vh;
   margin: 8vh 3% 0 3%;
