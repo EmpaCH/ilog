@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AuthContext } from "../../context/auth/authContext";
 import { useContext } from "react";
 import openbis from "@openbis/openbis.esm";
+import { deleteObjectType } from "./typeAPI";
 import { ILOG_OBJECT_TYPES_QUERY_PREFIX } from "./useGetIlogObjectTypes";
 import { LOGBOOK_ENTRY_TYPES_QUERY_PREFIX } from "../logbook/useGetLogbookEntryTypes";
 
@@ -14,9 +15,7 @@ export const useDeleteObjectType = () => {
   return useMutation({
     mutationKey: [DELETE_OBJECT_TYPE_MUTATION_KEY],
     mutationFn: async (typeId: string) => {
-      const stdo = new openbis.SampleTypeDeletionOptions();
-      stdo.setReason("Type no longer needed.");
-      await apiFacade.deleteSampleTypes([new openbis.EntityTypePermId(typeId)], stdo);
+      await deleteObjectType(apiFacade, new openbis.EntityTypePermId(typeId));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX] });

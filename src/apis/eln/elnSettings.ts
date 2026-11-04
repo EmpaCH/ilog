@@ -70,13 +70,6 @@ export function deserializeElnSettings(res: { [index: string]: openbis.Sample; }
   return JSON.parse(res[generalElnSettings].getJsonProperty(propertyElnSettings) ?? "{}") as ElnSettingsProperties;
 }
 
-export function enableObjectTypesInElnSettings(properties: ElnSettingsProperties, typeName: string): ElnSettingsProperties {
-  properties.sampleTypeDefinitionsExtension = {
-    ...properties.sampleTypeDefinitionsExtension,
-    [typeName]: newTypeSettings,
-  };
-  return properties;
-}
 /**
  * Updates the ELN settings with new properties in the given OpenBIS API.
  * @param api - The OpenBIS API instance.
@@ -91,4 +84,44 @@ export async function updateElnSettings(
   su.setProperty(propertyElnSettings, JSON.stringify(newProperties));
   su.setSampleId(new openbis.SampleIdentifier(generalElnSettings));
   await api.updateSamples([su]);
+}
+
+/**
+ * Enable an object type in the ELN, so it is shown in the ELN menus.
+ * The ELN only lists object types that have an entry in sampleTypeDefinitionsExtension.
+ * An existing entry is left unchanged, so a lab's own ELN configuration of the type is kept.
+ * @param api - The OpenBIS API instance.
+ * @param typeCode - The code of the object type.
+ */
+export async function registerObjectTypeInElnSettings(
+  api: openbis.OpenBISJavaScriptFacade,
+  typeCode: string,
+): Promise<void> {
+  // Read the settings right before writing, so changes made in the meantime are not lost
+  const properties = await parseElnSettingsProperties(api);
+  if (properties.sampleTypeDefinitionsExtension?.[typeCode]) {
+    return;
+  }
+  properties.sampleTypeDefinitionsExtension = {
+    ...properties.sampleTypeDefinitionsExtension,
+    [typeCode]: { ...newTypeSettings },
+  };
+  await updateElnSettings(api, properties);
+}
+
+/**
+ * Remove the ELN settings entry of a deleted object type.
+ * @param api - The OpenBIS API instance.
+ * @param typeCode - The code of the object type.
+ */
+export async function unregisterObjectTypeInElnSettings(
+  api: openbis.OpenBISJavaScriptFacade,
+  typeCode: string,
+): Promise<void> {
+  const properties = await parseElnSettingsProperties(api);
+  if (!properties.sampleTypeDefinitionsExtension?.[typeCode]) {
+    return;
+  }
+  delete properties.sampleTypeDefinitionsExtension[typeCode];
+  await updateElnSettings(api, properties);
 }

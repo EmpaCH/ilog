@@ -11,10 +11,34 @@ import {
 } from "./commonType";
 import { getPropertyTypes } from "../propertyType/propertyTypeAPI";
 import {
+  registerObjectTypeInElnSettings,
+  unregisterObjectTypeInElnSettings,
+} from "../eln/elnSettings";
+import {
   categoryMetadataKey,
   getTypeCategory,
   legacyCategoryMetadataKey,
 } from "../shared/category";
+
+/**
+ * Enable an object type in the ELN after it was created or updated, so it is shown in the ELN menus.
+ * @param api - The OpenBIS JavaScript facade instance.
+ * @param typeCode - The code of the object type.
+ * @throws An error explaining that the type itself was saved, if the ELN settings could not be updated.
+ */
+export async function enableObjectTypeInEln(
+  api: openbis.OpenBISJavaScriptFacade,
+  typeCode: string,
+): Promise<void> {
+  try {
+    await registerObjectTypeInElnSettings(api, typeCode);
+  } catch (error) {
+    throw new Error(
+      `The type ${typeCode} was saved, but it could not be enabled in the ELN settings, ` +
+      `so it may not be shown in the ELN: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
 
 export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
   const fo = new openbis.SampleTypeFetchOptions();
@@ -169,6 +193,8 @@ export async function updateObjectType(
     const sampleTypeUpdateOperation = new openbis.UpdateSampleTypesOperation(updateOps);
     await api.executeOperations([sampleTypeUpdateOperation], props);
   }
+  // Also enables types that were created before iLog registered them in the ELN
+  await enableObjectTypeInEln(api, otd.code.toUpperCase());
 }
 
 /**
@@ -183,6 +209,12 @@ export async function deleteObjectType(
   const stdo = new openbis.SampleTypeDeletionOptions();
   stdo.setReason("Type no longer needed.");
   await api.deleteSampleTypes([typeId], stdo);
+  try {
+    await unregisterObjectTypeInElnSettings(api, typeId.getPermId());
+  } catch (error) {
+    // The type is deleted; a leftover ELN settings entry for it does no harm
+    console.warn(`Could not remove ${typeId.getPermId()} from the ELN settings:`, error);
+  }
 }
 
 /**
