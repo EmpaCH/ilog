@@ -3,10 +3,9 @@ import { useGetCurrentUser } from "../../apis/user/useGetCurrentUser";
 import { ImportProgress } from "../../components/auth/ImportProgress";
 import { ImportTypesToIlog } from "../../components/auth/ImportTypesToIlog";
 import { useState, useContext, useRef } from "react";
-import { Divider, Button } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { AuthContext } from "../../context/auth/authContext";
 import { useExportImportObjectTypes } from "../../apis/type/useExportImportObjectTypes";
-import { useExportImportObjects } from "../../apis/object/useExportImportObjects";
 
 export const Route = createFileRoute("/_auth/import")({
   component: () => {
@@ -21,12 +20,8 @@ export const Route = createFileRoute("/_auth/import")({
     } | null>(null);
     const { apiFacade } = useContext(AuthContext);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const fileInputObjectsRef = useRef<HTMLInputElement>(null);
-    const fileInputAdminRef = useRef<HTMLInputElement>(null);
     const { exportObjectTypes, importObjectTypes } =
       useExportImportObjectTypes({ apiFacade });
-    const { exportObjects, exportAdministrativeData, importObjects, importAdministrativeData } =
-      useExportImportObjects({ apiFacade });
     const {
       data: currentUser,
       isLoading,
@@ -40,49 +35,6 @@ export const Route = createFileRoute("/_auth/import")({
         await exportObjectTypes();
       } catch (err) {
         console.error("Export failed:", err);
-      }
-    };
-
-    const handleExportObjects = async () => {
-      try {
-        await exportObjects();
-      } catch (err) {
-        console.error("Export failed:", err);
-      }
-    };
-
-    const handleExportAdministrativeData = async () => {
-      try {
-        await exportAdministrativeData();
-      } catch (err) {
-        console.error("Export failed:", err);
-      }
-    };
-
-    const handleImportAdministrativeData = async (
-      event: React.ChangeEvent<HTMLInputElement>
-    ) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      setShowImportModal(true);
-      setImportProgress(["Starting import..."]);
-      setImportStats(null);
-
-      try {
-        const stats = await importAdministrativeData(file, (message: string) => {
-          setImportProgress((prev) => [...prev, message]);
-        });
-        setImportStats(stats);
-      } catch (err) {
-        setImportProgress((prev) => [
-          ...prev,
-          `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
-        ]);
-      } finally {
-        if (fileInputAdminRef.current) {
-          fileInputAdminRef.current.value = "";
-        }
       }
     };
 
@@ -109,33 +61,6 @@ export const Route = createFileRoute("/_auth/import")({
       } finally {
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
-        }
-      }
-    };
-
-    const handleImportObjects = async (
-      event: React.ChangeEvent<HTMLInputElement>
-    ) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      setShowImportModal(true);
-      setImportProgress(["Starting import..."]);
-      setImportStats(null);
-
-      try {
-        const stats = await importObjects(file, (message: string) => {
-          setImportProgress((prev) => [...prev, message]);
-        });
-        setImportStats(stats);
-      } catch (err) {
-        setImportProgress((prev) => [
-          ...prev,
-          `Error: ${err instanceof Error ? err.message : "Unknown error"}`,
-        ]);
-      } finally {
-        if (fileInputObjectsRef.current) {
-          fileInputObjectsRef.current.value = "";
         }
       }
     };
@@ -172,56 +97,6 @@ export const Route = createFileRoute("/_auth/import")({
                   type="file"
                   accept=".json"
                   onChange={handleImportObjectTypes}
-                  style={{ display: "none" }}
-                />
-              </div>
-              <Divider className="my-4" />
-              <div className="flex gap-4 items-center justify-center my-8">
-                <h3 className="w-full text-center">Administrative Data</h3>
-              </div>
-              <div className="flex gap-4 items-center justify-center my-8">
-                <Button
-                  onPress={handleExportAdministrativeData}
-                  size="lg"
-                >
-                  ⬆️ Export Admin Data
-                </Button>
-                <Button
-                  onPress={() => fileInputAdminRef.current?.click()}
-                  size="lg"
-                >
-                  ⬇️ Import Admin Data
-                </Button>
-                <input
-                  ref={fileInputAdminRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportAdministrativeData}
-                  style={{ display: "none" }}
-                />
-              </div>
-              <Divider className="my-4" />
-              <div className="flex gap-4 items-center justify-center my-8">
-                <h3 className="w-full text-center">Objects</h3>
-              </div>
-              <div className="flex gap-4 items-center justify-center my-8">
-                <Button
-                  onPress={handleExportObjects}
-                  size="lg"
-                >
-                  ⬆️ Export Objects
-                </Button>
-                <Button
-                  onPress={() => fileInputObjectsRef.current?.click()}
-                  size="lg"
-                >
-                  ⬇️ Import Objects
-                </Button>
-                <input
-                  ref={fileInputObjectsRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportObjects}
                   style={{ display: "none" }}
                 />
               </div>

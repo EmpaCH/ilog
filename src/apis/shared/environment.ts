@@ -1,8 +1,3 @@
-// Fixed Lab 205 codes, still used by the object import/export until it is made instance independent
-export const iLogID = "ILOG";
-export const labID = "LAB205_EQUIPMENT";
-export const componentCollectionID = "COMPONENT_COLLECTION";
-export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
 // Property types created by older iLog versions. iLog no longer creates or uses them, but they are
 // still assigned to existing (Lab 205) types and their objects, so they are hidden in forms.
 export const legacyIlogPropertyCode = "ILOG";
