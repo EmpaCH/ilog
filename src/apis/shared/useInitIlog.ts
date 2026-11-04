@@ -2,7 +2,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useCreateIlogTypeProperty, useCreateIlogLogbookProperty } from "./useCreateIlogTypeProperty";
+import { useCreateIlogTypeProperty } from "./useCreateIlogTypeProperty";
 import { useCreateSpace } from "../space/useCreateSpace";
 import { useCreateProject } from "../project/useCreateProject";
 import {
@@ -46,7 +46,6 @@ export const useInitIlog = () => {
   const labID = getCurrentLabID();
   const InitAlreadyDone = useGetInit();
   const iLogPropertyCreation = useCreateIlogTypeProperty();
-  const iLogLogbookPropertyCreation = useCreateIlogLogbookProperty();
   const spaceCreation = useCreateSpace(labID, "ilog Space");
   const projectCreation = useCreateProject(labID, iLogID, "iLog Project");
   const collectionLogbookCreation = useCreateCollection(
@@ -121,13 +120,6 @@ export const useInitIlog = () => {
         await iLogPropertyCreation.mutateAsync();
         console.log("iLog property type initialized.");
         
-        emitMessage(
-          "Initializing iLog logbook property type...",
-          iLogLogbookPropertyCreation.status
-        );
-        await iLogLogbookPropertyCreation.mutateAsync();
-        console.log("iLog logbook property type initialized.");
-
         emitMessage(
           "Initializing iLog vocabulary...",
           createVoc.status

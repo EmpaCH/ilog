@@ -21,6 +21,7 @@ import {
 import { propertyTypeEditorReducer } from "./PropertyTypeActions";
 import { useGetVocabularies } from "../../apis/vocabulary/useGetVocabularies";
 import { useGetIlogObjectTypes } from "../../apis/type/useGetIlogObjectTypes";
+import { getTypeCategory, logbookEntryCategory } from "../../apis/shared/category";
 
 type PropertyEditorProps = {
   propertyTypeDefinitions: LocalPropertyTypeVariants;
@@ -158,6 +159,10 @@ export const PropertyEditor = ({
 
   const allVocabularies = useGetVocabularies();
   const allObjectTypes = useGetIlogObjectTypes();
+  // Object properties point at instruments and components, not at logbook entries
+  const targetObjectTypeCodes = allObjectTypes.data
+    ?.filter((type) => getTypeCategory(type) !== logbookEntryCategory)
+    .map((type) => type.getCode()) ?? [];
 
   return (
     <Card
@@ -239,7 +244,7 @@ export const PropertyEditor = ({
             <div className="form-field">
               <ObjectTypeAutoComplete
                 objectTypes={
-                  allObjectTypes.data?.map((type) => type.getCode()) ?? []
+                  targetObjectTypeCodes
                 }
                 selectedKey={(state as any).objectType || (state as any).sampleType}
                 onSelectionChange={(value) =>
@@ -253,7 +258,7 @@ export const PropertyEditor = ({
             <div className="form-field">
               <ObjectSubtypesSelect
                 objectTypes={
-                  allObjectTypes.data?.map((type) => type.getCode()) ?? []
+                  targetObjectTypeCodes
                 }
                 selectedCodes={
                   state.metadata?.[OBJECT_SUBTYPES_KEY]

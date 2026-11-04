@@ -31,10 +31,13 @@ import {
 import { ObjectDefinition } from "../../apis/object/commonObject";
 import {
   iLogID,
-  componentCollectionID,
-  instrumentCollectionID,
   defaultCollectionMetadataKey,
 } from "../../apis/shared/environment";
+import {
+  componentCategory,
+  getTypeCategory,
+  instrumentCategory,
+} from "../../apis/shared/category";
 import { stripVocabularyName } from "../../apis/shared/common";
 import { useGetPropertyTypes } from "../../apis/propertyType/useGetPropertyTypes";
 import { OBJECT_SUBTYPES_KEY } from "../../apis/propertyType/commonPropertyType";
@@ -160,24 +163,13 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const objectTypes = useGetIlogObjectTypes();
 
   const objectTypesFilteredByCollection = useMemo(() => {
-    if (!objectTypes.data || !state.collection) return [];
+    if (!objectTypes.data || !state.category) return [];
     
-    return objectTypes.data.filter((oj) => {
-      const metadata = oj.getMetaData();
-      const collectionType = metadata["collectionType"];
-
-      if (state.collection === instrumentCollectionID) {
-        return collectionType === instrumentCollectionID;
-      } else if (state.collection === componentCollectionID) {
-        return collectionType === componentCollectionID;
-      }
-
-      return false;
-    }).filter((oj) => {
+    return objectTypes.data.filter((oj) => getTypeCategory(oj) === state.category).filter((oj) => {
       if (!localState.searchTerm) return true;
       return oj.getCode().toLowerCase().includes(localState.searchTerm.toLowerCase());
     });
-  }, [objectTypes.data, state.collection, localState.searchTerm]);
+  }, [objectTypes.data, state.category, localState.searchTerm]);
 
   const createObjectSchemaBasedOnType = (
     type: string,
@@ -316,7 +308,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     localDispatch({ type: "SET_LOADING", payload: true });
 
     if (mode === "edit" || (mode === "view" && isEditMode)) {
-      const isInstrument = state.collection === instrumentCollectionID;
+      const isInstrument = state.category === instrumentCategory;
       if (isInstrument) {
         // Use the enhanced update for instruments to handle component locations
         objectUpdateWithComponents.mutate({
@@ -422,7 +414,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           try {
             const newPermId = samplePermId.getPermId();
             // If this is an instrument and we have selected components, update their locations
-            const updatesComponents = state.collection === instrumentCollectionID && Object.keys(selectedComponentsByProperty).length > 0;
+            const updatesComponents = state.category === instrumentCategory && Object.keys(selectedComponentsByProperty).length > 0;
             if (updatesComponents) {
               await updateComponentLocations(newPermId);
             }
@@ -654,13 +646,13 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                     label="What is the base type of this object?"
                     orientation="horizontal"
                     style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
-                    value={state.collection}
+                    value={state.category}
                     onValueChange={(value) => {
-                      dispatch({ type: "SET_COLLECTION", payload: value })
+                      dispatch({ type: "SET_CATEGORY", payload: value })
                     }}
                   >
-                    <Radio value={instrumentCollectionID}>Instrument</Radio>
-                    <Radio value={componentCollectionID}>Component</Radio>
+                    <Radio value={instrumentCategory}>Instrument</Radio>
+                    <Radio value={componentCategory}>Component</Radio>
                   </RadioGroup>
                   {mode === "edit" ? (
                     <Input
@@ -879,8 +871,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                   const propertyDef = allProperties.find((p) => p.code === propertyCode);
                   const objectTypeCode = (propertyDef as any)?.objectType;
                   const resolveIsComponentType = (typeCode: string) =>
-                    objectTypes.data?.find((t) => t.getCode() === typeCode)
-                      ?.getMetaData()?.["collectionType"] === componentCollectionID;
+                    getTypeCategory(objectTypes.data?.find((t) => t.getCode() === typeCode)) === componentCategory;
 
                   let isComponentType: boolean;
                   if (objectTypeCode && objectTypeCode !== "any") {
@@ -906,7 +897,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 }}
                 currentInstrumentPermId={(openbisSample || newlyCreatedObject)?.getPermId().getPermId()}
                 currentSamplePermId={(openbisSample || newlyCreatedObject)?.getPermId().getPermId()}
-                isComponent={state.collection === componentCollectionID}
+                isComponent={state.category === componentCategory}
                 isReadOnly={mode === "view" && !isEditMode}
               />) : (
               <p className="text-gray-500">

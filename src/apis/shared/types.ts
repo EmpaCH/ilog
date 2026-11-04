@@ -2,13 +2,13 @@
 import { PropertyTypesSchema, ObjectTypeDefinition } from "../type/commonType";
 import { Vocabulary } from "../vocabulary/commonVocabulary";
 import { PropertyType } from "../propertyType/commonPropertyType";
+import { iLogID } from "./environment";
 import {
-  iLogID,
-  iLogLogbookID,
-  componentCollectionID,
-  instrumentCollectionID,
-  logbookCollectionID,
-} from "./environment";
+  categoryMetadataKey,
+  componentCategory,
+  instrumentCategory,
+  logbookEntryCategory,
+} from "./category";
 
 // Base type settings
 export const iLogBaseTypesPropertyCode = "ILOG_TYPE_BASE";
@@ -41,7 +41,7 @@ export const EMPTY_TYPE_DEFINITION: ObjectTypeDefinition = {
   generatedCodePrefix: "",
   description: "",
   propertyTypes: EMPTY_SCHEMA,
-  collectionType: "",
+  category: "",
 };
 
 // Component schema and type definition
@@ -68,7 +68,7 @@ export const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   description: "Component",
   propertyTypes: COMPONENT_SCHEMA,
   baseType: "ILOG",
-  collectionType: componentCollectionID,
+  category: componentCategory,
 };
 
 // Instrument schema and type definition
@@ -82,37 +82,55 @@ export const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   description: "Instrument",
   propertyTypes: INSTRUMENT_SCHEMA,
   baseType: "ILOG",
-  collectionType: instrumentCollectionID,
+  category: instrumentCategory,
 };
+// Logbook entry schema and type definition.
+// Logbook entry types are recognized by their category, entries by being stored in the logbook collection.
+// VALID_FROM is always written by the logbook entry creator.
+export const LOGBOOK_ENTRY_SCHEMA: PropertyTypesSchema = {
+  [iLogGeneralInfoGroup]: [
+    { code: "NAME", type: "reference" },
+    {
+      code: "VALID_FROM",
+      type: "local",
+      multivalued: false,
+      dataType: "VARCHAR",
+      label: "ValidFrom",
+      description: "ValidFrom",
+      metadata: null,
+    },
+    {
+      code: "DESCRIPTION",
+      type: "local",
+      multivalued: false,
+      dataType: "VARCHAR",
+      label: "Description",
+      description: "Description",
+      metadata: null,
+    },
+  ],
+};
+
 export const LOGBOOK_ENTRY_TYPE_DEFINITION: ObjectTypeDefinition = {
   code: "LOGBOOK_ENTRY",
   generatedCodePrefix: "LOGENTRY",
   description: "Ilog Logbook Entry",
-  collectionType: logbookCollectionID,
-  propertyTypes: {
-    ["GeneralInfo"]: [
-      { code: "NAME", type: "reference" },
-      { code: iLogLogbookID, type: "reference" },    
-      {
-        code: "VALID_FROM",
-        type: "local",
-        multivalued: false,
-        dataType: "VARCHAR",
-        label: "ValidFrom",
-        description: "ValidFrom",
-        metadata: null,
-      },    
-      {
-        code: "DESCRIPTION",
-        type: "local",
-        multivalued: false,
-        dataType: "VARCHAR",
-        label: "Description",
-        description: "Description",
-        metadata: null,
-      },
-    ]
-  } as PropertyTypesSchema,
+  category: logbookEntryCategory,
+  propertyTypes: LOGBOOK_ENTRY_SCHEMA,
+};
+
+// Base schema of each iLog category, i.e. the properties every type of that category has
+export const getCategorySchema = (category: string): PropertyTypesSchema => {
+  switch (category) {
+    case instrumentCategory:
+      return INSTRUMENT_SCHEMA;
+    case componentCategory:
+      return COMPONENT_SCHEMA;
+    case logbookEntryCategory:
+      return LOGBOOK_ENTRY_SCHEMA;
+    default:
+      return EMPTY_SCHEMA;
+  }
 };
 
 // Logbook entry types definitions, kept here for documentation and backup purposes
@@ -123,7 +141,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "BAKEOUTLOG",
     description: "🔥 Bakeout",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#e67800",
       icon: "🔥",
       type: "BAKEOUT_LOGENTRY",
@@ -135,7 +153,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "CALIBRATIONOPTIMIZATIONLOG",
     description: "⚙️ Calibration & Optimization",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#40cd54",
       icon: "⚙️",
       type: "CALIBRATION_OPTIMIZATION_LOGENTRY",
@@ -147,7 +165,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "CLEANINGLOG",
     description: "🧼 Cleaning",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#dcbe28",
       icon: "🧼",
       type: "CLEANING_LOGENTRY",
@@ -159,7 +177,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "COMMENTLOG",
     description: "💬 Comment",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#aa78c8",
       icon: "💬",
       type: "COMMENT_LOGENTRY",
@@ -171,7 +189,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "CRYOGENFILLINGLOG",
     description: "❄️ Cryogen Filling",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#005aaa",
       icon: "❄️",
       type: "CRYOGEN_FILLING_LOGENTRY",
@@ -183,7 +201,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "DEGASINGLOG",
     description: "💨 Degasing",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#009678",
       icon: "💨",
       type: "DEGASING_LOGENTRY",
@@ -195,7 +213,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "ERRORSANDPROBLEMSLOG",
     description: "⚠️ Errors & Problems`",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#b8131d",
       icon: "⚠️",
       type: "ERRORS_AND_PROBLEMS_LOGENTRY",
@@ -207,7 +225,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "MAINTENANCELOG",
     description: "🔧 Maintenance",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#966e3c",
       icon: "🔧",
       type: "MAINTENANCE_LOGENTRY",
@@ -219,7 +237,7 @@ export const LOGBOOK_ENTRY_TYPES : Record<string, ObjectTypeDefinition> = {
     generatedCodePrefix: "OTHERLOG",
     description: "📝 Other",
     metadata: {
-      collectionType: logbookCollectionID,
+      [categoryMetadataKey]: logbookEntryCategory,
       color: "#788c96",
       icon: "📝",
       type: "OTHER_LOGENTRY",

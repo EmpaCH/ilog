@@ -12,31 +12,30 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import { useGetAllObjectTypes } from "../../apis/type/useGetAllObjectTypes";
 import { useRemoveObjectTypeFromIlog } from "../../apis/type/useRemoveObjectTypeFromIlog";
-import { useSetObjectTypeCollectionType } from "../../apis/type/useSetObjectTypeCollectionType";
-import { componentCollectionID, instrumentCollectionID } from "../../apis/shared/environment";
+import { useSetObjectTypeCategory } from "../../apis/type/useSetObjectTypeCategory";
+import {
+  categoryLabels,
+  componentCategory,
+  getTypeCategory,
+  instrumentCategory,
+  logbookEntryCategory,
+} from "../../apis/shared/category";
 
 const generalListFilter = "general";
 const initialFilterState: Record<string, string> = { [generalListFilter]: "" };
 
 const isImportedToIlog = (type: any): boolean =>
-  type.getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION" || type.getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION";
+  getTypeCategory(type) === componentCategory || getTypeCategory(type) === instrumentCategory;
 
 const getIlogType = (type: any): string | undefined => {
- const base = type.getMetaData()?.["collectionType"];
- if (base === instrumentCollectionID) {
-   return "Instrument";
- } else if (base === componentCollectionID) {
-   return "Component";
- }
- else {
-   return "-";
- }
+  const category = getTypeCategory(type);
+  return category === componentCategory || category === instrumentCategory ? categoryLabels[category] : "-";
 }
 
 export const ImportTypesToIlog: React.FC = () => {
   const allObjectTypes = useGetAllObjectTypes();
   const removeMutation = useRemoveObjectTypeFromIlog();
-  const collectionTypeMutation = useSetObjectTypeCollectionType();
+  const categoryMutation = useSetObjectTypeCategory();
   const [selectedKeys, setSelectedKeys] = useState<Set<string> | "all">(new Set());
   const [_page, setPage] = useState(1);
   const [filter, setFilterValue] = useReducer(
@@ -47,6 +46,8 @@ export const ImportTypesToIlog: React.FC = () => {
   );
 
   const filteredTypes = (allObjectTypes.data ?? [])
+    // Logbook entry types are managed in the type creator, not imported here
+    .filter((t) => getTypeCategory(t) !== logbookEntryCategory)
     .filter((t) =>
       t.getCode().toLowerCase().includes((filter[generalListFilter] ?? "").toLowerCase())
     )
@@ -59,12 +60,6 @@ export const ImportTypesToIlog: React.FC = () => {
 
   const selectedTypes = filteredTypes.filter((t) =>
     selectedCodes.includes(t.getCode())
-  );
-
-  const disabledKeys = new Set(
-    filteredTypes
-      .filter((t) => t.getMetaData()?.["collectionType"] === "LOGBOOK_BASE_TYPE")
-      .map((t) => t.getCode())
   );
 
   const canRemove = selectedTypes.length > 0 && selectedTypes.every((t) => isImportedToIlog(t));
@@ -99,7 +94,6 @@ export const ImportTypesToIlog: React.FC = () => {
           selectionMode="multiple"
           aria-label="Object Types"
           selectedKeys={selectedKeys}
-          disabledKeys={disabledKeys}
           classNames={{ wrapper: "max-h-[557px]" }}
           onSelectionChange={(keys) => {
             if (keys === "all") {
@@ -128,16 +122,16 @@ export const ImportTypesToIlog: React.FC = () => {
                   <Button
                     color="secondary"
                     isDisabled={!canSetInstrument}
-                    isLoading={collectionTypeMutation.isPending}
-                    onPress={() => collectionTypeMutation.mutate({ codes: selectedCodes, collectionType: instrumentCollectionID })}
+                    isLoading={categoryMutation.isPending}
+                    onPress={() => categoryMutation.mutate({ codes: selectedCodes, category: instrumentCategory })}
                   >
                     Set as Instrument
                   </Button>
                   <Button
                     color="warning"
                     isDisabled={!canSetComponent}
-                    isLoading={collectionTypeMutation.isPending}
-                    onPress={() => collectionTypeMutation.mutate({ codes: selectedCodes, collectionType: componentCollectionID })}
+                    isLoading={categoryMutation.isPending}
+                    onPress={() => categoryMutation.mutate({ codes: selectedCodes, category: componentCategory })}
                   >
                     Set as Component
                   </Button>
@@ -166,13 +160,12 @@ export const ImportTypesToIlog: React.FC = () => {
                 <TableCell>{getIlogType(type)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1 min-h-[32px] items-center">
-                  {disabledKeys.has(type.getCode()) ? null : (
                     <>
                       <Button
                         size="sm"
                         color="secondary"
                         variant="light"
-                        onPress={() => collectionTypeMutation.mutate({ codes: [type.getCode()], collectionType: instrumentCollectionID })}
+                        onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: instrumentCategory })}
                       >
                         Set as Instrument
                       </Button>
@@ -180,7 +173,7 @@ export const ImportTypesToIlog: React.FC = () => {
                         size="sm"
                         color="warning"
                         variant="light"
-                        onPress={() => collectionTypeMutation.mutate({ codes: [type.getCode()], collectionType: componentCollectionID })}
+                        onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: componentCategory })}
                       >
                         Set as Component
                       </Button>
@@ -195,7 +188,6 @@ export const ImportTypesToIlog: React.FC = () => {
                         </Button>
                       }
                     </>
-                  )}
                   </div>
                 </TableCell>
               </TableRow>

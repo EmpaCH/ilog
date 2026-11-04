@@ -1,10 +1,11 @@
 import { useCallback } from "react";
 import openbis from "@openbis/openbis.esm";
+import { iLogID } from "../shared/environment";
 import {
-  iLogID,
-  componentCollectionID,
-  instrumentCollectionID,
-} from "../shared/environment";
+  categoryMetadataKey,
+  componentCategory,
+  instrumentCategory,
+} from "../shared/category";
 
 interface UseExportImportObjectTypesProps {
   apiFacade: any;
@@ -211,10 +212,10 @@ export const useExportImportObjectTypes = ({
               creation.setMetaData(typeData.metadata);
             } else if (typeData.propertyAssignments.some((pa: any) => pa.code === iLogID)) {
               console.log("Processing typeData", typeData);
-              let metadata: { collectionType: string; baseType?: string } = {
-                collectionType: typeData.code.includes("INSTRUMENT")
-                  ? instrumentCollectionID
-                  : componentCollectionID,
+              let metadata: Record<string, string> = {
+                [categoryMetadataKey]: typeData.code.includes("INSTRUMENT")
+                  ? instrumentCategory
+                  : componentCategory,
               };
               creation.setMetaData(metadata);
             }

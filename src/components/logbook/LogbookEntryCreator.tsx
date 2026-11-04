@@ -15,6 +15,7 @@ import { useCreateLogbookEntry } from "../../apis/logbook/useCreateLogbookEntry"
 import { useGetAllLogbookEntries } from "../../apis/logbook/useGetAllLogbookEntries";
 import { useUpdateLogbookEntry } from "../../apis/logbook/useUpdateLogbookEntry";
 import { useGetLogbookEntry } from "../../apis/logbook/useGetLogbookEntry";
+import { useGetLogbookCollection } from "../../apis/logbook/useLogbookCollection";
 import { useGetLogbookEntryTypes } from "../../apis/logbook/useGetLogbookEntryTypes";
 import { logbookEntryReducer } from "./LogbookEntryActions";
 import {
@@ -31,7 +32,8 @@ import {
   // ReconstructedHistory,
   LogbookEntryDefinition,
 } from "../../apis/logbook/commonLogbookEntry";
-import { iLogID, iLogLogbookID, logbookCollectionID } from "../../apis/shared/environment";
+import { iLogID } from "../../apis/shared/environment";
+import { isLogbookEntry } from "../../apis/logbook/LogbookEntryAPI";
 import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
@@ -62,6 +64,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   const logbookEntryCreation = useCreateLogbookEntry();
   const logbookEntryUpdate = useUpdateLogbookEntry();
   const allLogbookEntriesQuery = useGetAllLogbookEntries();
+  const logbookCollection = useGetLogbookCollection();
   const navigate = useNavigate();
 
   let [isEditMode, setIsEditMode] = useState(mode === "edit" || mode === "create");
@@ -174,7 +177,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
 
       if (newOpenbisSample) {
         // Determine parent roles from parents list. Prefer explicit parent relationship.
-        // Parent that is in the LOGBOOK collection is considered a logbook-entry parent.
+        // Parent stored in the logbook collection is considered a logbook-entry parent.
         let foundParentObjectPermId = "";
         let foundParentLogbookEntryPermId = "";
         const parents = newOpenbisSample.getParents();
@@ -182,7 +185,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
           for (const p of parents) {
             try {
               const perm = p.getPermId().getPermId();
-              const isLogbook = p.getExperiment().getCode() === logbookCollectionID;
+              const isLogbook = isLogbookEntry(p, logbookCollection.data);
               if (isLogbook && !foundParentLogbookEntryPermId) {
                 foundParentLogbookEntryPermId = perm;
                 setParentLogbookEntryPermId(foundParentLogbookEntryPermId);
@@ -208,7 +211,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logbookEntryCode, logbookEntryResult.status, logbookEntryResult.data]);
+  }, [logbookEntryCode, logbookEntryResult.status, logbookEntryResult.data, logbookCollection.data]);
 
   const onSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -303,6 +306,33 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   const onBack = () => {
     navigate({ to: "/logbook" });
   };
+
+  // New entries need an existing logbook collection
+  if (mode === "create" && logbookCollection.isError) {
+    return (
+      <div className="md-size-div">
+        <h2>Create Logbook Entry</h2>
+        <p className="text-danger">{logbookCollection.error.message}</p>
+        <Button className="mt-4" onPress={onBack}>
+          Back to the logbook
+        </Button>
+      </div>
+    );
+  }
+  // ... which is set up on the logbook page
+  if (mode === "create" && logbookCollection.isSuccess && logbookCollection.data === null) {
+    return (
+      <div className="md-size-div">
+        <h2>Create Logbook Entry</h2>
+        <p className="text-gray-500">
+          No logbook collection is set up for this openBIS instance yet.
+        </p>
+        <Button color="primary" className="mt-4" onPress={onBack}>
+          Set up on the logbook page
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="md-size-div">
@@ -420,7 +450,6 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             dispatch={dispatch}
             hiddenPropertyCodes={[
               iLogID,
-              iLogLogbookID,
               "VALID_FROM",
             ]}
           />) : (

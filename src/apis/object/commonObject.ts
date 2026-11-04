@@ -3,8 +3,8 @@ import { PropertyTypesSchema } from "../../apis/type/commonType";
 
 export interface ObjectDefinition {
   id: openbis.SampleIdentifier | null;
-  // iLog category of the object's type (INSTRUMENT_COLLECTION or COMPONENT_COLLECTION)
-  collection: string;
+  // iLog category of the object's type (INSTRUMENT or COMPONENT)
+  category: string;
   // Identifier of the openBIS collection the object is stored in, e.g. "/SPACE/PROJECT/COLLECTION"
   collectionIdentifier: string;
   type: string;

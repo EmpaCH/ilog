@@ -1,5 +1,6 @@
 export * from "../eln/elnSettings";
 export * from "./environment";
+export * from "./category";
 export * from "./types";
 
 /**

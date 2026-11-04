@@ -23,6 +23,8 @@ interface SampleTypeDefinitionExtensionRecords {
 export interface ElnSettingsProperties {
   inventorySpaces: string[];
   sampleTypeDefinitionsExtension: SampleTypeDefinitionExtensionRecords;
+  // iLog: identifier of the collection all logbook entries are stored in, e.g. "/SPACE/PROJECT/COLLECTION"
+  ilogLogbookCollection?: string;
 }
 
 // New type default settings

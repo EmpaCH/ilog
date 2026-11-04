@@ -4,12 +4,13 @@ import {
   ReconstructedHistory,
 } from "./commonObject";
 import { stripVocabularyName } from "../shared/common";
+import { getSampleCategory } from "../shared/category";
 
 
 export function createEmptyObjectDefinition(): ObjectDefinition {
   return {
     id: null,
-    collection: "",
+    category: "",
     collectionIdentifier: "",
     type: "",
     propertiesSchema: {},
@@ -53,8 +54,7 @@ export function convertOpenBISPropertyHistoryEntryListToObjectDefinition(
 
   return {
     id: sample.getIdentifier(),
-    // The category comes from the type, since objects can live in any collection
-    collection: sample.getType().getMetaData()?.["collectionType"] ?? "",
+    category: getSampleCategory(sample),
     collectionIdentifier: sample.getExperiment()?.getIdentifier()?.getIdentifier() ?? "",
     type: sample.getType().getCode(),
     propertiesSchema: {},

@@ -3,7 +3,6 @@ import {
   useReducer,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { logbookCollectionID } from "../../apis/shared/environment";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
 import {
@@ -16,14 +15,21 @@ import {
 } from "./LogbookEntryLocalActions";
 import { useGetAllLogbookEntries } from "../../apis/logbook/useGetAllLogbookEntries";
 import { useDeleteLogbookEntry } from "../../apis/logbook/useDeleteLogbookEntry";
+import { isLogbookEntry } from "../../apis/logbook/LogbookEntryAPI";
 import { useGetObjectsByPermIds } from "../../apis/object/useGetObjectsByPermIds";
 import openbis from "@openbis/openbis.esm";
+import { useGetLogbookCollection } from "../../apis/logbook/useLogbookCollection";
+import { LogbookCollectionSetup } from "./LogbookCollectionSetup";
+import { colorMetadataKey } from "../../apis/shared/environment";
 
 export const LogbookEntryList = () => {
   const navigate = useNavigate();
   const deletion = useDeleteLogbookEntry();
   const res = useGetAllLogbookEntries();
   const logbookEntries = res.data ? [...res.data] : [];
+  const logbookCollection = useGetLogbookCollection();
+  // Ask for the logbook collection as long as none is set up for this instance
+  const needsSetup = logbookCollection.isSuccess && logbookCollection.data === null;
 
   const [state, dispatch] = useReducer(
     logbookEntryListLocalReducer,
@@ -40,8 +46,7 @@ export const LogbookEntryList = () => {
         for (const p of parents) {
           try {
             const perm = p.getPermId().getPermId();
-            const isLogbook = p.getProperty && p.getProperty(logbookCollectionID);
-            if (!isLogbook) {
+            if (!isLogbookEntry(p, logbookCollection.data)) {
               ids.add(perm);
               break; // only need one per entry
             }
@@ -52,7 +57,7 @@ export const LogbookEntryList = () => {
       }
     }
     return Array.from(ids);
-  }, [logbookEntries]);
+  }, [logbookEntries, logbookCollection.data]);
 
   const componentsQuery = useGetObjectsByPermIds(componentPermIds);
 
@@ -180,10 +185,10 @@ export const LogbookEntryList = () => {
         for (const p of parents) {
           try {
             const perm = p.getPermId().getPermId();
-            const isLogbookEntry = p.getExperiment().getCode() === logbookCollectionID;
-            if (isLogbookEntry && !parentEntry) {
+            const isLogbookParent = isLogbookEntry(p, logbookCollection.data);
+            if (isLogbookParent && !parentEntry) {
               parentEntry = p.getProperty("NAME") || p.getCode() || "";
-            } else if (!isLogbookEntry && !compPermId) {
+            } else if (!isLogbookParent && !compPermId) {
               compPermId = perm;
             }
             if (parentEntry && compPermId) break;
@@ -204,7 +209,7 @@ export const LogbookEntryList = () => {
           ? entry.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
           : "",
         responsible: entry.getRegistrator().getPermId().getPermId() || "",
-        color: entry.getType().getMetaData()["color"],
+        color: entry.getType().getMetaData()[colorMetadataKey],
       }
     }
   );
@@ -214,6 +219,14 @@ export const LogbookEntryList = () => {
   return (
     <>
       <h2>Logbook Entry List</h2>
+      {logbookCollection.isError && (
+        <p className="text-sm text-danger text-left mb-2">{logbookCollection.error.message}</p>
+      )}
+      {logbookCollection.data && (
+        <p className="text-sm text-gray-500 text-left mb-2">
+          Logbook collection: {logbookCollection.data}
+        </p>
+      )}
       <List
         columns={columns}
         rows={rows}
@@ -226,6 +239,7 @@ export const LogbookEntryList = () => {
         onEdit={onEdit}
         onView={onView}
       />
+      <LogbookCollectionSetup isOpen={needsSetup} />
       <MessageModal
         message={state.deletionMessage}
         isOpen={state.showMessage}
