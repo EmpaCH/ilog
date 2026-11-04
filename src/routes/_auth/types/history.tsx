@@ -1,5 +1,6 @@
 import { createFileRoute, useLocation } from '@tanstack/react-router'
 import { ObjectHistory } from '../../../components/object/ObjectHistory'
+import { AdminOnly } from '../../../components/shared/AdminOnly'
 
 export const Route = createFileRoute('/_auth/types/history')({
   component: () => {
@@ -7,8 +8,10 @@ export const Route = createFileRoute('/_auth/types/history')({
     const searchParams = new URLSearchParams(location.search)
     const objectCode = searchParams.get('objectcode')
 
-    return ObjectHistory({
-      objectCode: objectCode || '',
-    })
+    return (
+      <AdminOnly>
+        <ObjectHistory objectCode={objectCode || ''} />
+      </AdminOnly>
+    )
   },
 })

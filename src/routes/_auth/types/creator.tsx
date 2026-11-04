@@ -3,6 +3,7 @@ import { ObjectTypeCreator } from '../../../components/type/ObjectTypeCreator.ts
 import { EMPTY_TYPE_DEFINITION } from '../../../apis/shared/common'
 import { convertOpenBISSampleTypeToObjectTypeDefinition, ObjectTypeDefinition } from '../../../apis/type/commonType'
 import openbis from '@openbis/openbis.esm';
+import { AdminOnly } from '../../../components/shared/AdminOnly'
 
 
 interface TypeCreatorState extends HistoryState{
@@ -24,9 +25,10 @@ export const Route = createFileRoute('/_auth/types/creator')({
       
     }
 
-    return ObjectTypeCreator({
-      objectTypeCode: objectTypeCode || '',
-      mode: mode,
-    });
+    return (
+      <AdminOnly>
+        <ObjectTypeCreator objectTypeCode={objectTypeCode || ''} mode={mode} />
+      </AdminOnly>
+    );
   },
 })
