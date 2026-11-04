@@ -19,6 +19,7 @@ import {
   convertCreationsToOperations,
   convertObjectTypeDefinitionToOperations,
 } from "./helpersTypeAPI";
+import { enableObjectTypeInEln } from "./typeAPI";
 
 import openbis from "@openbis/openbis.esm";
 import { 
@@ -54,8 +55,8 @@ export const useCreateObjectType = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    // Only update the object setting definition if the creation of the object type was successful
-    onSuccess: () => {
+    // Also refresh after an error: the type may have been created even if enabling it in the ELN failed
+    onSettled: () => {
       // Invalidate all relevant caches to ensure fresh data on next fetch
       queryClient.refetchQueries({ queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX] });
@@ -95,6 +96,7 @@ export const useCreateObjectType = () => {
         props.setExecuteInOrder(true);
         const ops = convertCreationsToOperations(operations);
         await apiFacade.executeOperations(ops, props);
+        await enableObjectTypeInEln(apiFacade, definition.code.toUpperCase());
       }
     },
   });

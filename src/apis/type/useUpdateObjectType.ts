@@ -25,7 +25,8 @@ export const useUpdateObjectType = () => {
         await updateObjectType(apiFacade, definition);
       }
     },
-    onSuccess: () => {
+    // Also refresh after an error: the type may have been updated even if enabling it in the ELN failed
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX] });
       queryClient.invalidateQueries({ queryKey: [ALL_PROPERTY_TYPES_QUERY_PREFIX] });
       queryClient.invalidateQueries({ queryKey: [ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX] });
