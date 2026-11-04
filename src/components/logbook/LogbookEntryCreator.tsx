@@ -32,7 +32,7 @@ import {
   // ReconstructedHistory,
   LogbookEntryDefinition,
 } from "../../apis/logbook/commonLogbookEntry";
-import { iLogID } from "../../apis/shared/environment";
+import { legacyIlogPropertyCodes } from "../../apis/shared/environment";
 import { isLogbookEntry } from "../../apis/logbook/LogbookEntryAPI";
 import {
   PropertyTypesSchema,
@@ -449,7 +449,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             state={state}
             dispatch={dispatch}
             hiddenPropertyCodes={[
-              iLogID,
+              ...legacyIlogPropertyCodes,
               "VALID_FROM",
             ]}
           />) : (

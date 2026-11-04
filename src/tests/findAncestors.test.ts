@@ -6,7 +6,16 @@ import {
   deriveType,
   checkValidSubType,
 } from "../apis/type/commonType";
-import { COMPONENT_TYPE_DEFINITION } from "../apis/shared/types";
+import { COMPONENT_SCHEMA } from "../apis/shared/types";
+import { componentCategory } from "../apis/shared/category";
+
+const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
+  code: "COMPONENT",
+  generatedCodePrefix: "COMPONENT",
+  description: "Component",
+  propertyTypes: COMPONENT_SCHEMA,
+  category: componentCategory,
+};
 
 
 

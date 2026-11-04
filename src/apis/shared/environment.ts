@@ -1,15 +1,12 @@
-import openbis from "@openbis/openbis.esm";
-
-// Environment creation settings
+// Fixed Lab 205 codes, still used by the object import/export until it is made instance independent
 export const iLogID = "ILOG";
 export const labID = "LAB205_EQUIPMENT";
-// Codes of the collections created by the legacy Lab 205 initialization (see useInitIlog)
 export const componentCollectionID = "COMPONENT_COLLECTION";
-export const componentCollectionName = "Components";
 export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
-export const instrumentCollectionName = "Instruments";
-export const logbookCollectionID = "LOGBOOK_COLLECTION";
-export const logbookCollectionName = "Logbook";
+// Property types created by older iLog versions. iLog no longer creates or uses them, but they are
+// still assigned to existing (Lab 205) types and their objects, so they are hidden in forms.
+export const legacyIlogPropertyCode = "ILOG";
+export const legacyIlogPropertyCodes = [legacyIlogPropertyCode, "ILOG_LOGBOOK"];
 // Object type metadata key holding the identifier of the collection new objects of that type
 // are stored in by default (e.g. "/SPACE/PROJECT/COLLECTION"). Can be overridden per object.
 export const defaultCollectionMetadataKey = "defaultCollection";
@@ -19,53 +16,3 @@ export const colorMetadataKey = "color";
 // Rooms are a pre-existing openBIS inventory sample type, not managed by iLog's
 // own Instrument/Component collections, but usable as a LOCATION value.
 export const roomObjectTypeCode = "ROOM";
-
-// Helper functions
-export function getCurrentLabID(): string {
-  return labID;
-}
-
-let isInitializing = false;
-
-export function setIsInitializing(value: boolean): void {
-  isInitializing = value;
-}
-
-export function getIsInitializing(): boolean {
-  return isInitializing;
-}
-
-// Space (lab) > Project (iLog) > Collection (i.e. Components, Instruments)
-class Env {
-  componentCollection: openbis.Experiment | null;
-  instrumentCollection: openbis.Experiment | null;
-  project: openbis.Project | null;
-  space: openbis.Space | null;
-
-  constructor(collection = null, project = null, space = null) {
-    this.componentCollection = collection;
-    this.instrumentCollection = collection;
-    this.project = project;
-    this.space = space;
-  }
-
-  setEnv(
-    componentCollection: openbis.Experiment,
-    instrumentCollection: openbis.Experiment,
-    project: openbis.Project,
-    space: openbis.Space
-  ) {
-    this.componentCollection = componentCollection;
-    this.instrumentCollection = instrumentCollection;
-    this.project = project;
-    this.space = space;
-  }
-
-  isDefined(): boolean {
-    return (
-      this.componentCollection != null && this.instrumentCollection != null && this.project != null && this.space != null
-    );
-  }
-}
-
-export const env = new Env();
