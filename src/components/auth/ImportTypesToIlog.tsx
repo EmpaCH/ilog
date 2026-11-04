@@ -63,8 +63,9 @@ export const ImportTypesToIlog: React.FC = () => {
   );
 
   const canRemove = selectedTypes.length > 0 && selectedTypes.every((t) => isImportedToIlog(t));
-  const canSetInstrument = selectedTypes.length > 0;
-  const canSetComponent = selectedTypes.length > 0;
+  // Setting a category is only useful for types that don't have it yet
+  const canSetInstrument = selectedTypes.some((t) => getTypeCategory(t) !== instrumentCategory);
+  const canSetComponent = selectedTypes.some((t) => getTypeCategory(t) !== componentCategory);
 
   const onClear = React.useCallback(() => {
     Object.keys(filter).forEach(key => {
@@ -160,34 +161,34 @@ export const ImportTypesToIlog: React.FC = () => {
                 <TableCell>{getIlogType(type)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1 min-h-[32px] items-center">
-                    <>
+                    <Button
+                      size="sm"
+                      color="secondary"
+                      variant="light"
+                      isDisabled={getTypeCategory(type) === instrumentCategory}
+                      onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: instrumentCategory })}
+                    >
+                      Set as Instrument
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="warning"
+                      variant="light"
+                      isDisabled={getTypeCategory(type) === componentCategory}
+                      onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: componentCategory })}
+                    >
+                      Set as Component
+                    </Button>
+                    {isImportedToIlog(type) && 
                       <Button
                         size="sm"
-                        color="secondary"
+                        color="danger"
                         variant="light"
-                        onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: instrumentCategory })}
+                        onPress={() => removeMutation.mutate([type.getCode()])}
                       >
-                        Set as Instrument
+                        Remove
                       </Button>
-                      <Button
-                        size="sm"
-                        color="warning"
-                        variant="light"
-                        onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: componentCategory })}
-                      >
-                        Set as Component
-                      </Button>
-                      {isImportedToIlog(type) && 
-                        <Button
-                          size="sm"
-                          color="danger"
-                          variant="light"
-                          onPress={() => removeMutation.mutate([type.getCode()])}
-                        >
-                          Remove
-                        </Button>
-                      }
-                    </>
+                    }
                   </div>
                 </TableCell>
               </TableRow>
