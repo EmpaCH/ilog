@@ -434,7 +434,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           }}
         >
           <TableCell>{component.getProperty("NAME")}</TableCell>
-          <TableCell style={{ color: component.getType().getMetaData()[colorMetadataKey] }}>{ component.getType().getDescription() }</TableCell>
+          <TableCell style={{ color: component.getType().getMetaData()[colorMetadataKey] }}>{ component.getType().getDescription() || component.getType().getCode() }</TableCell>
           <TableCell>{parentEntry}</TableCell>
           <TableCell>{(component.getProperty("VALID_FROM") && typeof component.getProperty("VALID_FROM") === "string" && component.getProperty("VALID_FROM").includes("T"))
             ? component.getProperty("VALID_FROM").replace("T", " ").split(".")[0]
