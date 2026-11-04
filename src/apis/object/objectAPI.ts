@@ -5,7 +5,6 @@ import { componentCategory, getSampleCategory, instrumentCategory } from "../sha
 /**
  * Get all objects from the inventory.
  * @param api - The OpenBIS JavaScript facade instance.
- * @param labID - The lab ID to search in.
  * @returns A promise that resolves to an array of Sample objects.
  */
 export async function getAllObjects(
@@ -33,7 +32,6 @@ export async function getAllObjects(
 /**
  * Get all objects from the iLog inventory Equipment collection.
  * @param api - The OpenBIS JavaScript facade instance.
- * @param labID - The lab ID to search in.
  * @returns A promise that resolves to an array of Sample objects.
  */
 export async function getIlogObjects(
@@ -64,7 +62,6 @@ export async function getIlogObjects(
 /**
  * Get all objects of a specific type.
  * @param api - The OpenBIS JavaScript facade instance.
- * @param labID - The lab ID to search in.
  * @returns A promise that resolves to an array of Sample objects.
  */
 export async function getObjectsOfType(
