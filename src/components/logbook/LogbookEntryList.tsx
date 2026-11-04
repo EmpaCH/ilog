@@ -202,7 +202,7 @@ export const LogbookEntryList = () => {
         permId: entry.getPermId(),
         code: entry.getCode(),
         name,
-        type: entry.getType().getDescription(),
+        type: entry.getType().getDescription() || entry.getType().getCode(),
         object: (componentsQuery.data && componentsQuery.data[compPermId]) ? componentsQuery.data[compPermId] : compPermId,
         parentEntry,
         validFrom: (entry.getProperty("VALID_FROM") && typeof entry.getProperty("VALID_FROM") === "string" && entry.getProperty("VALID_FROM").includes("T"))
