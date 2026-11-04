@@ -8,7 +8,17 @@ import userEvent from "@testing-library/user-event";
 import { openBISHookFactory } from "../hooks/auth/useAuth";
 import { useState } from "react";
 import { storageMockFactory } from "./storageMock";
-import { INSTRUMENT_TYPE_DEFINITION } from "../apis/shared/types";
+import { INSTRUMENT_SCHEMA } from "../apis/shared/types";
+import { instrumentCategory } from "../apis/shared/category";
+import { ObjectTypeDefinition } from "../apis/type/commonType";
+
+const INSTRUMENT_TYPE_DEFINITION: ObjectTypeDefinition = {
+  code: "INSTRUMENT",
+  generatedCodePrefix: "INSTRUMENT",
+  description: "Instrument",
+  propertyTypes: INSTRUMENT_SCHEMA,
+  category: instrumentCategory,
+};
 import TestWrapper from "./TestWrapper";
 import TestComponent from "./TestComponent";
 import { useCreateObjectType } from "../apis/type/useCreateObjectType";

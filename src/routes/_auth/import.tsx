@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useGetCurrentUser } from "../../apis/user/useGetCurrentUser";
-import { InitComponent } from "../../components/auth/Init";
 import { ImportProgress } from "../../components/auth/ImportProgress";
 import { ImportTypesToIlog } from "../../components/auth/ImportTypesToIlog";
 import { useState, useContext, useRef } from "react";
@@ -13,7 +12,6 @@ export const Route = createFileRoute("/_auth/import")({
   component: () => {
     const OPENBIS_URL = import.meta.env.VITE_OPENBIS_URL;
 
-    const [showInitModal, setShowInitModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [importProgress, setImportProgress] = useState<string[]>([]);
     const [importStats, setImportStats] = useState<{
@@ -37,11 +35,6 @@ export const Route = createFileRoute("/_auth/import")({
       isSuccess,
     } = useGetCurrentUser();
     
-    const handleInitializeWorkspace = () => {
-      console.log("Initializing workspace...");
-      setShowInitModal(true);
-    };
-
     const handleExportObjectTypes = async () => {
       try {
         await exportObjectTypes();
@@ -159,17 +152,6 @@ export const Route = createFileRoute("/_auth/import")({
           {OPENBIS_URL && OPENBIS_URL.includes("localhost") ? (
             <>
               <div className="flex gap-4 items-center justify-center my-8">
-                <Button
-                  color="primary"
-                  onPress={handleInitializeWorkspace}
-                  size="lg"
-                  isDisabled={showInitModal}
-                >
-                  Initialize Workspace
-                </Button>
-              </div>
-              <Divider className="my-4" />
-              <div className="flex gap-4 items-center justify-center my-8">
                 <h3 className="w-full text-center">Types</h3>
               </div>
               <div className="flex gap-4 items-center justify-center my-8">
@@ -243,7 +225,6 @@ export const Route = createFileRoute("/_auth/import")({
                   style={{ display: "none" }}
                 />
               </div>
-              {showInitModal && <InitComponent show={showInitModal} />}
               <ImportProgress
                 isOpen={showImportModal}
                 onOpenChange={setShowImportModal}

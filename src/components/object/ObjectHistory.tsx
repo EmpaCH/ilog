@@ -10,7 +10,7 @@ import {
   convertOpenBISPropertyHistoryEntryListToObjectDefinition,
 } from "../../apis/object/helpersObjectAPI";
 import { GroupedHistory } from "../../apis/object/commonObject";
-import { iLogID } from "../../apis/shared/environment";
+import { legacyIlogPropertyCodes } from "../../apis/shared/environment";
 import { getSampleCategory, instrumentCategory } from "../../apis/shared/category";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
 import {
@@ -156,7 +156,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
           const ts = timestamps[i].toString();
           const prevTs = i > 0 ? timestamps[i - 1].toString() : null;
           const prevValues = prevTs ? groupedHistory[prevTs].propertyValues : null;
-          diffs[ts] = computeDiff(prevValues, groupedHistory[ts].propertyValues, [iLogID]);
+          diffs[ts] = computeDiff(prevValues, groupedHistory[ts].propertyValues, legacyIlogPropertyCodes);
         }
 
         setHistory(groupedHistory);
@@ -221,7 +221,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
                   <ObjectPropertyEditor
                     isReadOnly={true}
                     state={history[timestampStr]}
-                    hiddenPropertyCodes={[iLogID]}
+                    hiddenPropertyCodes={legacyIlogPropertyCodes}
                   />
                 </CardBody>
               </Card>

@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import openbis from "@openbis/openbis.esm";
-import { iLogID } from "../shared/environment";
+import { legacyIlogPropertyCode } from "../shared/environment";
 import {
   categoryMetadataKey,
   componentCategory,
@@ -210,7 +210,8 @@ export const useExportImportObjectTypes = ({
 
             if (typeData.metadata && Object.keys(typeData.metadata).length > 0) {
               creation.setMetaData(typeData.metadata);
-            } else if (typeData.propertyAssignments.some((pa: any) => pa.code === iLogID)) {
+            } else if (typeData.propertyAssignments.some((pa: any) => pa.code === legacyIlogPropertyCode)) {
+              // Exports from older iLog versions mark iLog types only by the ILOG property
               console.log("Processing typeData", typeData);
               let metadata: Record<string, string> = {
                 [categoryMetadataKey]: typeData.code.includes("INSTRUMENT")

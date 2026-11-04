@@ -1,11 +1,5 @@
 import openbis from "@openbis/openbis.esm";
 import {
-  parseElnSettingsProperties,
-  updateElnSettings,
-  newTypeSettings,
-} from "../shared/common";
-import {
-  getIsInitializing,
   defaultCollectionMetadataKey,
   colorMetadataKey,
 } from "../shared/environment";
@@ -27,51 +21,6 @@ import { getPropertyTypeId } from "../propertyType/commonPropertyType";
 
 export function flattenObjectSchema(schema: PropertyTypesSchema) {
   return Object.values(schema).flat();
-}
-
-/**
- * Update ELN settings to automatically enable an object type upon creation.
- * Only updates settings during initialization mode to avoid overriding existing lab configurations.
- * @param api - The OpenBIS JavaScript facade instance.
- * @param typeName - The name of the object type to enable.
- */
-export async function createObjectTypeSettingsDefinition(
-  api: openbis.OpenBISJavaScriptFacade,
-  typeName: string
-): Promise<void> {
-  if (!getIsInitializing()) {
-    return;
-  }
-  // Parse existing ELN settings properties
-  var properties = await parseElnSettingsProperties(api);
-  // Expand the settings with the appropriate properties for enabling the new type
-    properties.sampleTypeDefinitionsExtension = {
-      ...properties.sampleTypeDefinitionsExtension,
-      [typeName]: newTypeSettings,
-    };
-  // Update the ELN settings with the new properties
-  await updateElnSettings(api, properties);
-}
-
-/**
- * Delete object type from ELN settings upon its deletion.
- * Only updates settings during initialization mode to avoid overriding existing lab configurations.
- * @param api - The OpenBIS JavaScript facade instance.
- * @param typeName - The name of the object type to disable.
- */
-export async function deleteObjectTypeSettingsDefinition(
-  api: openbis.OpenBISJavaScriptFacade,
-  typeName: string
-): Promise<void> {
-  if (!getIsInitializing()) {
-    return;
-  }
-  // Parse existing ELN settings properties
-  var properties = await parseElnSettingsProperties(api);
-  // Remove the specified object type from the settings
-  delete properties.sampleTypeDefinitionsExtension[typeName];
-  // Update the ELN settings with the modified properties
-  await updateElnSettings(api, properties);
 }
 
 /**

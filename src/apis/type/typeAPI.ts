@@ -1,7 +1,5 @@
 import openbis from "@openbis/openbis.esm";
 import {
-  createObjectTypeSettingsDefinition,
-  deleteObjectTypeSettingsDefinition,
   convertObjectTypeDefinitionToOperations,
   convertCreationsToOperations,
   convertPropertyTypesSchemaToUpdateOperations,
@@ -64,15 +62,6 @@ export async function getIlogObjectTypes(
   api: openbis.OpenBISJavaScriptFacade,
   search: string = ""
 ): Promise<openbis.SampleType[]> {
-  // const sc = new openbis.SampleTypeSearchCriteria();
-  // if (search && search.trim()) {
-  //   sc.withCode().thatStartsWith(search.toUpperCase());
-  // }
-  // sc.withPropertyAssignments().withPropertyType().withCode().thatEquals(iLogID);
-  // const fo = createObjectTypeFetchOptions();
-  // const result = await api.searchSampleTypes(sc, fo);
-  // return result.getObjects();
-
   const allTypes = await getAllObjectTypes(api, search);
   return allTypes.filter((type) => getTypeCategory(type) !== "");
 }
@@ -127,11 +116,10 @@ export async function getObjectType(
 //   const props = new openbis.SynchronousOperationExecutionOptions();
 //   props.setExecuteInOrder(true);
 //   await api.executeOperations(ops, props);
-//   await createObjectTypeSettingsDefinition(api, otd.code);
 // }
 
 /**
- * Update an existing object type and automatically update its settings in ELN.
+ * Update an existing object type, creating property types it uses that do not exist yet.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param otd - The object type definition.
  * @param typeId - The ID of the type to update.
@@ -181,11 +169,10 @@ export async function updateObjectType(
     const sampleTypeUpdateOperation = new openbis.UpdateSampleTypesOperation(updateOps);
     await api.executeOperations([sampleTypeUpdateOperation], props);
   }
-  await createObjectTypeSettingsDefinition(api, otd.code);
 }
 
 /**
- * Delete an object type and automatically disable the type in ELN settings.
+ * Delete an object type.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param typeId - The ID of the type to delete.
  */
@@ -196,7 +183,6 @@ export async function deleteObjectType(
   const stdo = new openbis.SampleTypeDeletionOptions();
   stdo.setReason("Type no longer needed.");
   await api.deleteSampleTypes([typeId], stdo);
-  await deleteObjectTypeSettingsDefinition(api, typeId.getPermId());
 }
 
 /**

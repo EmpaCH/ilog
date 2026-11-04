@@ -30,7 +30,7 @@ import {
 } from "../../apis/object/helpersObjectAPI";
 import { ObjectDefinition } from "../../apis/object/commonObject";
 import {
-  iLogID,
+  legacyIlogPropertyCodes,
   defaultCollectionMetadataKey,
 } from "../../apis/shared/environment";
 import {
@@ -859,9 +859,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
               <ObjectPropertyEditor
                 state={state}
                 dispatch={dispatch}
-                hiddenPropertyCodes={[
-                  iLogID,
-                ]}
+                hiddenPropertyCodes={legacyIlogPropertyCodes}
                 currentObjectCode={objectCode}
                 onSelectedComponentsChange={(propertyCode, permIds) => {
                   // Only track permIds for properties whose objectType belongs to the
