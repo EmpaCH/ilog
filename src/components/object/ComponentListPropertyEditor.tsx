@@ -24,7 +24,10 @@ import openbis from "@openbis/openbis.esm";
 import { useContext } from "react";
 import { AuthContext } from "../../context/auth/authContext";
 import { usePreviewImages } from "../../apis/dataset/useDatasets";
-import { logbookCollectionID, instrumentCollectionID } from "../../apis/shared/environment";
+import { colorMetadataKey } from "../../apis/shared/environment";
+import { componentCategory, getSampleCategory, instrumentCategory } from "../../apis/shared/category";
+import { isLogbookEntry } from "../../apis/logbook/LogbookEntryAPI";
+import { useGetLogbookCollection } from "../../apis/logbook/useLogbookCollection";
 
 interface ComponentListPropertyEditorProps {
   dispatch: React.Dispatch<any>;
@@ -58,6 +61,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   usedForLogentry,
 }) => {
   const { apiFacade } = useContext(AuthContext);
+  const logbookCollection = useGetLogbookCollection();
   // Always use the single cached getAll query — getIlogObjects and getObjectsOfType
   // both perform the same full searchSamples request anyway and only filter client-side.
   // Calling a different hook conditionally violates Rules of Hooks and causes the
@@ -153,8 +157,8 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       if (onlyIlog) {
         filteredData = filteredData.filter(
           // (s) => s.getType().getMetaData()?.["ilog"] === "true"
-          (s) => s.getType().getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION"
-            || s.getType().getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION"
+          (s) => getSampleCategory(s) === componentCategory
+            || getSampleCategory(s) === instrumentCategory
         );
       }
       // Apply objectType filter
@@ -332,7 +336,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     if (getObjectsResult.status !== "success") return new Set<string>();
     return new Set(
       getObjectsResult.data
-        .filter((o) => o.getType().getMetaData()?.["collectionType"] === instrumentCollectionID)
+        .filter((o) => getSampleCategory(o) === instrumentCategory)
         .map((o) => o.getPermId().getPermId())
     );
   }, [getObjectsResult.status, getObjectsResult.data]);
@@ -410,8 +414,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       if (parents.length > 0) {
         for (const p of parents) {
           try {
-            const isLogbookEntry = p.getExperiment && p.getExperiment().getCode() === logbookCollectionID;
-            if (isLogbookEntry && !parentEntry) {
+            if (isLogbookEntry(p, logbookCollection.data) && !parentEntry) {
               parentEntry = p.getProperty("NAME") || p.getCode() || "";
             }
             if (parentEntry) break;
@@ -431,7 +434,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           }}
         >
           <TableCell>{component.getProperty("NAME")}</TableCell>
-          <TableCell style={{ color: component.getType().getMetaData()["color"] }}>{ component.getType().getDescription() }</TableCell>
+          <TableCell style={{ color: component.getType().getMetaData()[colorMetadataKey] }}>{ component.getType().getDescription() }</TableCell>
           <TableCell>{parentEntry}</TableCell>
           <TableCell>{(component.getProperty("VALID_FROM") && typeof component.getProperty("VALID_FROM") === "string" && component.getProperty("VALID_FROM").includes("T"))
             ? component.getProperty("VALID_FROM").replace("T", " ").split(".")[0]

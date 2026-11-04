@@ -7,8 +7,10 @@ export type TypeCreatorActions =
   | { type: "SET_PREFIX"; payload: string }
   | { type: "SET_CODE"; payload: string }
   | { type: "SET_DESCRIPTION"; payload: string }
-  | { type: "SET_COLLECTION_TYPE"; payload: string }
+  | { type: "SET_CATEGORY"; payload: string }
   | { type: "SET_DEFAULT_COLLECTION"; payload: string }
+  | { type: "SET_COLOR"; payload: string }
+  | { type: "SET_ICON"; payload: string }
   | { type: "SET_BASE_TYPE"; payload: { newBaseType: ObjectTypeDefinition } }
   | {
       type: "SET_NEW_PROPERTY";
@@ -59,11 +61,17 @@ export const typeCreatorReducer =  (state: TypeCreatorState, action: TypeCreator
       case "SET_DESCRIPTION":
         draft.schema.description = action.payload;
         break;
-      case "SET_COLLECTION_TYPE":
-        draft.schema.collectionType = action.payload;
+      case "SET_CATEGORY":
+        draft.schema.category = action.payload;
         break;
       case "SET_DEFAULT_COLLECTION":
         draft.schema.defaultCollection = action.payload;
+        break;
+      case "SET_COLOR":
+        draft.schema.color = action.payload;
+        break;
+      case "SET_ICON":
+        draft.schema.icon = action.payload;
         break;
       case "SET_BASE_TYPE":
         draft.schema.baseType = action.payload.newBaseType.code;

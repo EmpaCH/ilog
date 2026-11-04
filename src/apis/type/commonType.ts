@@ -8,7 +8,8 @@ import {
   LocalPropertyType,
 } from "../propertyType/commonPropertyType";
 import { iLogGeneralInfoGroup } from "../shared/types";
-import { defaultCollectionMetadataKey } from "../shared/environment";
+import { defaultCollectionMetadataKey, colorMetadataKey } from "../shared/environment";
+import { getTypeCategory, logbookEntryCategory } from "../shared/category";
 
 // Define primitive data types
 const PRIMITIVE_DATA_TYPES = [
@@ -63,9 +64,15 @@ export interface ObjectTypeDefinition {
   description: string;
   propertyTypes: PropertyTypesSchema | ResolvedPropertyTypeSchema;
   baseType?: string;
-  collectionType: string;
+  // iLog category of the type (see apis/shared/category.ts), "" if not an iLog type
+  category: string;
   // Identifier of the collection new objects of this type are stored in by default
   defaultCollection?: string;
+  // Color (hex) used to show objects of this type, e.g. logbook entries in the logbook
+  color?: string;
+  // Optional icon of a logbook entry type. Not stored separately: it is saved at the start of the
+  // description (see joinIconAndDescription) and split off again when the type is loaded.
+  icon?: string;
   metadata?: Record<string, string>;
 }
 
@@ -417,15 +424,44 @@ export function convertPropertyAssignmentsToPropertyTypesSchema(
 export function convertOpenBISSampleTypeToObjectTypeDefinition(
   sampleType: openbis.SampleType
 ): ObjectTypeDefinition {
+  const category = getTypeCategory(sampleType);
+  // Only logbook entry types have an icon in front of their description
+  const { icon, description } = category === logbookEntryCategory
+    ? splitIconFromDescription(sampleType.getDescription())
+    : { icon: undefined, description: sampleType.getDescription() };
   return {
     code: sampleType.getCode(),
     generatedCodePrefix: sampleType.getGeneratedCodePrefix(),
-    description: sampleType.getDescription(),
+    description,
     propertyTypes: convertPropertyAssignmentsToPropertyTypesSchema(
       sampleType.getPropertyAssignments()
     ),
     baseType: sampleType.getMetaData()["baseType"],
-    collectionType: sampleType.getMetaData()["collectionType"],
+    category,
     defaultCollection: sampleType.getMetaData()[defaultCollectionMetadataKey],
+    color: sampleType.getMetaData()[colorMetadataKey],
+    icon,
   };
+}
+
+// A leading run of symbols (e.g. an emoji) followed by whitespace counts as the icon
+const leadingIconPattern = /^([^\p{L}\p{N}\s]+)\s+(.*)$/su;
+
+/**
+ * Split a leading icon (e.g. "🔥") off a type description such as "🔥 Bakeout".
+ * @param description - The full description.
+ * @returns The icon (undefined if there is none) and the remaining description.
+ */
+export function splitIconFromDescription(description: string | null | undefined): { icon?: string; description: string } {
+  const match = (description ?? "").match(leadingIconPattern);
+  return match ? { icon: match[1], description: match[2] } : { description: description ?? "" };
+}
+
+/**
+ * Put the icon, if any, at the start of the description, e.g. "🔥" and "Bakeout" give "🔥 Bakeout".
+ * @param icon - The optional icon.
+ * @param description - The description without icon.
+ */
+export function joinIconAndDescription(icon: string | undefined, description: string): string {
+  return icon ? `${icon} ${description}`.trim() : description;
 }

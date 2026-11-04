@@ -12,6 +12,11 @@ import {
   PropertyTypesSchema,
 } from "./commonType";
 import { getPropertyTypes } from "../propertyType/propertyTypeAPI";
+import {
+  categoryMetadataKey,
+  getTypeCategory,
+  legacyCategoryMetadataKey,
+} from "../shared/category";
 
 export function createObjectTypeFetchOptions(): openbis.SampleTypeFetchOptions {
   const fo = new openbis.SampleTypeFetchOptions();
@@ -50,7 +55,7 @@ export async function getAllObjectTypes(
 
 
 /**
- * Get all object types with the iLog base type property and apply filtering by code if search field is provided.
+ * Get all iLog object types (instrument, component and logbook entry types) and apply filtering by code if search field is provided.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param search - The search string to filter types by code.
  * @returns A promise that resolves to an array of SampleType objects.
@@ -69,9 +74,7 @@ export async function getIlogObjectTypes(
   // return result.getObjects();
 
   const allTypes = await getAllObjectTypes(api, search);
-  return allTypes.filter((type) => type.getMetaData()?.["collectionType"] === "COMPONENT_COLLECTION"
-    || type.getMetaData()?.["collectionType"] === "INSTRUMENT_COLLECTION"
-  );
+  return allTypes.filter((type) => getTypeCategory(type) !== "");
 }
 
 /**
@@ -223,7 +226,7 @@ export async function deleteObjectType(
 // }
 
 /**
- * Remove an existing object type from iLog by removing the collectionType key from its metadata.
+ * Remove an existing object type from iLog by removing the category keys from its metadata.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param permId - The ID of the type to update.
  */
@@ -239,7 +242,8 @@ export async function removeObjectTypeFromIlog(
   if (!sampleType) return;
 
   const existingMetadata: Record<string, string> = { ...(sampleType.getMetaData() ?? {}) };
-  delete existingMetadata["collectionType"];
+  delete existingMetadata[categoryMetadataKey];
+  delete existingMetadata[legacyCategoryMetadataKey];
 
   const update = new openbis.SampleTypeUpdate();
   update.setTypeId(sampleType.getPermId());
@@ -251,15 +255,15 @@ export async function removeObjectTypeFromIlog(
 }
 
 /**
- * Set the collectionType metadata key on an object type.
+ * Set the iLog category of an object type.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param permId - The code/permId of the type to update.
- * @param collectionType - The collection type value to set (e.g. "INSTRUMENT_COLLECTION").
+ * @param category - The category to set (e.g. "INSTRUMENT").
  */
-export async function setObjectTypeCollectionType(
+export async function setObjectTypeCategory(
   api: openbis.OpenBISJavaScriptFacade,
   permId: string,
-  collectionType: string,
+  category: string,
 ): Promise<void> {
   const sc = new openbis.SampleTypeSearchCriteria();
   sc.withCode().thatEquals(permId);
@@ -268,10 +272,11 @@ export async function setObjectTypeCollectionType(
   const sampleType = result.getObjects()[0];
   if (!sampleType) return;
 
-  const existingMetadata: Record<string, string> = sampleType.getMetaData() ?? {};
+  const existingMetadata: Record<string, string> = { ...(sampleType.getMetaData() ?? {}) };
+  delete existingMetadata[legacyCategoryMetadataKey];
   const update = new openbis.SampleTypeUpdate();
   update.setTypeId(sampleType.getPermId());
-  update.getMetaData().set([{ ...existingMetadata, collectionType }]);
+  update.getMetaData().set([{ ...existingMetadata, [categoryMetadataKey]: category }]);
 
   const props = new openbis.SynchronousOperationExecutionOptions();
   props.setExecuteInOrder(true);

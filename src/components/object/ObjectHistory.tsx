@@ -10,7 +10,8 @@ import {
   convertOpenBISPropertyHistoryEntryListToObjectDefinition,
 } from "../../apis/object/helpersObjectAPI";
 import { GroupedHistory } from "../../apis/object/commonObject";
-import { iLogID, instrumentCollectionID } from "../../apis/shared/environment";
+import { iLogID } from "../../apis/shared/environment";
+import { getSampleCategory, instrumentCategory } from "../../apis/shared/category";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
 import {
   PropertyTypesSchema,
@@ -102,7 +103,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
   const [history, setHistory] = useState<GroupedHistory>({});
   const [sortedTimestamps, setSortedTimestamps] = useState<number[]>([]);
   const [diffsByTimestamp, setDiffsByTimestamp] = useState<Record<string, DiffEntry[]>>({});
-  const [collectionType, setCollectionType] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
   const [objectName, setObjectName] = useState<string | null>(null);
 
   // Derive permId directly from query data so usePreviewImages hits the cache immediately
@@ -125,7 +126,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
       ) as openbis.Sample;
 
       if (openbisSample) {
-        setCollectionType(openbisSample.getType().getMetaData()?.["collectionType"] ?? null);
+        setCategory(getSampleCategory(openbisSample) || null);
         setObjectName(openbisSample.getProperty("NAME") || null);
         const objectHistory = openbisSample.getPropertiesHistory() as openbis.PropertyHistoryEntry[];
         const reconstructedHistory = reconstructHistory(objectHistory);
@@ -165,7 +166,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
     }
   }, [objectCode, allObjectsResult.status, allObjectsResult.data]);
 
-  const baseTypeName = collectionType === instrumentCollectionID ? "Instrument" : "Component";
+  const baseTypeName = category === instrumentCategory ? "Instrument" : "Component";
 
   return (
     <>

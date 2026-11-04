@@ -12,14 +12,7 @@ import {
   objectListLocalReducer,
   EMPTY_OBJECT_LIST_DEFINITION,
 } from "./ObjectLocalActions";
-import {
-  componentCollectionID,
-  instrumentCollectionID,
-  logbookCollectionID,
-  componentCollectionName,
-  instrumentCollectionName,
-  logbookCollectionName,
-} from "../../apis/shared/environment";
+import { categoryLabels, getSampleCategory } from "../../apis/shared/category";
 import openbis from "@openbis/openbis.esm";
 import { usePreviewImages } from "../../apis/dataset/useDatasets";
 
@@ -154,17 +147,6 @@ export const ObjectList = () => {
     return map;
   }, [allInstanceObjectsResult.data]);
 
-  const getCollectionName = (collectionType: string | undefined): string => {
-    if (collectionType === instrumentCollectionID) {
-      return instrumentCollectionName;
-    } else if (collectionType === componentCollectionID) {
-      return componentCollectionName;
-    } else if (collectionType === logbookCollectionID) {
-      return logbookCollectionName;
-    }
-    return "Unknown";
-  };
-
   const columns: Column[] = [
     {
       key: "preview",
@@ -212,8 +194,6 @@ export const ObjectList = () => {
 
   const rows: ObjectRow[] = objects.map(
     (obj: openbis.Sample) => {
-      const metadata = obj.getType().getMetaData();
-      const collectionType = metadata["collectionType"];
       const permId = obj.getPermId().getPermId();
       const location = obj.getProperty("LOCATION");
       const hasLocation = !!location && location.trim() !== "";
@@ -224,7 +204,7 @@ export const ObjectList = () => {
         preview: imagesLoaded ? (previewImages[permId] ?? null) : undefined,
         name: obj.getProperty("NAME") || obj.getCode(),
         type: obj.getType().getCode(),
-        baseType: getCollectionName(collectionType),
+        baseType: categoryLabels[getSampleCategory(obj)] ?? "Unknown",
         location: hasLocation ? (locationNamesByPermId.get(location) ?? location) : "Unknown",
       }
     }

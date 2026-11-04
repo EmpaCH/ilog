@@ -2,8 +2,8 @@ import openbis from "@openbis/openbis.esm";
 
 // Environment creation settings
 export const iLogID = "ILOG";
-export const iLogLogbookID = "ILOG_LOGBOOK";
 export const labID = "LAB205_EQUIPMENT";
+// Codes of the collections created by the legacy Lab 205 initialization (see useInitIlog)
 export const componentCollectionID = "COMPONENT_COLLECTION";
 export const componentCollectionName = "Components";
 export const instrumentCollectionID = "INSTRUMENT_COLLECTION";
@@ -13,6 +13,9 @@ export const logbookCollectionName = "Logbook";
 // Object type metadata key holding the identifier of the collection new objects of that type
 // are stored in by default (e.g. "/SPACE/PROJECT/COLLECTION"). Can be overridden per object.
 export const defaultCollectionMetadataKey = "defaultCollection";
+// Object type metadata key holding the color (hex, e.g. "#e67800") used to show objects of that type,
+// e.g. logbook entries in the logbook
+export const colorMetadataKey = "color";
 // Rooms are a pre-existing openBIS inventory sample type, not managed by iLog's
 // own Instrument/Component collections, but usable as a LOCATION value.
 export const roomObjectTypeCode = "ROOM";

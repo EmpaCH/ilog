@@ -12,14 +12,14 @@ import {
 } from "@heroui/react";
 import {
   EMPTY_TYPE_DEFINITION,
-  COMPONENT_SCHEMA,
-  INSTRUMENT_SCHEMA,
+  getCategorySchema,
   iLogGeneralInfoGroup,
 } from "../../apis/shared/common";
 import {
-  componentCollectionID,
-  instrumentCollectionID,
-} from "../../apis/shared/environment";
+  componentCategory,
+  instrumentCategory,
+  logbookEntryCategory,
+} from "../../apis/shared/category";
 import {
   PropertyTypesSchema,
   ObjectTypeDefinition,
@@ -77,21 +77,14 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   const getLockedPropertiesSource = () => {
     if ((mode === "edit" || (mode === "view" && isEditMode)) && (!state.schema.baseType || state.schema.baseType === "")) {
-      // In edit mode (or view mode with edit enabled) with no parent - lock base type properties (COMPONENT or INSTRUMENT)
-      return state.schema.collectionType === instrumentCollectionID 
-        ? { propertyTypes: INSTRUMENT_SCHEMA }
-        : { propertyTypes: COMPONENT_SCHEMA };
+      // In edit mode (or view mode with edit enabled) with no parent - lock the base properties of the category
+      return { propertyTypes: getCategorySchema(state.schema.category) };
     }
     
     if (mode === "create" && (!objectBaseType.code || objectBaseType === EMPTY_TYPE_DEFINITION)) {
-      // In create mode with no parent selected - lock default properties based on collection type
-      if (state.schema.collectionType === instrumentCollectionID) {
-        return { propertyTypes: INSTRUMENT_SCHEMA };
-      } else if (state.schema.collectionType === componentCollectionID) {
-        return { propertyTypes: COMPONENT_SCHEMA };
-      }
-      // If no collection type is selected yet, don't lock anything
-      return { propertyTypes: {} };
+      // In create mode with no parent selected - lock the base properties of the category.
+      // If no category is selected yet, nothing is locked.
+      return { propertyTypes: getCategorySchema(state.schema.category) };
     }
     
     return objectBaseType;
@@ -101,7 +94,7 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
   const lockedPropertyCodes = useMemo(() => {
     return Object.entries(lockedPropertiesSource.propertyTypes)
       .flatMap(([_, assignment]) => assignment.map((el: any) => el.code));
-  }, [lockedPropertiesSource, state.schema.collectionType, objectBaseType]);
+  }, [lockedPropertiesSource, state.schema.category, objectBaseType]);
 
   const lockedGroups = [...new Set([
     ...Object.keys(lockedPropertiesSource.propertyTypes), 
@@ -122,9 +115,9 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
 
   // Get the current filtered types based on the selected collection type
   const getCurrentFilteredTypes = () => {
-    if (!state.schema.collectionType) return [];
+    if (!state.schema.category) return [];
     return objectTypes.filter((oj) => {
-      const matchesCollection = oj.collectionType && oj.collectionType === state.schema.collectionType;
+      const matchesCollection = oj.category && oj.category === state.schema.category;
       const isNotCurrentType = mode === "create" || oj.code !== state.schema.code;
       return matchesCollection && isNotCurrentType;
     });
@@ -204,8 +197,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
       }
     }
 
-    if (objectTypeTemplate.collectionType) {
-      filterObjectTypesByCollection(objectTypeTemplate.collectionType);
+    if (objectTypeTemplate.category) {
+      filterObjectTypesByCollection(objectTypeTemplate.category);
     }
     setInitial(false);
   }
@@ -439,20 +432,25 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             label="What is this object type?"
             orientation="horizontal"
             style={{ textAlign: "left", justifyContent: "flex-start", marginBottom: "15px" }}
-            value={state.schema.collectionType || ""}
+            value={state.schema.category || ""}
             onValueChange={(value) => {
-              dispatch({ type: "SET_COLLECTION_TYPE", payload: value });
-              handleSelectBaseType(value === instrumentCollectionID ? INSTRUMENT_SCHEMA : COMPONENT_SCHEMA);
+              dispatch({ type: "SET_CATEGORY", payload: value });
+              handleSelectBaseType(getCategorySchema(value));
+              if (value === logbookEntryCategory && !state.schema.color) {
+                dispatch({ type: "SET_COLOR", payload: "#788c96" });
+              }
               filterObjectTypesByCollection(value);
-              const newTemplate = objectTypes.find((el) => el.code === value.replace("_COLLECTION", ""));
+              // The INSTRUMENT and COMPONENT base types (if they exist) have the category as their code
+              const newTemplate = objectTypes.find((el) => el.code === value);
               if (newTemplate !== undefined) {
                 setObjectBaseType(newTemplate);
                 dispatch({ type: "SET_BASE_TYPE", payload: { newBaseType: newTemplate } });
               }
             }}
           >
-            <Radio value={instrumentCollectionID}>Instrument</Radio>
-            <Radio value={componentCollectionID}>Component</Radio>
+            <Radio value={instrumentCategory}>Instrument</Radio>
+            <Radio value={componentCategory}>Component</Radio>
+            <Radio value={logbookEntryCategory}>Logbook entry</Radio>
           </RadioGroup>
 
           <Autocomplete
@@ -546,15 +544,46 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
               dispatch({ type: "SET_DESCRIPTION", payload: value })
             }
           />
-          <CollectionSelect
-            isReadOnly={mode === "view" && !isEditMode}
-            label="Default collection"
-            description="Optional. Preselected when creating objects of this type; can be changed per object."
-            value={state.schema.defaultCollection ?? ""}
-            onChange={(value) =>
-              dispatch({ type: "SET_DEFAULT_COLLECTION", payload: value })
-            }
-          />
+          {state.schema.category === logbookEntryCategory ? (
+            // Logbook entries are always stored in the logbook collection, so only their look is configured
+            <div className="flex gap-4">
+              <Input
+                id="icon"
+                isReadOnly={mode === "view" && !isEditMode}
+                label="Icon"
+                placeholder="e.g. 🔥"
+                description='Optional. Saved at the start of the description, e.g. "🔥 Bakeout".'
+                maxLength={8}
+                className="form-field"
+                value={state.schema.icon ?? ""}
+                onValueChange={(value) =>
+                  dispatch({ type: "SET_ICON", payload: value.trim() })
+                }
+              />
+              <Input
+                id="color"
+                isReadOnly={mode === "view" && !isEditMode}
+                label="Color"
+                description="Highlights entries of this type in the logbook."
+                type="color"
+                className="form-field"
+                value={state.schema.color ?? ""}
+                onValueChange={(value) =>
+                  dispatch({ type: "SET_COLOR", payload: value })
+                }
+              />
+            </div>
+          ) : (
+            <CollectionSelect
+              isReadOnly={mode === "view" && !isEditMode}
+              label="Default collection"
+              description="Optional. Preselected when creating objects of this type; can be changed per object."
+              value={state.schema.defaultCollection ?? ""}
+              onChange={(value) =>
+                dispatch({ type: "SET_DEFAULT_COLLECTION", payload: value })
+              }
+            />
+          )}
           <Divider className="my-4" />
 
           <GroupedPropertyEditors

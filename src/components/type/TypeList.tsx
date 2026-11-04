@@ -6,6 +6,7 @@ import { MessageModal } from "../shared/messageModal";
 import { Column, TypeRow } from "../shared/list.types";
 import { useGetIlogObjectTypes } from "../../apis/type/useGetIlogObjectTypes";
 import { useDeleteObjectType } from "../../apis/type/useDeleteObjectType";
+import { categoryLabels, getTypeCategory } from "../../apis/shared/category";
 
 export const TypeList = () => {
   const navigate = useNavigate();
@@ -119,13 +120,11 @@ export const TypeList = () => {
   ];
 
   const rows: TypeRow[] = types.map((type: openbis.SampleType) => {
-    const metadata = type.getMetaData();
-
     return {
       permId: type.getPermId(),
       code: type.getCode(),
       prefix: type.getGeneratedCodePrefix(),
-      baseType: metadata["collectionType"] || "Unknown",
+      baseType: categoryLabels[getTypeCategory(type)] ?? "Unknown",
     };
   });
 
