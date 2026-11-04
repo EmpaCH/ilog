@@ -25,6 +25,6 @@ configMapGenerator:
 
 # Prefer the images transformer so CI can "edit set image" here
 images:
-- digest: sha256:f4965606af1fbbc23546d5d2759414942927bb00bd300d3befe93760bd526f0d
+- digest: sha256:2d1b835ce081503f0880b58c38541259694829de8b72b210939d795f4355479e
   name: gitlab-registry.empa.ch/openbis-tools/ilog
   newName: gitlab-registry.empa.ch/openbis-tools/ilog
