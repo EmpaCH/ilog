@@ -20,6 +20,7 @@ import { useGetObjectsByPermIds } from "../../apis/object/useGetObjectsByPermIds
 import openbis from "@openbis/openbis.esm";
 import { useGetLogbookCollection } from "../../apis/logbook/useLogbookCollection";
 import { LogbookCollectionSetup } from "./LogbookCollectionSetup";
+import { useIsAdmin } from "../../apis/user/useIsAdmin";
 import { colorMetadataKey } from "../../apis/shared/environment";
 
 export const LogbookEntryList = () => {
@@ -30,6 +31,8 @@ export const LogbookEntryList = () => {
   const logbookCollection = useGetLogbookCollection();
   // Ask for the logbook collection as long as none is set up for this instance
   const needsSetup = logbookCollection.isSuccess && logbookCollection.data === null;
+  // Only admins can save the logbook collection in the ELN settings
+  const { data: isAdmin } = useIsAdmin();
 
   const [state, dispatch] = useReducer(
     logbookEntryListLocalReducer,
@@ -227,6 +230,11 @@ export const LogbookEntryList = () => {
           Logbook collection: {logbookCollection.data}
         </p>
       )}
+      {needsSetup && isAdmin === false && (
+        <p className="text-sm text-warning-600 text-left mb-2">
+          The logbook is not set up yet for this openBIS instance. Please ask an openBIS admin to open the logbook page once to choose the collection the logbook entries are stored in.
+        </p>
+      )}
       <List
         columns={columns}
         rows={rows}
@@ -239,7 +247,7 @@ export const LogbookEntryList = () => {
         onEdit={onEdit}
         onView={onView}
       />
-      <LogbookCollectionSetup isOpen={needsSetup} />
+      <LogbookCollectionSetup isOpen={needsSetup && isAdmin === true} />
       <MessageModal
         message={state.deletionMessage}
         isOpen={state.showMessage}

@@ -9,6 +9,7 @@ import { useContext, useEffect } from "react";
 import { AuthContext } from "../context/auth/authContext";
 import { Button } from "@heroui/react";
 import { useGetCurrentUser } from "../apis/user/useGetCurrentUser";
+import { useIsAdmin } from "../apis/user/useIsAdmin";
 
 export const Route = createFileRoute("/_auth")({
   beforeLoad: ({ context, location }) => {
@@ -29,6 +30,8 @@ function AuthLayout() {
   const navigate = useNavigate();
   const { logout, isAuthenticated, user } = useContext(AuthContext);
   const { data: currentUser } = useGetCurrentUser();
+  // Types and Import are for admins only, so they stay hidden until the role is known
+  const { data: isAdmin } = useIsAdmin();
   const person = currentUser?.[0];
   const displayName = person
     ? `${person.getFirstName()} ${person.getLastName()}`.trim() || person.getUserId()
@@ -59,10 +62,14 @@ function AuthLayout() {
             <Link to="/objects" className="[&.active]:font-bold">
               Objects
             </Link>
-            {" | "}
-            <Link to="/types" className="[&.active]:font-bold">
-              Types
-            </Link>
+            {isAdmin && (
+              <>
+                {" | "}
+                <Link to="/types" className="[&.active]:font-bold">
+                  Types
+                </Link>
+              </>
+            )}
             {" | "}
             <Link to="/logbook" className="[&.active]:font-bold">
               Logbook
@@ -71,10 +78,14 @@ function AuthLayout() {
             <Link to="/trashcan" className="[&.active]:font-bold">
               Trashcan
             </Link>
-            {" | "}
-            <Link to="/import" className="[&.active]:font-bold">
-              Import
-            </Link>
+            {isAdmin && (
+              <>
+                {" | "}
+                <Link to="/import" className="[&.active]:font-bold">
+                  Import
+                </Link>
+              </>
+            )}
           </div>
         </div>
         <div className="main-menu-container">
