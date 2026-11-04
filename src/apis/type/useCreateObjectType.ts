@@ -6,6 +6,7 @@ import {
   convertOpenBISSampleTypeToObjectTypeDefinition,
 } from "./commonType";
 import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "./useGetAllObjectTypes";
+import { LOGBOOK_ENTRY_TYPES_QUERY_PREFIX } from "../logbook/useGetLogbookEntryTypes";
 import {
   ILOG_OBJECT_TYPES_QUERY_PREFIX,
   useGetIlogObjectTypes,
@@ -60,6 +61,7 @@ export const useCreateObjectType = () => {
       queryClient.refetchQueries({ queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_TYPES_QUERY_PREFIX] });
       queryClient.refetchQueries({ queryKey: [ALL_PROPERTY_ASSIGNMENTS_QUERY_PREFIX] });
+      queryClient.invalidateQueries({ queryKey: [LOGBOOK_ENTRY_TYPES_QUERY_PREFIX] });
     },
     onError: (error) => {
       console.error(error);
