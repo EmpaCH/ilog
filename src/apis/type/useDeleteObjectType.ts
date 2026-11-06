@@ -4,6 +4,7 @@ import { useContext } from "react";
 import openbis from "@openbis/openbis.esm";
 import { deleteObjectType } from "./typeAPI";
 import { ILOG_OBJECT_TYPES_QUERY_PREFIX } from "./useGetIlogObjectTypes";
+import { ALL_OBJECT_TYPES_QUERY_PREFIX } from "./useGetAllObjectTypes";
 import { LOGBOOK_ENTRY_TYPES_QUERY_PREFIX } from "../logbook/useGetLogbookEntryTypes";
 
 export const DELETE_OBJECT_TYPE_MUTATION_KEY = "DELETE_OBJECT_TYPE_MUTATION_KEY";
@@ -18,6 +19,7 @@ export const useDeleteObjectType = () => {
       await deleteObjectType(apiFacade, new openbis.EntityTypePermId(typeId));
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ALL_OBJECT_TYPES_QUERY_PREFIX] });
       queryClient.invalidateQueries({ queryKey: [ILOG_OBJECT_TYPES_QUERY_PREFIX] });
       queryClient.invalidateQueries({ queryKey: [LOGBOOK_ENTRY_TYPES_QUERY_PREFIX] });
     }
