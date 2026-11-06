@@ -23,38 +23,43 @@ import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
 import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
 import { useGetObject } from "../../apis/object/useGetObject";
 import { useGetAllObjects } from "../../apis/object/useGetAllObjects";
-import { roomObjectTypeCode } from "../../apis/shared/environment";
+import { getSampleCategory, locationCategory } from "../../apis/shared/category";
 import { Editor } from "@monaco-editor/react";
 import { ComponentListPropertyEditor } from "./ComponentListPropertyEditor";
 import { RichTextEditor } from "../shared/RichTextEditor";
 
-// Lets the user pick a single Room object (openBIS type ROOM) as a LOCATION value.
-// Rooms aren't part of iLog's Instrument/Component collections, so they're found
-// the same way ComponentListPropertyEditor finds every object: an instance-wide search.
-const RoomLocationPicker: React.FC<{
+// Lets the user pick a single location object (an object whose type has the Location category,
+// e.g. a room) as a LOCATION value. Locations aren't iLog objects, so they're found the same way
+// ComponentListPropertyEditor finds every object: an instance-wide search.
+const LocationPicker: React.FC<{
   propertyCode: string;
   selectedPermId?: string;
   onSelectionChange: (permId: string) => void;
   isReadOnly?: boolean;
-}> = ({ propertyCode, selectedPermId, onSelectionChange, isReadOnly }) => {
+  hint?: string;
+}> = ({ propertyCode, selectedPermId, onSelectionChange, isReadOnly, hint }) => {
   const allObjectsResult = useGetAllObjects();
-  const rooms = (allObjectsResult.data ?? []).filter(
-    (o) => o.getType().getCode() === roomObjectTypeCode
+  const locations = (allObjectsResult.data ?? []).filter(
+    (o) => getSampleCategory(o) === locationCategory
   );
+  const hasNoLocations = allObjectsResult.isSuccess && locations.length === 0;
 
   return (
     <Autocomplete
       aria-label={propertyCode}
-      placeholder="Select a room..."
+      placeholder="Select a location..."
+      description={hasNoLocations
+        ? "No locations available. An admin can mark the types of places (e.g. rooms) as Location on the Import page."
+        : hint}
       isDisabled={isReadOnly}
       isLoading={allObjectsResult.isLoading}
       selectedKey={selectedPermId || null}
-      defaultItems={rooms}
+      defaultItems={locations}
       onSelectionChange={(key) => onSelectionChange(key ? String(key) : "")}
     >
-      {(room) => (
-        <AutocompleteItem key={room.getPermId().getPermId()}>
-          {room.getProperty("NAME") || room.getCode()}
+      {(location) => (
+        <AutocompleteItem key={location.getPermId().getPermId()}>
+          {location.getProperty("NAME") || location.getCode()}
         </AutocompleteItem>
       )}
     </Autocomplete>
@@ -116,17 +121,17 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
 
       const linkedData = looksLikePermId ? linkedByPermIdQuery.data ?? undefined : linkedByCodeQuery.data?.[0];
       const linkedIsLoading = looksLikePermId ? linkedByPermIdQuery.isLoading : linkedByCodeQuery.isLoading;
-      const isRoom = linkedData?.getType().getCode() === roomObjectTypeCode;
+      const isLocation = !!linkedData && getSampleCategory(linkedData) === locationCategory;
 
       // Still resolving what the current value points to - avoid flashing the
-      // wrong branch (instrument link vs. room picker) while that's unknown.
+      // wrong branch (instrument link vs. location picker) while that's unknown.
       if (linkedPermId && linkedIsLoading) {
         return (
           <Input isDisabled id={propertyDefinition.code} aria-label={propertyDefinition.code} value="Loading..." type="text" />
         );
       }
 
-      if (linkedPermId && !isRoom) {
+      if (linkedPermId && !isLocation) {
         // Attached to an instrument (via the instrument's own component-selection
         // UI) - shown read-only here; detach it from that side, not this field.
         const displayValue = linkedData?.getProperty("NAME") || linkedData?.getCode() || "";
@@ -154,21 +159,22 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       }
 
       // Not attached to any instrument - the component's own location can be set
-      // directly to a room (never to an instrument, which only happens via the
+      // directly to a location (never to an instrument, which only happens via the
       // instrument's own component-selection UI).
       return (
-        <RoomLocationPicker
+        <LocationPicker
           propertyCode={propertyDefinition.code}
-          selectedPermId={isRoom ? linkedPermId : undefined}
+          hint="Where the component is kept while it isn't attached to an instrument. Attaching it to an instrument sets the location to that instrument."
+          selectedPermId={isLocation ? linkedPermId : undefined}
           onSelectionChange={onValueChange}
           isReadOnly={isReadOnly}
         />
       );
     }
 
-    // Instruments: location is always a room.
+    // Instruments: location is always a location object (e.g. a room).
     return (
-      <RoomLocationPicker
+      <LocationPicker
         propertyCode={propertyDefinition.code}
         selectedPermId={typeof propertyValue === "string" && propertyValue.trim() !== "" ? propertyValue : undefined}
         onSelectionChange={onValueChange}

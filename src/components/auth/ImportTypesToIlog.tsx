@@ -18,18 +18,22 @@ import {
   componentCategory,
   getTypeCategory,
   instrumentCategory,
+  locationCategory,
   logbookEntryCategory,
 } from "../../apis/shared/category";
 
 const generalListFilter = "general";
 const initialFilterState: Record<string, string> = { [generalListFilter]: "" };
 
+// Categories that can be set on this page (logbook entry types are managed in the type creator)
+const importableCategories = [instrumentCategory, componentCategory, locationCategory];
+
 const isImportedToIlog = (type: any): boolean =>
-  getTypeCategory(type) === componentCategory || getTypeCategory(type) === instrumentCategory;
+  importableCategories.includes(getTypeCategory(type));
 
 const getIlogType = (type: any): string | undefined => {
   const category = getTypeCategory(type);
-  return category === componentCategory || category === instrumentCategory ? categoryLabels[category] : "-";
+  return importableCategories.includes(category) ? categoryLabels[category] : "-";
 }
 
 export const ImportTypesToIlog: React.FC = () => {
@@ -66,6 +70,7 @@ export const ImportTypesToIlog: React.FC = () => {
   // Setting a category is only useful for types that don't have it yet
   const canSetInstrument = selectedTypes.some((t) => getTypeCategory(t) !== instrumentCategory);
   const canSetComponent = selectedTypes.some((t) => getTypeCategory(t) !== componentCategory);
+  const canSetLocation = selectedTypes.some((t) => getTypeCategory(t) !== locationCategory);
 
   const onClear = React.useCallback(() => {
     Object.keys(filter).forEach(key => {
@@ -137,6 +142,14 @@ export const ImportTypesToIlog: React.FC = () => {
                     Set as Component
                   </Button>
                   <Button
+                    color="success"
+                    isDisabled={!canSetLocation}
+                    isLoading={categoryMutation.isPending}
+                    onPress={() => categoryMutation.mutate({ codes: selectedCodes, category: locationCategory })}
+                  >
+                    Set as Location
+                  </Button>
+                  <Button
                     color="danger"
                     isDisabled={!canRemove}
                     isLoading={removeMutation.isPending}
@@ -178,6 +191,15 @@ export const ImportTypesToIlog: React.FC = () => {
                       onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: componentCategory })}
                     >
                       Set as Component
+                    </Button>
+                    <Button
+                      size="sm"
+                      color="success"
+                      variant="light"
+                      isDisabled={getTypeCategory(type) === locationCategory}
+                      onPress={() => categoryMutation.mutate({ codes: [type.getCode()], category: locationCategory })}
+                    >
+                      Set as Location
                     </Button>
                     {isImportedToIlog(type) && 
                       <Button

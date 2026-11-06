@@ -7,6 +7,3 @@ export const defaultCollectionMetadataKey = "defaultCollection";
 // Object type metadata key holding the color (hex, e.g. "#e67800") used to show objects of that type,
 // e.g. logbook entries in the logbook
 export const colorMetadataKey = "color";
-// Rooms are a pre-existing openBIS inventory sample type, not managed by iLog's
-// own Instrument/Component collections, but usable as a LOCATION value.
-export const roomObjectTypeCode = "ROOM";

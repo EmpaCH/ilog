@@ -18,6 +18,7 @@ import {
   categoryMetadataKey,
   getTypeCategory,
   legacyCategoryMetadataKey,
+  locationCategory,
 } from "../shared/category";
 
 /**
@@ -77,7 +78,7 @@ export async function getAllObjectTypes(
 
 
 /**
- * Get all iLog object types (instrument, component and logbook entry types) and apply filtering by code if search field is provided.
+ * Get all iLog object types (instrument, component and logbook entry types, not location types) and apply filtering by code if search field is provided.
  * @param api - The OpenBIS JavaScript facade instance.
  * @param search - The search string to filter types by code.
  * @returns A promise that resolves to an array of SampleType objects.
@@ -87,7 +88,8 @@ export async function getIlogObjectTypes(
   search: string = ""
 ): Promise<openbis.SampleType[]> {
   const allTypes = await getAllObjectTypes(api, search);
-  return allTypes.filter((type) => getTypeCategory(type) !== "");
+  // Location types are only referenced by iLog objects, so they are not managed as iLog types
+  return allTypes.filter((type) => getTypeCategory(type) !== "" && getTypeCategory(type) !== locationCategory);
 }
 
 /**

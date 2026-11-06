@@ -331,7 +331,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   }, [value, components, missingObjectQuery.data, allComponents]);
 
   // A component's LOCATION can now point at either an instrument (attached) or a
-  // room (just parked there) - only the former should count as "in use" below.
+  // location such as a room (just parked there) - only the former should count as "in use" below.
   const instrumentPermIds = useMemo(() => {
     if (getObjectsResult.status !== "success") return new Set<string>();
     return new Set(
@@ -350,7 +350,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
         .filter((c) => {
           const location = c.getProperty("LOCATION");
           if (!location || location === "" || location === "-") return false;
-          // A room location isn't an instrument attachment - still free to attach.
+          // A location (e.g. a room) isn't an instrument attachment - still free to attach.
           if (!instrumentPermIds.has(location)) return false;
           // If creating a new instrument (no permId yet), any assigned component is disabled.
           // If editing, only disable if assigned to a DIFFERENT instrument.

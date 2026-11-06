@@ -20,7 +20,7 @@ export const ObjectList = () => {
   const { apiFacade } = useContext(AuthContext);
   const allObjectsResult = useGetIlogObjects();
   // LOCATION holds a permId pointing at either an instrument (component
-  // attachment) or a room - rooms live outside the iLog collections, so an
+  // attachment) or a location (e.g. a room) - locations aren't iLog objects, so an
   // instance-wide search is needed to resolve names for both.
   const allInstanceObjectsResult = useGetAllObjects();
   const deleteObjectResult = useDeleteObject();
@@ -47,13 +47,13 @@ export const ObjectList = () => {
     code: string,
   ) => {
     // Check if this is a component attached to an instrument (LOCATION can also
-    // point at a room, which isn't an "attachment" and shouldn't block deletion).
+    // point at a location, which isn't an "attachment" and shouldn't block deletion).
     const objectToDelete = objects.find((obj) => obj.getCode() === code);
     if (objectToDelete) {
       const location = objectToDelete.getProperty("LOCATION");
       if (location && location.trim() !== "") {
         // `objects` only contains Instruments and Components (see useGetIlogObjects),
-        // so a match here can only be an instrument - a room location won't match.
+        // so a match here can only be an instrument - a location won't match.
         const instrument = objects.find((obj) => obj.getPermId().getPermId() === location);
         if (instrument) {
           handleMessage(

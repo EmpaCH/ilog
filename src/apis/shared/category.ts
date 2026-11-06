@@ -9,11 +9,15 @@ export const legacyCategoryMetadataKey = "collectionType";
 export const instrumentCategory = "INSTRUMENT";
 export const componentCategory = "COMPONENT";
 export const logbookEntryCategory = "LOGBOOK_ENTRY";
+// Types whose objects are places (e.g. rooms) that instruments and components can be located at.
+// They are only referenced by iLog objects, not managed by iLog itself.
+export const locationCategory = "LOCATION";
 
 export const categoryLabels: Record<string, string> = {
   [instrumentCategory]: "Instrument",
   [componentCategory]: "Component",
   [logbookEntryCategory]: "Logbook entry",
+  [locationCategory]: "Location",
 };
 
 const legacyCategories: Record<string, string> = {
