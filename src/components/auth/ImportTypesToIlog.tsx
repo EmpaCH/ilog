@@ -165,7 +165,7 @@ export const ImportTypesToIlog: React.FC = () => {
           <TableHeader>
             <TableColumn>Code</TableColumn>
             <TableColumn>iLog Type</TableColumn>
-            <TableColumn> </TableColumn>
+            <TableColumn align="end"> </TableColumn>
           </TableHeader>
           <TableBody emptyContent="No object types found">
             {filteredTypes.map((type) => (
@@ -173,7 +173,7 @@ export const ImportTypesToIlog: React.FC = () => {
                 <TableCell>{type.getCode()}</TableCell>
                 <TableCell>{getIlogType(type)}</TableCell>
                 <TableCell>
-                  <div className="flex gap-1 min-h-[32px] items-center">
+                  <div className="flex gap-1 min-h-[32px] items-center justify-end">
                     <Button
                       size="sm"
                       color="secondary"
@@ -201,16 +201,17 @@ export const ImportTypesToIlog: React.FC = () => {
                     >
                       Set as Location
                     </Button>
-                    {isImportedToIlog(type) && 
-                      <Button
-                        size="sm"
-                        color="danger"
-                        variant="light"
-                        onPress={() => removeMutation.mutate([type.getCode()])}
-                      >
-                        Remove
-                      </Button>
-                    }
+                    <Button
+                      size="sm"
+                      color="danger"
+                      variant="light"
+                      className={isImportedToIlog(type) ? "" : "invisible"}
+                      isDisabled={!isImportedToIlog(type)}
+                      aria-hidden={!isImportedToIlog(type)}
+                      onPress={() => removeMutation.mutate([type.getCode()])}
+                    >
+                      Remove
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
