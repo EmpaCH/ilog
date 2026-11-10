@@ -1,5 +1,6 @@
 import { useContext } from "react";
 import { RouterProvider } from "@tanstack/react-router";
+import { Spinner } from "@heroui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useOpenBIS } from "./hooks/auth/useAuth";
 import { AuthContext } from "./context/auth/authContext";
@@ -27,6 +28,15 @@ function InnerApp() {
   // Prefetch all objects as soon as the user is authenticated so that
   // ComponentListPropertyEditor never has to wait for data on first mount.
   useGetAllObjects();
+  // Render the routes only once the stored session is checked, so the route guards see the final
+  // login state instead of redirecting to the login page meanwhile
+  if (auth.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Spinner label="Loading..." />
+      </div>
+    );
+  }
   return <RouterProvider router={router} context={{ auth }}/>
 }
 
