@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 export const INSTANCE_COOKIE = "openbis-instance";
 // Cookie holding the openBIS session token
 export const TOKEN_KEY = "openbis";
+// The openBIS UI keeps its `openbis` cookie for 7 days, so a login survives a browser restart
+const TOKEN_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 // localStorage keys used by older iLog versions to store the session, removed on start-up
 const LEGACY_STORAGE_KEYS = ["token", "user"];
 
@@ -50,10 +52,8 @@ export const useOpenBIS = () => {
 
         const storedToken = (await cookieStore.get(TOKEN_KEY))?.value ?? null;
         if (!storedToken) return;
-        if (!getInstanceCookie()) {
-          await removeLoginInfo();
-          return;
-        }
+        // The token is shared with the openBIS UI when iLog runs on the openBIS server, so it is only
+        // cleared when openBIS rejects it (e.g. also when no openbis-instance cookie routes the check)
         try {
           _facade.setSessionToken(storedToken);
           await _facade.getServerInformation();
@@ -74,7 +74,12 @@ export const useOpenBIS = () => {
     setUser(username);
     setToken(sessionToken);
     setIsAuthenticated(true);
-    await cookieStore.set(TOKEN_KEY, sessionToken);
+    await cookieStore.set({
+      name: TOKEN_KEY,
+      value: sessionToken,
+      path: "/",
+      expires: Date.now() + TOKEN_COOKIE_MAX_AGE_MS,
+    });
     _facade.setSessionToken(sessionToken);
   };
 
@@ -82,7 +87,7 @@ export const useOpenBIS = () => {
     setUser(null);
     setToken(null);
     setIsAuthenticated(false);
-    await cookieStore.delete(TOKEN_KEY);
+    await cookieStore.delete({ name: TOKEN_KEY, path: "/" });
     clearInstanceCookie();
   };
 
