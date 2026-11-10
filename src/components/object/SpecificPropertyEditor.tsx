@@ -49,7 +49,7 @@ const LocationPicker: React.FC<{
       aria-label={propertyCode}
       placeholder="Select a location..."
       description={hasNoLocations
-        ? "No locations available. An admin can mark the types of places (e.g. rooms) as Location on the Import page."
+        ? "No locations available. An admin can mark the types of places (e.g. rooms) as Location on the Settings page."
         : hint}
       isDisabled={isReadOnly}
       isLoading={allObjectsResult.isLoading}

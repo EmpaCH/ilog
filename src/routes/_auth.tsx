@@ -30,7 +30,7 @@ function AuthLayout() {
   const navigate = useNavigate();
   const { logout, isAuthenticated, user } = useContext(AuthContext);
   const { data: currentUser } = useGetCurrentUser();
-  // Types and Import are for admins only, so they stay hidden until the role is known
+  // Types and Settings are for admins only, so they stay hidden until the role is known
   const { data: isAdmin } = useIsAdmin();
   const person = currentUser?.[0];
   const displayName = person
@@ -81,8 +81,8 @@ function AuthLayout() {
             {isAdmin && (
               <>
                 {" | "}
-                <Link to="/import" className="[&.active]:font-bold">
-                  Import
+                <Link to="/settings" className="[&.active]:font-bold">
+                  Settings
                 </Link>
               </>
             )}

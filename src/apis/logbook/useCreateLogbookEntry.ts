@@ -22,7 +22,7 @@ export const useCreateLogbookEntry = () => {
       parentPermIds?: string[];
     }) => {
       if (!logbookCollection.data) {
-        return Promise.reject(new Error('Logbook collection is not set up. Set it up on the logbook page.'));
+        return Promise.reject(new Error('Logbook collection is not set up. An admin shall do this in the Settings.'));
       }
 
       return createLogbookEntry(

@@ -90,8 +90,11 @@ export const ImportTypesToIlog: React.FC = () => {
   }, []);
 
   return (
-    <div className="md-size-div pb-8">
-      <h2 className="text-center mb-4">Import Object Types to iLog</h2>
+    <div className="pb-8">
+      <h3 className="text-left mb-2">Import Object Types</h3>
+      <p className="text-sm text-gray-600 text-left mb-4">
+        Set which openBIS object types iLog uses as Instruments, Components or Locations.
+      </p>
       {allObjectTypes.isError && <p className="text-center text-red-500">Failed to load object types.</p>}
       {allObjectTypes.data && (
         <Table

@@ -1,13 +1,13 @@
 import openbis from "@openbis/openbis.esm";
 
 /**
- * Store a new object in a collection by setting the space, project and experiment ids
- * of the creation from the collection identifier.
- * @param creation - The sample creation to modify.
+ * Store an object in a collection by setting the space, project and experiment ids
+ * of a sample creation (new object) or update (move) from the collection identifier.
+ * @param creation - The sample creation or update to modify.
  * @param collectionIdentifier - The collection identifier, e.g. "/SPACE/PROJECT/COLLECTION".
  */
 export function setCollectionIds(
-  creation: openbis.SampleCreation,
+  creation: openbis.SampleCreation | openbis.SampleUpdate,
   collectionIdentifier: string,
 ): void {
   const [, space, project, code] = collectionIdentifier.split("/");

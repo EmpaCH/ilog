@@ -47,7 +47,7 @@ import {
 import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { MessageModal } from "../shared/messageModal";
-import { useIsAdmin } from "../../apis/user/useIsAdmin";
+import { LogbookSetupNotice } from "./LogbookSetupNotice";
 
 // define whether this will be a Logbook Entry Creator or Editor component
 const creatorModes = ["create", "edit",  "view"] as const;
@@ -66,7 +66,6 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   const logbookEntryUpdate = useUpdateLogbookEntry();
   const allLogbookEntriesQuery = useGetAllLogbookEntries();
   const logbookCollection = useGetLogbookCollection();
-  const { data: isAdmin } = useIsAdmin();
   const navigate = useNavigate();
 
   let [isEditMode, setIsEditMode] = useState(mode === "edit" || mode === "create");
@@ -310,28 +309,13 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
   };
 
   // New entries need an existing logbook collection
-  if (mode === "create" && logbookCollection.isError) {
+  if (mode === "create" && (logbookCollection.isError || (logbookCollection.isSuccess && logbookCollection.data === null))) {
     return (
       <div className="md-size-div">
         <h2>Create Logbook Entry</h2>
-        <p className="text-danger">{logbookCollection.error.message}</p>
+        <LogbookSetupNotice logbookCollection={logbookCollection} />
         <Button className="mt-4" onPress={onBack}>
           Back to the logbook
-        </Button>
-      </div>
-    );
-  }
-  // ... which is set up on the logbook page
-  if (mode === "create" && logbookCollection.isSuccess && logbookCollection.data === null) {
-    return (
-      <div className="md-size-div">
-        <h2>Create Logbook Entry</h2>
-        <p className="text-gray-500">
-          No logbook collection is set up for this openBIS instance yet.
-          {!isAdmin && " Please ask an admin to set it up on the logbook page."}
-        </p>
-        <Button color="primary" className="mt-4" onPress={onBack}>
-          {isAdmin ? "Set up on the logbook page" : "Back to the logbook"}
         </Button>
       </div>
     );
