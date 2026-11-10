@@ -2,8 +2,12 @@ import openbis from "@openbis/openbis.esm";
 import { useState, useEffect } from "react";
 
 export const INSTANCE_COOKIE = "openbis-instance";
-export const TOKEN_KEY = "token";
-export const USER_KEY = "user";
+// Cookie holding the openBIS session token
+export const TOKEN_KEY = "openbis";
+// The openBIS UI keeps its `openbis` cookie for 7 days, so a login survives a browser restart
+const TOKEN_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// localStorage keys used by older iLog versions to store the session, removed on start-up
+const LEGACY_STORAGE_KEYS = ["token", "user"];
 
 /**
  * The openBIS SDK ignores any path component in the URL passed to its constructor.
@@ -33,47 +37,57 @@ function clearInstanceCookie(): void {
 }
 
 export const useOpenBIS = () => {
-  const storedToken = typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
-  const storedUser = typeof window !== "undefined" ? localStorage.getItem(USER_KEY) : null;
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // True until the session token stored in the cookie has been checked
+  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(
-    !!storedToken && !!storedUser && !!getInstanceCookie(),
-  );
-  const [user, setUser] = useState<string | null>(storedUser);
-  const [token, setToken] = useState<string | null>(storedToken);
-
-  // On mount: if a stored token and instance cookie exist, verify the session is still valid.
+  // On mount: if a session token cookie and the instance cookie exist, verify the session is still valid
   useEffect(() => {
-    const checkStoredToken = async () => {
-      if (storedToken && storedUser && getInstanceCookie()) {
+    const init = async () => {
+      try {
+        if (typeof window === "undefined") return;
+        LEGACY_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+
+        const storedToken = (await cookieStore.get(TOKEN_KEY))?.value ?? null;
+        if (!storedToken) return;
+        // The token is shared with the openBIS UI when iLog runs on the openBIS server, so it is only
+        // cleared when openBIS rejects it (e.g. also when no openbis-instance cookie routes the check)
         try {
           _facade.setSessionToken(storedToken);
           await _facade.getServerInformation();
-          setLoginInfo(storedUser, storedToken);
+          const sessionInfo = await _facade.getSessionInformation();
+          await setLoginInfo(sessionInfo.getUserName(), storedToken);
         } catch {
-          removeLoginInfo();
+          await removeLoginInfo();
         }
+      } finally {
+        setIsLoading(false);
       }
     };
-    checkStoredToken();
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setLoginInfo = (username: string, sessionToken: string) => {
+  const setLoginInfo = async (username: string, sessionToken: string) => {
     setUser(username);
     setToken(sessionToken);
     setIsAuthenticated(true);
-    localStorage.setItem(TOKEN_KEY, sessionToken);
-    localStorage.setItem(USER_KEY, username);
+    await cookieStore.set({
+      name: TOKEN_KEY,
+      value: sessionToken,
+      path: "/",
+      expires: Date.now() + TOKEN_COOKIE_MAX_AGE_MS,
+    });
     _facade.setSessionToken(sessionToken);
   };
 
-  const removeLoginInfo = () => {
+  const removeLoginInfo = async () => {
     setUser(null);
     setToken(null);
     setIsAuthenticated(false);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    await cookieStore.delete({ name: TOKEN_KEY, path: "/" });
     clearInstanceCookie();
   };
 
@@ -81,10 +95,10 @@ export const useOpenBIS = () => {
     try {
       const sessionToken = await _facade.login(username, password);
       if (sessionToken === undefined) return null;
-      setLoginInfo(username, sessionToken);
+      await setLoginInfo(username, sessionToken);
       return sessionToken;
     } catch {
-      removeLoginInfo();
+      await removeLoginInfo();
       return null;
     }
   };
@@ -101,11 +115,10 @@ export const useOpenBIS = () => {
       await _facade.getServerInformation();
       const sessionInfo = await _facade.getSessionInformation();
       const username = sessionInfo.getUserName();
-      setLoginInfo(username, personalAccessToken);
+      await setLoginInfo(username, personalAccessToken);
       return personalAccessToken;
     } catch {
-      if (instanceHostname) clearInstanceCookie();
-      removeLoginInfo();
+      await removeLoginInfo();
       return null;
     }
   };
@@ -114,11 +127,12 @@ export const useOpenBIS = () => {
     try {
       if (token) await _facade.logout();
     } catch {}
-    removeLoginInfo();
+    await removeLoginInfo();
   };
 
   return {
     isAuthenticated,
+    isLoading,
     user,
     token,
     login,
