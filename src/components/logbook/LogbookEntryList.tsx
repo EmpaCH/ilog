@@ -3,6 +3,7 @@ import {
   useReducer,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { Spinner } from "@heroui/react";
 import { List } from "../shared/list";
 import { MessageModal } from "../shared/messageModal";
 import {
@@ -220,6 +221,18 @@ export const LogbookEntryList = () => {
       <>
         <h2>Logbook Entry List</h2>
         <LogbookSetupNotice logbookCollection={logbookCollection} />
+      </>
+    );
+  }
+
+  // Wait for the logbook collection and its entries instead of showing an empty table meanwhile
+  if (logbookCollection.isPending || res.isLoading) {
+    return (
+      <>
+        <h2>Logbook Entry List</h2>
+        <div className="flex justify-center py-10">
+          <Spinner label="Loading logbook entries..." />
+        </div>
       </>
     );
   }
