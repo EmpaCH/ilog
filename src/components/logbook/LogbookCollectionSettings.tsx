@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, Checkbox, Input, Radio, RadioGroup } from "@heroui/react";
 import { CollectionSelect } from "../shared/CollectionSelect";
+import { LogbookAccessSettings } from "./LogbookAccessSettings";
 import {
   useLogbookCollectionSetting,
   useSetupLogbookCollection,
@@ -180,6 +181,8 @@ export const LogbookCollectionSettings = () => {
       {message && (
         <p className={`text-sm ${message.isError ? "text-danger" : "text-success-600"}`}>{message.text}</p>
       )}
+
+      {isWorking && !isEditing && <LogbookAccessSettings collectionIdentifier={current!} />}
     </div>
   );
 };
