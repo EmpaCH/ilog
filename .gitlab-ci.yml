@@ -10,6 +10,7 @@ variables:
 
 
 stages:
+  - test
   - build
   - push
   - deploy
@@ -22,8 +23,17 @@ stages:
       - src/**/*
       - package.json
       - vite.config.ts
+      - vitest.config.ts
       - postcss.config.js
       - tsconfig.app.json
+
+test:
+  extends: .rules_common
+  stage: test
+  image: node:24-alpine
+  script:
+    - npm ci
+    - npx vitest run
 
 build_image:
   extends: .rules_common

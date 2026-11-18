@@ -1,7 +1,8 @@
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 
 import {
   ObjectTypeDefinition,
+  PropertyTypesSchema,
   findAncestors,
   deriveType,
   checkValidSubType,
@@ -17,50 +18,45 @@ const COMPONENT_TYPE_DEFINITION: ObjectTypeDefinition = {
   category: componentCategory,
 };
 
-
-
 test("The right ancestors of a derived type are listed", () => {
+  const typeChain = ["T1", "T2", "T3"];
 
+  const derivedTypes = typeChain.reduce(
+    (acc, current) => [...acc, deriveType(acc[acc.length - 1], current)],
+    [COMPONENT_TYPE_DEFINITION]
+  );
 
-    const typeChain = ["T1", "T2", "T3"];
-
-    const derivedTypes = typeChain.reduce(
-      (acc, current) => {
-        return [...acc, deriveType(acc[acc.length - 1], current)];
-      },
-      [COMPONENT_TYPE_DEFINITION]
+  // The ancestors are listed from the root type down to the direct base type
+  derivedTypes.slice(1).forEach((type, index) => {
+    expect(findAncestors(type, derivedTypes)).toEqual(
+      derivedTypes.slice(0, index + 1).map((t) => t.code)
     );
-    
-    console.log("derivedTypes", derivedTypes.slice(1));
+  });
+});
 
-    derivedTypes.slice(1).forEach((type, index) => {
-      expect(findAncestors(type, derivedTypes)).toEqual(
-        derivedTypes[index-1])
-    });
-    
-    })
+test("A type without a base type has no ancestors", () => {
+  expect(findAncestors(COMPONENT_TYPE_DEFINITION, [COMPONENT_TYPE_DEFINITION])).toEqual([]);
+});
 
 test("Derived subtype is structurally compatible with parent type", () => {
-  const newProperties = {...COMPONENT_TYPE_DEFINITION.propertyTypes, "newGroup": [
-    {
-      code: "newProperty",
-      label: "newProperty",
-      description: "newProperty",
-      dataType: "VARCHAR",
-      type: "local",
-      multivalued: false,
-      metadata: null,
-    }
-  ]}
+  const newProperties: PropertyTypesSchema = {
+    ...COMPONENT_TYPE_DEFINITION.propertyTypes,
+    newGroup: [
+      {
+        code: "newProperty",
+        label: "newProperty",
+        description: "newProperty",
+        dataType: "VARCHAR",
+        type: "local",
+        multivalued: false,
+        metadata: null,
+      },
+    ],
+  };
   const newType: ObjectTypeDefinition = {
     ...COMPONENT_TYPE_DEFINITION,
     code: "newType",
     propertyTypes: newProperties,
   };
-  console.log("newType", newType, "oldType", COMPONENT_TYPE_DEFINITION, newProperties);
-  expect(checkValidSubType(
-    COMPONENT_TYPE_DEFINITION,
-    newType)).toBeTruthy();
-}
-)
-  
+  expect(checkValidSubType(COMPONENT_TYPE_DEFINITION, newType)).toBeTruthy();
+});
