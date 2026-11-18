@@ -48,6 +48,25 @@ export function getTypeCategory(type: openbis.SampleType | null | undefined): st
   return getCategoryFromMetadata(type?.getMetaData());
 }
 
+// Properties iLog relies on for categories that can be set on types created outside iLog:
+// components are linked to an instrument via LOCATION
+const requiredProperties: Record<string, string[]> = {
+  [componentCategory]: ["LOCATION"],
+};
+
+/**
+ * Get the properties iLog needs for the category of a type that the type doesn't have.
+ * The type must have been fetched with its property assignments.
+ * @param type - The openBIS sample type.
+ * @returns The codes of the missing properties, empty if none are missing.
+ */
+export function getMissingRequiredProperties(type: openbis.SampleType): string[] {
+  const assigned = new Set(
+    (type.getPropertyAssignments() ?? []).map((a) => a.getPropertyType()?.getCode())
+  );
+  return (requiredProperties[getTypeCategory(type)] ?? []).filter((code) => !assigned.has(code));
+}
+
 /**
  * Get the iLog category of an object, based on its type. The type must have been fetched.
  * @param sample - The openBIS sample.

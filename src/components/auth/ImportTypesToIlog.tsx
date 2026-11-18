@@ -16,6 +16,7 @@ import { useSetObjectTypeCategory } from "../../apis/type/useSetObjectTypeCatego
 import {
   categoryLabels,
   componentCategory,
+  getMissingRequiredProperties,
   getTypeCategory,
   instrumentCategory,
   locationCategory,
@@ -57,6 +58,12 @@ export const ImportTypesToIlog: React.FC = () => {
     )
     .sort((a, b) => a.getCode().localeCompare(b.getCode()));
 
+  // iLog types that lack a property iLog needs
+  const typesMissingProperties = (allObjectTypes.data ?? [])
+    .map((t) => ({ type: t, missing: getMissingRequiredProperties(t) }))
+    .filter(({ missing }) => missing.length > 0)
+    .sort((a, b) => a.type.getCode().localeCompare(b.type.getCode()));
+
   const selectedCodes =
     selectedKeys === "all"
       ? filteredTypes.map((t) => t.getCode())
@@ -95,6 +102,22 @@ export const ImportTypesToIlog: React.FC = () => {
       <p className="text-sm text-gray-600 text-left mb-4">
         Set which openBIS object types iLog uses as Instruments, Components or Locations.
       </p>
+      {typesMissingProperties.length > 0 && (
+        <div className="text-sm text-left mb-4 p-3 rounded-md bg-warning-50 text-warning-800 border border-warning-200">
+          <p className="font-semibold">Some imported types are missing properties that iLog needs.</p>
+          <ul className="list-disc pl-5 my-1">
+            {typesMissingProperties.map(({ type, missing }) => (
+              <li key={type.getCode()}>
+                {type.getCode()} ({categoryLabels[getTypeCategory(type)]}): {missing.join(", ")}
+              </li>
+            ))}
+          </ul>
+          <p>
+            Without LOCATION, components cannot be added to an instrument.
+            Add the property to the type on the Types page or in the openBIS admin UI.
+          </p>
+        </div>
+      )}
       {allObjectTypes.isError && <p className="text-center text-red-500">Failed to load object types.</p>}
       {allObjectTypes.data && (
         <Table
