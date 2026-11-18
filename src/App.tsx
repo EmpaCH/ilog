@@ -4,7 +4,6 @@ import { Spinner } from "@heroui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useOpenBIS } from "./hooks/auth/useAuth";
 import { AuthContext } from "./context/auth/authContext";
-import { useInitializeDatasetTypes } from './hooks/useInitializeDatasetTypes';
 import { useGetAllObjects } from "./apis/object/useGetAllObjects";
 import { router } from "./router";
 import "./App.css";
@@ -42,7 +41,6 @@ function InnerApp() {
 
 function App() {
   const facade = useOpenBIS();
-  useInitializeDatasetTypes();
   const authValue = { ...facade, id: facade.id.toISOString() };
   const client = queryClient;
 
