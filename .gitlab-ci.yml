@@ -5,9 +5,17 @@ variables:
   DOCKER_IMAGE_SHA_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA # CI_COMMIT_SHA is the commit hash => a1b2c3d4
   DOCKER_IMAGE_BRANCH_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG # CI_COMMIT_REF_SLUG is the branch name
   DOCKER_IMAGE_LATEST_TAG: $CI_REGISTRY_IMAGE:latest
-  DEPLOY_OVERLAYS: "dev prod" 
 
 
+
+# One pipeline per push: a merge request pipeline while the branch has an open merge request,
+# otherwise a branch pipeline
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
 
 stages:
   - build
@@ -41,7 +49,10 @@ build_image:
     - dind
 
 
-deploy:
+# ArgoCD deploys deploy/overlays/prod from master and deploy/overlays/dev from the env/dev branch.
+# The deploy jobs pin the image built for this commit into one overlay and push that to the branch
+# ArgoCD reads it from.
+.pin_image:
   stage: deploy
   image: docker:29.2.1-alpine3.23
   services:
@@ -51,11 +62,9 @@ deploy:
   variables:
     GIT_STRATEGY: fetch
     GIT_DEPTH: "0"
-    DEPLOY_OVERLAYS: "dev prod"
   needs:
     - job: build_image
       optional: true
-
   before_script:
     - apk add --no-cache git curl ca-certificates
     # kustomize
@@ -65,48 +74,70 @@ deploy:
     # git identity
     - git config --global user.email "ci-bot@gitlab.empa.ch"
     - git config --global user.name "CI Bot"
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
+
+# Pins the image of this commit (or, if it wasn't built, of this branch) into deploy/overlays/$OVERLAY
+# and commits it. Expects the commit to deploy to be checked out.
+.pin_image_script: &pin_image_script |
+  set -euo pipefail
+
+  SHA_REF="${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}"
+  BRANCH_REF="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+
+  if docker manifest inspect "$SHA_REF" >/dev/null 2>&1; then
+    SELECTED_REF="$SHA_REF"
+    echo "Using commit image: $SELECTED_REF"
+  elif docker manifest inspect "$BRANCH_REF" >/dev/null 2>&1; then
+    SELECTED_REF="$BRANCH_REF"
+    echo "Commit image missing, falling back to branch image: $SELECTED_REF"
+  else
+    echo "ERROR: neither $SHA_REF nor $BRANCH_REF exists in the registry" >&2
+    exit 1
+  fi
+
+  # Get an immutable digest reference: image@sha256:...
+  # We pull (lightweight) to populate RepoDigests locally.
+  docker pull "$SELECTED_REF" >/dev/null
+
+  PINNED_IMAGE="$(docker inspect --format='{{index .RepoDigests 0}}' "$SELECTED_REF")"
+  if [ -z "$PINNED_IMAGE" ]; then
+    echo "ERROR: could not resolve RepoDigest for $SELECTED_REF" >&2
+    docker inspect "$SELECTED_REF" || true
+    exit 1
+  fi
+
+  echo "Resolved immutable image reference: $PINNED_IMAGE"
+  echo "→ pinning overlay $OVERLAY"
+  (cd "deploy/overlays/$OVERLAY" &&     kustomize edit set image "${CI_REGISTRY_IMAGE}=${PINNED_IMAGE}")
+
+  git add "deploy/overlays/$OVERLAY/kustomization.yaml"
+  git commit -m "Pin ilog ($OVERLAY) to $PINNED_IMAGE [ci skip]" || echo "No changes to commit"
+
+# ilog.empa.ch: every pipeline on master deploys master
+deploy_prod:
+  extends: .pin_image
+  variables:
+    OVERLAY: prod
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
     # work on a real branch, not detached HEAD
     - git fetch origin "$CI_COMMIT_REF_NAME"
     - git checkout -B "$CI_COMMIT_REF_NAME" "origin/$CI_COMMIT_REF_NAME"
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
+    - *pin_image_script
+    - git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:"$CI_COMMIT_REF_NAME"
 
+# ilog-dev.empa.ch: a manual button in the pipeline of a merge request (draft or ready) to master.
+# It replaces the env/dev branch with this commit plus the pin commit, so ilog-dev runs this branch.
+deploy_dev:
+  extends: .pin_image
+  variables:
+    OVERLAY: dev
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
   script:
-    - |
-      set -euo pipefail
-
-      SHA_REF="${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}"
-      BRANCH_REF="${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
-
-      if docker manifest inspect "$SHA_REF" >/dev/null 2>&1; then
-        SELECTED_REF="$SHA_REF"
-        echo "Using commit image: $SELECTED_REF"
-      elif docker manifest inspect "$BRANCH_REF" >/dev/null 2>&1; then
-        SELECTED_REF="$BRANCH_REF"
-        echo "Commit image missing, falling back to branch image: $SELECTED_REF"
-      else
-        echo "ERROR: neither $SHA_REF nor $BRANCH_REF exists in the registry" >&2
-        exit 1
-      fi
-
-      # Get an immutable digest reference: image@sha256:...
-      # We pull (lightweight) to populate RepoDigests locally.
-      docker pull "$SELECTED_REF" >/dev/null
-
-      PINNED_IMAGE="$(docker inspect --format='{{index .RepoDigests 0}}' "$SELECTED_REF")"
-      if [ -z "$PINNED_IMAGE" ]; then
-        echo "ERROR: could not resolve RepoDigest for $SELECTED_REF" >&2
-        docker inspect "$SELECTED_REF" || true
-        exit 1
-      fi
-
-      echo "Resolved immutable image reference: $PINNED_IMAGE"
-
-      for env in $DEPLOY_OVERLAYS; do
-        echo "→ pinning overlay $env"
-        (cd "deploy/overlays/$env" && \
-          kustomize edit set image "${CI_REGISTRY_IMAGE}=${PINNED_IMAGE}")
-      done
-
-      git add deploy/overlays/*/kustomization.yaml
-      git commit -m "Pin ilog to $PINNED_IMAGE [ci skip]" || echo "No changes to commit"
-      git push "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:"$CI_COMMIT_REF_NAME"
+    - git checkout -B deploy-dev "$CI_COMMIT_SHA"
+    - *pin_image_script
+    - git push --force "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" HEAD:refs/heads/env/dev
