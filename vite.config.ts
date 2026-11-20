@@ -27,7 +27,6 @@ function openbisDynamicProxy(): Plugin {
           path: targetPath,
           method: req.method,
           headers: { ...req.headers, host: hostname },
-          rejectUnauthorized: false,
         },
         (proxyRes) => {
           res.writeHead(proxyRes.statusCode!, proxyRes.headers);
