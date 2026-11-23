@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useReducer, useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Autocomplete,
   AutocompleteItem,
@@ -12,6 +13,7 @@ import {
 import { AuthContext } from "../../context/auth/authContext";
 import { ObjectPropertyEditor } from "./ObjectPropertyEditor";
 import { uploadFileAsDataset, deleteDataset, getPreviewImageInfo } from "../../apis/dataset/datasetAPI";
+import { DATASET_QUERY_PREFIX } from "../../apis/dataset/useDatasets";
 import { uploadAfsDataSet, listAfsEntries, deleteAfsFile } from "../../apis/dataset/afsDatasetAPI";
 import { useCreateObject } from "../../apis/object/useCreateObject";
 import { useUpdateObject } from "../../apis/object/useUpdateObject";
@@ -72,6 +74,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const objectUpdateWithComponents = useUpdateObjectWithComponentLocations();
   const allPropertyTypesResult = useGetPropertyTypes();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   let [openbisSample, setOpenbisSample] = useState<openbis.Sample | undefined>(undefined);
   let [objectTemplate, setObjectTemplate] = useState<ObjectDefinition>(createEmptyObjectDefinition());
@@ -164,6 +167,10 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, openbisSample, apiFacade]);
 
+  // The object list caches the preview images: drop the cached one after changing it
+  const forgetCachedPreview = (samplePermId: string) =>
+    queryClient.invalidateQueries({ queryKey: [DATASET_QUERY_PREFIX, "preview", samplePermId] });
+
   // Function to upload image to object
   const uploadImageToObject = async (samplePermId: string, file: File) => {
     if (!apiFacade) throw new Error("API facade not available");
@@ -176,6 +183,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         file,
         "ELN_PREVIEW"
       );
+      forgetCachedPreview(samplePermId);
       return datasetPermId;
     } catch (error) {
       throw error;
@@ -658,6 +666,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                                   try {
                                     await deleteDataset(apiFacade, existingImageDataset.datasetId);
                                     setExistingImageDataset(null);
+                                    if (openbisSample) forgetCachedPreview(openbisSample.getPermId().getPermId());
                                   } catch (error) {
                                     console.error("Failed to delete dataset:", error);
                                   }
