@@ -84,6 +84,8 @@ function convertPropertyTypesSchemaToAssignmentCreations(
         creation.setSection(section);
         creation.setPropertyTypeId(getPropertyTypeId(prop));
         creation.setOrdinal(index + 1);
+        // Show the property when editing the object in the openBIS UI (openBIS defaults to false)
+        creation.setShowInEditView(true);
         return creation;
       });
     })
