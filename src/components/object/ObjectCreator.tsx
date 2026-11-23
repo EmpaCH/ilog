@@ -82,6 +82,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   let [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   let [existingImageDataset, setExistingImageDataset] = useState<{url: string, filename: string, datasetId: string} | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Whether a file is dragged over the preview image area
+  let [isDraggingImage, setIsDraggingImage] = useState(false);
   let [selectedAfsFiles, setSelectedAfsFiles] = useState<{ file: File; targetPath: string }[]>([]);
   const afsFileInputRef = useRef<HTMLInputElement>(null);
   let [existingAfsEntries, setExistingAfsEntries] = useState<{ path: string; name: string; directory: boolean; size?: number }[]>([]);
@@ -101,31 +103,32 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     setIsEditMode(mode === "edit" || mode === "create");
   }, [mode]);
 
+  const loadExistingImage = async () => {
+    if ((mode === "edit" || mode === "view") && openbisSample && apiFacade) {
+      try {
+        const sessionToken = (apiFacade as any)?._private?.sessionToken;
+        if (!sessionToken) return;
+
+        const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
+        if (info) {
+          const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
+          const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
+          setExistingImageDataset({
+            url,
+            filename: info.filePath.split('/').pop() ?? info.filePath,
+            datasetId: info.datasetPermId,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load existing image:", error);
+      }
+    }
+  };
+
   // Load existing image dataset when editing/viewing
   useEffect(() => {
-    const loadExistingImage = async () => {
-      if ((mode === "edit" || mode === "view") && openbisSample && apiFacade) {
-        try {
-          const sessionToken = (apiFacade as any)?._private?.sessionToken;
-          if (!sessionToken) return;
-
-          const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
-          if (info) {
-            const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
-            const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
-            setExistingImageDataset({
-              url,
-              filename: info.filePath.split('/').pop() ?? info.filePath,
-              datasetId: info.datasetPermId,
-            });
-          }
-        } catch (error) {
-          console.error("Failed to load existing image:", error);
-        }
-      }
-    };
-
     loadExistingImage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, openbisSample, apiFacade]);
 
   const loadExistingAfs = async () => {
@@ -161,6 +164,28 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       return datasetPermId;
     } catch (error) {
       throw error;
+    }
+  };
+
+  // Replace the stored preview image of the object right away
+  const replaceExistingImage = async (file: File) => {
+    if (!openbisSample || !apiFacade || !existingImageDataset) return;
+    try {
+      await deleteDataset(apiFacade, existingImageDataset.datasetId);
+      await uploadImageToObject(openbisSample.getPermId().getPermId(), file);
+      await loadExistingImage();
+    } catch (error) {
+      console.error("Failed to replace image:", error);
+    }
+  };
+
+  // Use a chosen or dropped image: replace a stored image right away, otherwise keep it until saving
+  const handleImageFile = (file: File | undefined) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    if (existingImageDataset && !selectedImageFile) {
+      replaceExistingImage(file);
+    } else {
+      setSelectedImageFile(file);
     }
   };
 
@@ -307,6 +332,16 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const finishUpdate = async () => {
     if (apiFacade && openbisSample) {
       const permId = openbisSample.getPermId().getPermId();
+      // An image chosen for an object without one is only stored when saving
+      if (selectedImageFile) {
+        try {
+          await uploadImageToObject(permId, selectedImageFile);
+          setSelectedImageFile(null);
+          await loadExistingImage();
+        } catch (err: any) {
+          console.error("Image upload failed:", err);
+        }
+      }
       if (selectedAfsFiles.length > 0) {
         try {
           for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
@@ -507,16 +542,31 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                     )}
                   </div>
                 </div>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "1rem" }}>
+                <div
+                  className={`border-2 border-dashed rounded-lg text-center ${isDraggingImage ? "border-blue-400 bg-blue-50" : "border-gray-300"}`}
+                  style={{ padding: "1rem" }}
+                  onDragOver={(e) => {
+                    if (!isEditMode) return;
+                    e.preventDefault();
+                    setIsDraggingImage(true);
+                  }}
+                  onDragLeave={(e) => {
+                    // Ignore moving between elements inside the area
+                    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDraggingImage(false);
+                  }}
+                  onDrop={(e) => {
+                    if (!isEditMode) return;
+                    e.preventDefault();
+                    setIsDraggingImage(false);
+                    handleImageFile(e.dataTransfer.files?.[0]);
+                  }}
+                >
                   <input
                     type="file"
                     accept="image/*"
                     ref={fileInputRef}
                     key={selectedImageFile ? 'with-file' : 'no-file'}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      setSelectedImageFile(file || null);
-                    }}
+                    onChange={(e) => handleImageFile(e.target.files?.[0])}
                     className="hidden"
                     id="image-upload"
                     disabled={!isEditMode}
@@ -532,7 +582,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                         {isEditMode && (
                           <div className="flex gap-2 justify-center">
                             <p className="text-xs text-blue-600 hover:text-blue-800">
-                              Click to change image
+                              Click or drop to change image
                             </p>
                             <span className="text-xs text-gray-400">•</span>
                             <button
@@ -565,33 +615,12 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                               style={{ display: "none" }}
                               onChange={async (e) => {
                                 const file = e.currentTarget.files?.[0];
-                                if (file && openbisSample && apiFacade && existingImageDataset) {
-                                  try {
-                                    // Delete the old image
-                                    await deleteDataset(apiFacade, existingImageDataset.datasetId);
-                                    // Upload the new image
-                                    await uploadImageToObject(openbisSample.getPermId().getPermId(), file);
-                                    // Reload the new image preview
-                                    const sessionToken = (apiFacade as any)?._private?.sessionToken;
-                                    if (sessionToken) {
-                                      const info = await getPreviewImageInfo(apiFacade, openbisSample.getPermId().getPermId());
-                                      if (info) {
-                                        const encodedPath = info.filePath.split('/').map(encodeURIComponent).join('/');
-                                        const url = `/datastore_server/${info.datasetPermId}/${encodedPath}?sessionID=${encodeURIComponent(sessionToken)}`;
-                                        setExistingImageDataset({
-                                          url,
-                                          filename: info.filePath.split('/').pop() ?? info.filePath,
-                                          datasetId: info.datasetPermId,
-                                        });
-                                      }
-                                    }
-                                    // Reset file input
-                                    if (fileInputRef.current) {
-                                      fileInputRef.current.value = "";
-                                    }
-                                  } catch (error) {
-                                    console.error("Failed to replace image:", error);
-                                  }
+                                if (file) {
+                                  await replaceExistingImage(file);
+                                }
+                                // Reset file input
+                                if (fileInputRef.current) {
+                                  fileInputRef.current.value = "";
                                 }
                               }}
                             />
@@ -627,7 +656,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                     ) : (
                       <div className="space-y-2">
                         <p className="text-sm font-medium text-gray-700">
-                          {isEditMode ? "Click to select a preview image" : "No preview image"}
+                          {isEditMode ? "Click or drop a preview image here" : "No preview image"}
                         </p>
                         {isEditMode && (
                           <p className="text-xs text-gray-500">
@@ -723,9 +752,11 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
               {/* Existing uploaded files as tree */}
               {existingAfsEntries.length > 0 && (
                 <div className="mb-3">
-                  <p className="text-xs text-gray-500 text-left mb-1">
-                    Uploaded{isEditMode ? ' — pick "Add here" on a folder to choose where new files go' : ''}
-                  </p>
+                  {isEditMode &&
+                    <p className="text-xs text-gray-500 text-left mb-1">
+                      Click "Add here" on a folder to choose where new files go
+                    </p>
+                  }
                   <AfsFileTree
                     entries={existingAfsEntries}
                     pendingDeletes={pendingAfsDeletes}
