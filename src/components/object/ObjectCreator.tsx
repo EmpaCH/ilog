@@ -86,8 +86,10 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const afsFileInputRef = useRef<HTMLInputElement>(null);
   let [existingAfsEntries, setExistingAfsEntries] = useState<{ path: string; name: string; directory: boolean; size?: number }[]>([]);
   let [pendingAfsDeletes, setPendingAfsDeletes] = useState<string[]>([]);
-  // Relative path (no leading/trailing slash) of the folder new AFS uploads are added into. "" = root.
+  // Folder new AFS uploads are added into, as typed (e.g. "reports/2024/"). "" = root.
   let [afsTargetDir, setAfsTargetDir] = useState<string>("");
+  // The same folder as a clean relative path, without empty segments or leading/trailing slashes
+  const afsTargetFolder = afsTargetDir.split("/").map((segment) => segment.trim()).filter(Boolean).join("/");
 
   const [state, dispatch] = useReducer(objectCreatorReducer, objectTemplate);
   const [localState, localDispatch] = useReducer(objectCreatorLocalReducer,
@@ -730,7 +732,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                     isEditMode={isEditMode}
                     onDelete={(path) => setPendingAfsDeletes((prev) => [...prev, path])}
                     onUndoDelete={(path) => setPendingAfsDeletes((prev) => prev.filter((p) => p !== path))}
-                    selectedTargetDir={isEditMode ? afsTargetDir : undefined}
+                    selectedTargetDir={isEditMode ? afsTargetFolder : undefined}
                     onSelectTargetDir={isEditMode ? setAfsTargetDir : undefined}
                   />
                 </div>
@@ -763,7 +765,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 <>
                   <div className="flex items-center gap-2 mb-2 text-sm">
                     <span className="text-gray-500">Adding to:</span>
-                    <span className="font-medium text-gray-700">/{afsTargetDir}</span>
+                    <span className="font-medium text-gray-700">/{afsTargetFolder}</span>
                     {afsTargetDir !== "" && (
                       <button
                         type="button"
@@ -779,9 +781,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                       size="sm"
                       className="max-w-xs"
                       value={afsTargetDir}
-                      onValueChange={(value) =>
-                        setAfsTargetDir(value.replace(/^\/+/, '').replace(/\/+$/, ''))
-                      }
+                      onValueChange={setAfsTargetDir}
                     />
                   </div>
                   <div className="flex gap-2">
@@ -796,7 +796,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                           if (picked.length > 0) {
                             const queued = picked.map((file) => ({
                               file,
-                              targetPath: afsTargetDir ? `${afsTargetDir}/${file.name}` : file.name,
+                              targetPath: afsTargetFolder ? `${afsTargetFolder}/${file.name}` : file.name,
                             }));
                             setSelectedAfsFiles((prev) => [...prev, ...queued]);
                           }
@@ -826,7 +826,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                               const relPath = file.webkitRelativePath || file.name;
                               return {
                                 file,
-                                targetPath: afsTargetDir ? `${afsTargetDir}/${relPath}` : relPath,
+                                targetPath: afsTargetFolder ? `${afsTargetFolder}/${relPath}` : relPath,
                               };
                             });
                             setSelectedAfsFiles((prev) => [...prev, ...queued]);
