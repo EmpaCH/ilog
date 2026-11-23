@@ -217,10 +217,14 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   const objectTypesFilteredByCollection = useMemo(() => {
     if (!objectTypes.data || !state.category) return [];
     
-    return objectTypes.data.filter((oj) => getTypeCategory(oj) === state.category).filter((oj) => {
-      if (!localState.searchTerm) return true;
-      return oj.getCode().toLowerCase().includes(localState.searchTerm.toLowerCase());
-    });
+    return objectTypes.data
+      .filter((oj) => getTypeCategory(oj) === state.category)
+      .filter((oj) => {
+        if (!localState.searchTerm) return true;
+        return oj.getCode().toLowerCase().includes(localState.searchTerm.toLowerCase());
+      })
+      // Alphabetical, as shown in the dropdown
+      .sort((a, b) => a.getCode().localeCompare(b.getCode()));
   }, [objectTypes.data, state.category, localState.searchTerm]);
 
   const createObjectSchemaBasedOnType = (
