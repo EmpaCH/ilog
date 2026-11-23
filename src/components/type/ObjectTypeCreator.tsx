@@ -259,11 +259,17 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
             handleMessage(err.message.split(" (Context:")[0], false, true);
             localDispatch({ type: "SET_LOADING", payload: false });
           },
-          onSuccess: () => {
+          onSuccess: async () => {
             handleMessage("Type updated successfully!", true, true);
-            setTimeout(() => {
-              navigate({ to: "/types" });
-            }, 2000);
+            // Reload the types and rebuild the page from them, so it shows the saved type
+            await Promise.all([allObjectTypesResult.refetch(), allPropertyTypesResult.refetch()]);
+            setInitial(true);
+            localDispatch({ type: "SET_LOADING", payload: false });
+            setIsEditMode(false);
+            if (mode === "edit") {
+              // Opened with "Edit" from the type list: show the normal view page
+              navigate({ to: "/types/creator", search: { mode: "view", objecttypecode: objectTypeCode }, replace: true });
+            }
           },
         }
       );
@@ -280,6 +286,8 @@ export const ObjectTypeCreator: React.FC<TypeCreatorProps> = ({
           onSuccess: () => {
             handleMessage("Type created successfully!", true, true);
             handleClear(2000);
+            // Show the message briefly, then go back to the type list
+            setTimeout(onBack, 2000);
           },
         }
       );

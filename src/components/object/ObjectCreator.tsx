@@ -486,6 +486,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 true,
               );
               onClear(2000);
+              // Show the message briefly, then go back to the object list
+              setTimeout(onBack, 2000);
             } catch (uploadError) {
               handleMessage("Object created but file upload failed: " + uploadError, false, true);
             }
