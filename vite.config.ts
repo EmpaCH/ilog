@@ -27,6 +27,7 @@ function openbisDynamicProxy(): Plugin {
           path: targetPath,
           method: req.method,
           headers: { ...req.headers, host: hostname },
+          // Local development only: also accept self-signed certificates, e.g. of a local openBIS
           rejectUnauthorized: false,
         },
         (proxyRes) => {

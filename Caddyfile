@@ -22,7 +22,6 @@
         reverse_proxy {re.instance.1}:443 {
             transport http {
                 tls
-                tls_insecure_skip_verify
             }
             header_up Host {re.instance.1}
         }
@@ -36,7 +35,6 @@
         reverse_proxy {re.instance.1}:443 {
             transport http {
                 tls
-                tls_insecure_skip_verify
             }
             header_up Host {re.instance.1}
         }
@@ -50,7 +48,6 @@
         reverse_proxy {re.instance.1}:443 {
             transport http {
                 tls
-                tls_insecure_skip_verify
             }
             header_up Host {re.instance.1}
         }
