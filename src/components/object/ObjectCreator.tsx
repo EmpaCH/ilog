@@ -126,20 +126,22 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     loadExistingImage();
   }, [mode, openbisSample, apiFacade]);
 
+  const loadExistingAfs = async () => {
+    if ((mode === "edit" || mode === "view") && openbisSample && apiFacade) {
+      try {
+        const permId = openbisSample.getPermId().getPermId();
+        const entries = await listAfsEntries(apiFacade, { owner: permId, source: '/', recursively: true });
+        setExistingAfsEntries(entries.filter((e) => !e.directory));
+      } catch (error) {
+        console.error("Failed to load existing AFS files:", error);
+      }
+    }
+  };
+
   // Load existing AFS files when editing/viewing
   useEffect(() => {
-    const loadExistingAfs = async () => {
-      if ((mode === "edit" || mode === "view") && openbisSample && apiFacade) {
-        try {
-          const permId = openbisSample.getPermId().getPermId();
-          const entries = await listAfsEntries(apiFacade, { owner: permId, source: '/', recursively: true });
-          setExistingAfsEntries(entries.filter((e) => !e.directory));
-        } catch (error) {
-          console.error("Failed to load existing AFS files:", error);
-        }
-      }
-    };
     loadExistingAfs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, openbisSample, apiFacade]);
 
   // Function to upload image to object
@@ -253,12 +255,13 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     }
   }, [objectCode, objectResult.status, objectResult.data]);
 
-  // Load schema after objectTypes query is ready
+  // Load schema after objectTypes query is ready, and again after the object is reloaded (e.g. after
+  // an update), as loading the object resets the state including the schema
   useEffect(() => {
     if ((mode === "edit" || mode === "view") && state.type && objectTypes.status === "success" && allPropertyTypesResult.status === "success") {
       createObjectSchemaBasedOnType(state.type, mode);
     }
-  }, [state.type, objectTypes.status, objectTypes.data, allPropertyTypesResult.status, mode]);
+  }, [state.type, objectTypes.status, objectTypes.data, allPropertyTypesResult.status, mode, objectResult.data]);
 
   // Ensure objectTypesFilteredByCollection is updated when objectTypes loads
   useEffect(() => {
@@ -297,6 +300,40 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
       const depthB = b.targetPath.split('/').length;
       return depthA - depthB;
     });
+
+  // After a successful update: store the AFS changes, show the saved object and switch back to view mode
+  const finishUpdate = async () => {
+    if (apiFacade && openbisSample) {
+      const permId = openbisSample.getPermId().getPermId();
+      if (selectedAfsFiles.length > 0) {
+        try {
+          for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
+            await uploadAfsDataSet(apiFacade, { samplePermId: permId, experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file, targetPath });
+          }
+          setSelectedAfsFiles([]);
+        } catch (err: any) {
+          console.error("AFS upload failed:", err);
+        }
+      }
+      if (pendingAfsDeletes.length > 0) {
+        for (const path of pendingAfsDeletes) {
+          try { await deleteAfsFile(apiFacade, permId, path); } catch (err) { console.error('AFS delete failed:', err); }
+        }
+        setPendingAfsDeletes([]);
+      }
+      setAfsTargetDir("");
+      await loadExistingAfs();
+    }
+    // Reload the object so the page shows the saved values
+    await objectResult.refetch();
+    localDispatch({ type: "SET_LOADING", payload: false });
+    if (mode === "edit") {
+      navigate({ to: "/objects/creator", search: { mode: "view", objectcode: objectCode }, replace: true });
+    } else {
+      setIsEditMode(false);
+    }
+    setTimeout(() => localDispatch({ type: "SET_SHOW_MESSAGE", payload: false }), 2000);
+  };
 
   const onSubmit = (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -338,26 +375,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
             } else {
               handleMessage("Instrument updated successfully!", true, true);
             }
-            if (selectedAfsFiles.length > 0 && apiFacade && openbisSample) {
-              try {
-                for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
-                  await uploadAfsDataSet(apiFacade, { samplePermId: openbisSample.getPermId().getPermId(), experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file, targetPath });
-                }
-                setSelectedAfsFiles([]);
-              } catch (err: any) {
-                console.error("AFS upload failed:", err);
-              }
-            }
-            if (pendingAfsDeletes.length > 0 && apiFacade && openbisSample) {
-              for (const path of pendingAfsDeletes) {
-                try { await deleteAfsFile(apiFacade, openbisSample.getPermId().getPermId(), path); } catch (err) { console.error('AFS delete failed:', err); }
-              }
-              setPendingAfsDeletes([]);
-              setExistingAfsEntries((prev) => prev.filter((e) => !pendingAfsDeletes.includes(e.path)));
-            }
-            setTimeout(() => {
-              onBack();
-            }, 2000);
+            await finishUpdate();
           },
         });
       } else {
@@ -375,26 +393,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
           },
           onSuccess: async () => {
             handleMessage("Object updated successfully!", true, true);
-            if (selectedAfsFiles.length > 0 && apiFacade && openbisSample) {
-              try {
-                for (const { file, targetPath } of sortedByDepth(selectedAfsFiles)) {
-                  await uploadAfsDataSet(apiFacade, { samplePermId: openbisSample.getPermId().getPermId(), experimentIdentifier: '', sampleIdentifier: '', afsOwnerText: '', file, targetPath });
-                }
-                setSelectedAfsFiles([]);
-              } catch (err: any) {
-                console.error("AFS upload failed:", err);
-              }
-            }
-            if (pendingAfsDeletes.length > 0 && apiFacade && openbisSample) {
-              for (const path of pendingAfsDeletes) {
-                try { await deleteAfsFile(apiFacade, openbisSample.getPermId().getPermId(), path); } catch (err) { console.error('AFS delete failed:', err); }
-              }
-              setPendingAfsDeletes([]);
-              setExistingAfsEntries((prev) => prev.filter((e) => !pendingAfsDeletes.includes(e.path)));
-            }
-            setTimeout(() => {
-              onBack();
-            }, 2000);
+            await finishUpdate();
           },
         });
       }
