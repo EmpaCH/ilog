@@ -50,6 +50,7 @@ import openbis from "@openbis/openbis.esm";
 import "../../index.css";
 import { MessageModal } from "../shared/messageModal";
 import { AfsFileTree } from "../shared/AfsFileTree";
+import { DroppedFile, getDroppedFiles } from "../shared/droppedFiles";
 import { CollectionSelect } from "../shared/CollectionSelect";
 
 // define whether this will be an Object Creator or Editor component
@@ -92,6 +93,20 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   let [afsTargetDir, setAfsTargetDir] = useState<string>("");
   // The same folder as a clean relative path, without empty segments or leading/trailing slashes
   const afsTargetFolder = afsTargetDir.split("/").map((segment) => segment.trim()).filter(Boolean).join("/");
+  // Whether files are dragged over the AFS upload area
+  let [isDraggingAfs, setIsDraggingAfs] = useState(false);
+
+  // Queue files for upload into the chosen AFS folder, keeping their relative paths
+  const queueAfsFiles = (files: DroppedFile[]) => {
+    if (files.length === 0) return;
+    setSelectedAfsFiles((prev) => [
+      ...prev,
+      ...files.map(({ file, relativePath }) => ({
+        file,
+        targetPath: afsTargetFolder ? `${afsTargetFolder}/${relativePath}` : relativePath,
+      })),
+    ]);
+  };
 
   const [state, dispatch] = useReducer(objectCreatorReducer, objectTemplate);
   const [localState, localDispatch] = useReducer(objectCreatorLocalReducer,
@@ -815,7 +830,24 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                       onValueChange={setAfsTargetDir}
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div
+                    className={`flex gap-2 rounded-lg ${isDraggingAfs ? "ring-2 ring-blue-400 bg-blue-50" : ""}`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingAfs(true);
+                    }}
+                    onDragLeave={(e) => {
+                      // Ignore moving between elements inside the area
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDraggingAfs(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingAfs(false);
+                      getDroppedFiles(e.dataTransfer)
+                        .then(queueAfsFiles)
+                        .catch((err) => console.error("Could not read the dropped files:", err));
+                    }}
+                  >
                     <div className="flex-1 border-2 border-dashed border-gray-300 rounded-lg text-center" style={{ padding: "0.75rem" }}>
                       <input
                         key="afs-file-input"
@@ -823,14 +855,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                         multiple={true}
                         ref={afsFileInputRef}
                         onChange={(e) => {
-                          const picked = Array.from(e.target.files ?? []);
-                          if (picked.length > 0) {
-                            const queued = picked.map((file) => ({
-                              file,
-                              targetPath: afsTargetFolder ? `${afsTargetFolder}/${file.name}` : file.name,
-                            }));
-                            setSelectedAfsFiles((prev) => [...prev, ...queued]);
-                          }
+                          queueAfsFiles(Array.from(e.target.files ?? []).map((file) => ({ file, relativePath: file.name })));
                           if (afsFileInputRef.current) afsFileInputRef.current.value = '';
                         }}
                         className="hidden"
@@ -839,7 +864,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                       <label htmlFor="afs-file-upload" className="cursor-pointer">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-gray-700">Add files</p>
-                          <p className="text-xs text-gray-500">Any type, multiple allowed</p>
+                          <p className="text-xs text-gray-500">Any type, multiple allowed, or drop files here</p>
                         </div>
                       </label>
                     </div>
@@ -851,17 +876,12 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                         webkitdirectory=""
                         multiple={true}
                         onChange={(e) => {
-                          const picked = Array.from(e.target.files ?? []);
-                          if (picked.length > 0) {
-                            const queued = picked.map((file) => {
-                              const relPath = file.webkitRelativePath || file.name;
-                              return {
-                                file,
-                                targetPath: afsTargetFolder ? `${afsTargetFolder}/${relPath}` : relPath,
-                              };
-                            });
-                            setSelectedAfsFiles((prev) => [...prev, ...queued]);
-                          }
+                          queueAfsFiles(
+                            Array.from(e.target.files ?? []).map((file) => ({
+                              file,
+                              relativePath: file.webkitRelativePath || file.name,
+                            }))
+                          );
                           (e.target as HTMLInputElement).value = '';
                         }}
                         className="hidden"
@@ -870,7 +890,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                       <label htmlFor="afs-folder-upload" className="cursor-pointer">
                         <div className="space-y-1">
                           <p className="text-sm font-medium text-blue-700">Add folder</p>
-                          <p className="text-xs text-blue-400">Uploads with structure intact</p>
+                          <p className="text-xs text-blue-400">Uploads with structure intact, or drop folders here</p>
                         </div>
                       </label>
                     </div>
