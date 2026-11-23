@@ -5,6 +5,7 @@ export interface OpenBISInstance {
 
 export const OPENBIS_INSTANCES: OpenBISInstance[] = [
   { label: "Lab 205", hostname: "openbis-empa-lab205.ethz.ch" },
+  { label: "Lab 308", hostname: "openbis-empa-lab308.ethz.ch" },
   { label: "Dev 205", hostname: "openbis-empa-dev205.ethz.ch" },
   { label: "Dev 000", hostname: "openbis-empa-dev000.ethz.ch" },
 ];
