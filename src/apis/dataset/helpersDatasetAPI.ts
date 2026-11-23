@@ -85,14 +85,16 @@ export function downloadBlobFile(fileName: string, blob: Blob) {
 
 /**
  * The AFS list endpoint returns a flat text payload rather than JSON.
- * Different openBIS builds separate records with newlines, NUL bytes, or semicolons.
+ * Each record is "owner, path, name, directory, size, lastModified". Different openBIS builds
+ * separate records with newlines, NUL bytes, or semicolons, and fields with tabs or commas.
  */
 export function parseAfsListOctetStream(text: string): AfsListEntry[] {
   const rows = String(text ?? '')
     .split(AFS_LIST_SPLIT_PATTERN)
     .map((line) => line.trim())
     .filter(Boolean)
-    .map((line) => line.split(','))
+    // Fields are separated by tabs (current openBIS versions) or commas (older builds)
+    .map((line) => line.split(line.includes('\t') ? '\t' : ','))
     .filter((parts) => parts.length >= 6)
     .filter(
       (parts) =>
