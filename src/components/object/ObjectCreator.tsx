@@ -414,7 +414,6 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         // Use the enhanced update for instruments to handle component locations
         objectUpdateWithComponents.mutate({
           sampleId: state.id as openbis.ISampleId,
-          objectCode: openbisSample?.getCode() ?? "",
           objectPermId: objectPermId,
           properties: {
             ...state.propertyValues,

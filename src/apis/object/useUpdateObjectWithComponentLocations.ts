@@ -13,7 +13,7 @@ const UPDATE_OBJECT_WITH_COMPONENTS_MUTATION_KEY = "UPDATE_OBJECT_WITH_COMPONENT
 interface UpdateObjectWithComponentLocationsParams {
   sampleId: openbis.ISampleId;
   properties: { [key: string]: any };
-  objectCode: string;
+  // The instrument's permId: written into the LOCATION of the components added to it
   objectPermId: string;
   previousProperties?: { [key: string]: any };
 }
@@ -27,7 +27,7 @@ export const useUpdateObjectWithComponentLocations = () => {
     mutationFn: async ({
       sampleId,
       properties,
-      objectCode,
+      objectPermId,
       previousProperties = {},
     }: UpdateObjectWithComponentLocationsParams) => {
       // First, update the main object
@@ -64,7 +64,7 @@ export const useUpdateObjectWithComponentLocations = () => {
             // Create a sample ID from the permId
             const componentSampleId = new openbis.SamplePermId(componentPermId);
             // Update the component's LOCATION property
-            const locationValue = shouldSetLocation ? objectCode : undefined;
+            const locationValue = shouldSetLocation ? objectPermId : undefined;
             await updateObject(apiFacade, componentSampleId, {
               LOCATION: locationValue,
             });
