@@ -89,12 +89,16 @@ export async function getObjectsOfType(
   );
 }
 
+/**
+ * Get an object with its history and type, by permId. Codes are only unique within a space or
+ * collection, so an object page must not look objects up by code.
+ */
 export async function getObject(
   api: openbis.OpenBISJavaScriptFacade,
-  code: string,
+  permId: string,
 ): Promise<openbis.Sample[]>{
   const sc = new openbis.SampleSearchCriteria();
-  sc.withCode().thatEquals(code);
+  sc.withPermId().thatEquals(permId);
   const fo = new openbis.SampleFetchOptions();
   fo.withType();
   fo.withProperties();
@@ -109,6 +113,23 @@ export async function getObject(
   ao.withPropertyTypeUsing(po);
   fo.withType().withPropertyAssignmentsUsing(ao);
 
+  const result = await api.searchSamples(sc, fo);
+  return result.getObjects();
+}
+
+/**
+ * Get the objects with a code. Only for old values that hold a code instead of a permId:
+ * several objects can share a code.
+ */
+export async function getObjectsByCode(
+  api: openbis.OpenBISJavaScriptFacade,
+  code: string,
+): Promise<openbis.Sample[]> {
+  const sc = new openbis.SampleSearchCriteria();
+  sc.withCode().thatEquals(code);
+  const fo = new openbis.SampleFetchOptions();
+  fo.withType();
+  fo.withProperties();
   const result = await api.searchSamples(sc, fo);
   return result.getObjects();
 }

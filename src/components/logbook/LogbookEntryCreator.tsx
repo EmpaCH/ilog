@@ -388,7 +388,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             multivalued={false}
             value={parentObjectPermId ? [parentObjectPermId] : undefined}
             isReadOnly={mode === "view" && !isEditMode}
-            currentObjectCode={logbookEntryCode}
+            currentObjectPermId={logbookEntryResult.data?.[0]?.getPermId().getPermId()}
             usedForLogentry={true}
           />
         </div>
@@ -402,7 +402,7 @@ export const LogbookEntryCreator: React.FC<LogbookEntryCreatorProps> = ({
             multivalued={false}
             value={parentLogbookEntryPermId ? [parentLogbookEntryPermId] : []}
             isReadOnly={mode === "view" && !isEditMode}
-            currentObjectCode={logbookEntryCode}
+            currentObjectPermId={logbookEntryResult.data?.[0]?.getPermId().getPermId()}
           />
         </div>
         <Divider className="my-4" />

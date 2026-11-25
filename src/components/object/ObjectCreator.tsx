@@ -60,15 +60,15 @@ const creatorModes = ["create", "edit", "view"] as const;
 type CreatorMode = (typeof creatorModes)[number];
 interface ObjectCreatorProps {
   mode: CreatorMode;
-  objectCode: string;
+  objectPermId: string;
 }
 
 export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
   mode,
-  objectCode,
+  objectPermId,
 }) => {
   const { apiFacade } = useContext(AuthContext);
-  const objectResult = useGetObject(objectCode);
+  const objectResult = useGetObject(objectPermId);
   const objectCreation = useCreateObject();
   const objectUpdate = useUpdateObject();
   const objectUpdateWithComponents = useUpdateObjectWithComponentLocations();
@@ -307,7 +307,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         dispatch({ type: "RESET", payload: objectTemplate });
       }
     }
-  }, [objectCode, objectResult.status, objectResult.data]);
+  }, [objectPermId, objectResult.status, objectResult.data]);
 
   // Load schema after objectTypes query is ready, and again after the object is reloaded (e.g. after
   // an update), as loading the object resets the state including the schema
@@ -392,7 +392,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
     await objectResult.refetch();
     localDispatch({ type: "SET_LOADING", payload: false });
     if (mode === "edit") {
-      navigate({ to: "/objects/creator", search: { mode: "view", objectcode: objectCode }, replace: true });
+      navigate({ to: "/objects/creator", search: { mode: "view", permid: objectPermId }, replace: true });
     } else {
       setIsEditMode(false);
     }
@@ -414,7 +414,8 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         // Use the enhanced update for instruments to handle component locations
         objectUpdateWithComponents.mutate({
           sampleId: state.id as openbis.ISampleId,
-          objectCode: objectCode,
+          objectCode: openbisSample?.getCode() ?? "",
+          objectPermId: objectPermId,
           properties: {
             ...state.propertyValues,
           },
@@ -446,7 +447,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
         // Use regular update for components
         objectUpdate.mutate({
           sampleId: state.id as openbis.ISampleId,
-          objectCode: objectCode,
+          objectPermId: objectPermId,
           properties: {
             ...state.propertyValues,
           },
@@ -925,7 +926,7 @@ export const ObjectCreator: React.FC<ObjectCreatorProps> = ({
                 state={state}
                 dispatch={dispatch}
                 hiddenPropertyCodes={legacyIlogPropertyCodes}
-                currentObjectCode={objectCode}
+                currentObjectPermId={objectPermId}
                 onSelectedComponentsChange={(propertyCode, permIds) => {
                   // Only track permIds for properties whose objectType belongs to the
                   // component collection — this excludes person-type properties and

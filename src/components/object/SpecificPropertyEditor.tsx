@@ -21,7 +21,7 @@ import {
 import { ImagePropertyEditor } from "../widgets/ImagePropertyEditor";
 import { useGetVocabulary } from "../../apis/vocabulary/useGetVocabulary";
 import { useGetObjectByPermId } from "../../apis/object/useGetObjectByPermId";
-import { useGetObject } from "../../apis/object/useGetObject";
+import { useGetObjectsByCode } from "../../apis/object/useGetObject";
 import { useGetAllObjects } from "../../apis/object/useGetAllObjects";
 import { getSampleCategory, locationCategory } from "../../apis/shared/category";
 import { Editor } from "@monaco-editor/react";
@@ -70,7 +70,7 @@ interface SpecificPropertyEditorProps {
   propertyDefinition: LocalPropertyTypeVariants;
   propertyValue: string;
   onValueChange: (input: string | boolean | Date | string[]) => void;
-  currentObjectCode?: string;
+  currentObjectPermId?: string;
   propertyCode?: string;
   onSelectedComponentsChange?: (permIds: string[]) => void;
   currentInstrumentPermId?: string;
@@ -91,7 +91,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
   propertyValue,
   propertyDefinition,
   onValueChange,
-  currentObjectCode,
+  currentObjectPermId,
   propertyCode,
   onSelectedComponentsChange,
   currentInstrumentPermId,
@@ -117,7 +117,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
       const looksLikePermId = !!linkedPermId && permIdPattern.test(linkedPermId);
 
       const linkedByPermIdQuery = useGetObjectByPermId(looksLikePermId ? linkedPermId : undefined);
-      const linkedByCodeQuery = useGetObject(!looksLikePermId && linkedPermId ? linkedPermId : "");
+      const linkedByCodeQuery = useGetObjectsByCode(!looksLikePermId && linkedPermId ? linkedPermId : "");
 
       const linkedData = looksLikePermId ? linkedByPermIdQuery.data ?? undefined : linkedByCodeQuery.data?.[0];
       const linkedIsLoading = looksLikePermId ? linkedByPermIdQuery.isLoading : linkedByCodeQuery.isLoading;
@@ -148,7 +148,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
             {linkedData && (
               <Link
                 to="/objects/creator"
-                search={{ mode: "view", objectcode: linkedData.getCode() } as any}
+                search={{ mode: "view", permid: linkedData.getPermId().getPermId() } as any}
                 className="text-sm text-blue-600 hover:underline whitespace-nowrap"
               >
                 Open
@@ -226,7 +226,7 @@ export const SpecificPropertyEditor: React.FC<SpecificPropertyEditorProps> = ({
         objectSubtypes={propertyDefinition.metadata?.[OBJECT_SUBTYPES_KEY]}
         multivalued={propertyDefinition.multivalued}
         value={propertyValue}
-        currentObjectCode={currentObjectCode}
+        currentObjectPermId={currentObjectPermId}
         onSelectedComponentsChange={onSelectedComponentsChange}
         currentInstrumentPermId={currentInstrumentPermId}
         isReadOnly={isReadOnly}

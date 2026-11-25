@@ -8,7 +8,7 @@ interface ObjectPropertyEditorsProps {
   state: ObjectCreatorState;
   dispatch?: React.Dispatch<ObjectCreatorActions>;
   hiddenPropertyCodes?: string[];
-  currentObjectCode?: string;
+  currentObjectPermId?: string;
   onSelectedComponentsChange?: (propertyCode: string, permIds: string[]) => void;
   currentInstrumentPermId?: string;
   currentSamplePermId?: string;
@@ -20,7 +20,7 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
   state,
   dispatch,
   hiddenPropertyCodes,
-  currentObjectCode,
+  currentObjectPermId,
   onSelectedComponentsChange,
   currentInstrumentPermId,
   currentSamplePermId,
@@ -81,7 +81,7 @@ export const ObjectPropertyEditor: React.FC<ObjectPropertyEditorsProps> = ({
                         onValueChange={(value) => {
                           handleValueChange(property.code, value);
                         }}
-                        currentObjectCode={currentObjectCode}
+                        currentObjectPermId={currentObjectPermId}
                         propertyCode={property.code}
                         onSelectedComponentsChange={(permIds) => {
                           onSelectedComponentsChange?.(property.code, permIds);

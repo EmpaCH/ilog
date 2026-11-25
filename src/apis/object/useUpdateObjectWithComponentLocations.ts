@@ -5,6 +5,7 @@ import { AuthContext } from '../../context/auth/authContext';
 import { GET_ALL_ILOG_OBJECTS_QUERY_PREFIX } from './useGetIlogObjects';
 import { GET_ALL_OBJECTS_QUERY_PREFIX } from './useGetAllObjects';
 import { GET_ALL_OBJECTS_OF_TYPE_QUERY_PREFIX } from './useGetObjectsOfType';
+import { GET_OBJECT_QUERY_PREFIX } from './useGetObject';
 import openbis from "@openbis/openbis.esm";
 
 const UPDATE_OBJECT_WITH_COMPONENTS_MUTATION_KEY = "UPDATE_OBJECT_WITH_COMPONENTS_MUTATION_KEY";
@@ -13,6 +14,7 @@ interface UpdateObjectWithComponentLocationsParams {
   sampleId: openbis.ISampleId;
   properties: { [key: string]: any };
   objectCode: string;
+  objectPermId: string;
   previousProperties?: { [key: string]: any };
 }
 
@@ -81,7 +83,7 @@ export const useUpdateObjectWithComponentLocations = () => {
     },
     onSuccess: async (_data, variables) => {
       // Force refetch the specific object query
-      await queryClient.refetchQueries({ queryKey: [variables.objectCode] });
+      await queryClient.refetchQueries({ queryKey: [GET_OBJECT_QUERY_PREFIX, variables.objectPermId] });
       // Invalidate all object queries to refresh data
       queryClient.invalidateQueries({ queryKey: [GET_ALL_ILOG_OBJECTS_QUERY_PREFIX] });
       await queryClient.refetchQueries({ queryKey: [GET_ALL_ILOG_OBJECTS_QUERY_PREFIX] });

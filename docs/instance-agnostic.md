@@ -34,6 +34,7 @@ The **Settings** page (previously "Import") is only visible to openBIS instance 
 
 - **Admin-only areas:** the Types, Settings and Trashcan pages are hidden from users who are not openBIS admins (they couldn't use them anyway). Users without access to the logbook see a message asking them to contact an admin.
 - **ELN integration:** types created or updated in iLog are registered in the ELN settings (`sampleTypeDefinitionsExtension`), so they appear in the ELN menus. Existing ELN configuration of a type is never overwritten. Deleting a type removes its entry.
+- **Object pages are opened by permId:** object and history page addresses use `permid=…` instead of `objectcode=…`, because codes are only unique within a space or collection. Old bookmarks with `objectcode=` no longer open the object.
 - **Logbook list:** a spinner is shown while loading, and the reason is shown when the logbook can't be used, instead of an empty table.
 - **Type lists:** all type lists refresh after creating, changing or deleting a type.
 - **Small UI fixes:** help text below form fields is left-aligned, and the row buttons in the type table are right-aligned.

@@ -42,14 +42,18 @@ export const List = (props: {
     permId: openbis.EntityTypePermId | openbis.SamplePermId,
     code: string,
   ) => void;
+  // permId: the row's permId, for lists whose codes are not unique (objects)
   onEdit: (
     code: string,
+    permId: string,
   ) => void;
   onHistory?: (
     code: string,
+    permId: string,
   ) => void;
   onView?: (
     code: string,
+    permId: string,
   ) => void;
 }) => {
   const navigate = useNavigate();
@@ -352,7 +356,7 @@ export const List = (props: {
             color="secondary"
             variant="light"
             size="sm"
-            onPress={() => props.onHistory && props.onHistory(fullRow ? fullRow["code"] : row[idColumn])}
+            onPress={() => props.onHistory && props.onHistory(fullRow ? fullRow["code"] : row[idColumn], permId.getPermId())}
           >
             <HistoryIcon />
           </Button>
@@ -364,7 +368,7 @@ export const List = (props: {
             color="success"
             variant="light"
             size="sm"
-            onPress={() => props.onEdit(fullRow ? fullRow["code"] : row[idColumn])}
+            onPress={() => props.onEdit(fullRow ? fullRow["code"] : row[idColumn], permId.getPermId())}
           >
             <DriveFileRenameOutlineIcon />
           </Button>
@@ -399,7 +403,7 @@ export const List = (props: {
           cursor: props.onView ? "pointer" : "default",
           border: "1px solid #E0E0E0",
         }}
-        onClick={() => props.onView?.(props.hiddenCode ? row["code"] : row[props.idColumn])}
+        onClick={() => props.onView?.(props.hiddenCode ? row["code"] : row[props.idColumn], permId.getPermId())}
       >
         {renderRowCells(permId, newRow, props.idColumn, enableModification, props.enableHistory, props.enableLogbook, row, color)}
       </TableRow>

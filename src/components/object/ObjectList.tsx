@@ -86,43 +86,17 @@ export const ObjectList = () => {
     setDeleteTarget(null);
   };
 
-  const onEdit = async (
-    code: string,
-  ) => {
-    const object = objects.find((t) => t.getCode() === code);
-    if (object) {
-      navigate({
-        to: `/objects/creator?mode=edit&objectcode=${object.getCode()}`,
-      });
-    } else {
-      handleMessage(`Object with code '${code}' not found.`, false, true);
-    }
+  // Objects are opened by permId: codes are only unique within a space or collection
+  const onEdit = (_code: string, permId: string) => {
+    navigate({ to: "/objects/creator", search: { mode: "edit", permid: permId } as any });
   };
 
-  const onView = async (
-    code: string
-  ) => {
-    const object = objects.find((t) => t.getCode() === code);
-    if (object) {
-      navigate({
-        to: `/objects/creator?mode=view&objectcode=${object.getCode()}`,
-      });
-    } else {
-      handleMessage(`Object with code '${code}' not found.`, false, true);
-    }
+  const onView = (_code: string, permId: string) => {
+    navigate({ to: "/objects/creator", search: { mode: "view", permid: permId } as any });
   };
 
-  const onHistory = async (
-    code: string,
-  ) => {
-    const object = objects.find((t) => t.getCode() === code);
-    if (object) {
-      navigate({
-        to: `/objects/history?objectcode=${object.getCode()}`,
-      });
-    } else {
-      handleMessage(`Object with code '${code}' not found.`, false, true);
-    }
+  const onHistory = (_code: string, permId: string) => {
+    navigate({ to: "/objects/history", search: { permid: permId } as any });
   };
 
   const handleMessage = (

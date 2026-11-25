@@ -34,7 +34,7 @@ interface ComponentListPropertyEditorProps {
   objectType?: string;
   multivalued?: boolean;
   value?: string | string[] | any;
-  currentObjectCode?: string;
+  currentObjectPermId?: string;
   onSelectedComponentsChange?: (permIds: string[]) => void;
   currentInstrumentPermId?: string;
   isReadOnly?: boolean;
@@ -50,7 +50,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   objectType,
   multivalued,
   value,
-  currentObjectCode,
+  currentObjectPermId,
   onSelectedComponentsChange,
   currentInstrumentPermId,
   isReadOnly,
@@ -73,7 +73,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
   const [allComponents, setAllComponents] = useState<openbis.Sample[]>([]);
   const [components, setComponents] = useState<openbis.Sample[]>([]);
-  const [storedCurrentObjectCode, setStoredCurrentObjectCode] = useState<string | undefined>(currentObjectCode);
+  const [storedCurrentObjectPermId, setStoredCurrentObjectPermId] = useState<string | undefined>(currentObjectPermId);
 
   const sessionToken = (apiFacade as any)?._private?.sessionToken as string | undefined;
   // Limit preview image fetches to the first 20 visible rows to avoid
@@ -84,13 +84,13 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
   );
   const { data: previewImages } = usePreviewImages(componentPermIds, sessionToken);
   
-  // Remember the first non-empty currentObjectCode provided by the parent
+  // Remember the first non-empty currentObjectPermId provided by the parent
   useEffect(() => {
-    if (currentObjectCode && currentObjectCode !== storedCurrentObjectCode) {
-      setStoredCurrentObjectCode(currentObjectCode);
+    if (currentObjectPermId && currentObjectPermId !== storedCurrentObjectPermId) {
+      setStoredCurrentObjectPermId(currentObjectPermId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentObjectCode]);
+  }, [currentObjectPermId]);
 
   // Track missing selected permIds (not in allComponents)
   const selectedPermIdsFromValue = useMemo(() => {
@@ -142,8 +142,8 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
     if (logentries) {
       // If editing a log entry, exclude the current entry code from the list
       let filteredLogEntries = logentries;
-      if (storedCurrentObjectCode) {
-        filteredLogEntries = logentries.filter((entry) => entry.getCode() !== storedCurrentObjectCode);
+      if (storedCurrentObjectPermId) {
+        filteredLogEntries = logentries.filter((entry) => entry.getPermId().getPermId() !== storedCurrentObjectPermId);
       }
       setAllComponents(filteredLogEntries);
       setComponents(filteredLogEntries);
@@ -174,9 +174,9 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
           );
         }
       }
-      if (storedCurrentObjectCode) {
+      if (storedCurrentObjectPermId) {
         filteredData = filteredData.filter((component) => 
-          component.getCode() !== storedCurrentObjectCode
+          component.getPermId().getPermId() !== storedCurrentObjectPermId
         );
       }
       // In read-only (view) mode, hide components not belonging to this instrument.
@@ -195,7 +195,7 @@ export const ComponentListPropertyEditor: React.FC<ComponentListPropertyEditorPr
       });
       setComponentTypes([...new Set(componentTypes)]);
     }
-  }, [getObjectsResult.status, getObjectsResult.data, objectType, objectSubtypes, storedCurrentObjectCode, currentInstrumentPermId, logentries]);
+  }, [getObjectsResult.status, getObjectsResult.data, objectType, objectSubtypes, storedCurrentObjectPermId, currentInstrumentPermId, logentries]);
 
   // Separately, additively merge a missing selected object into allComponents.
   // Keeping this decoupled prevents an oscillation loop: if we merged and removed

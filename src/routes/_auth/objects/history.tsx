@@ -5,10 +5,10 @@ export const Route = createFileRoute('/_auth/objects/history')({
   component: () => {
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
-    const objectCode = searchParams.get('objectcode');
+    const objectPermId = searchParams.get('permid');
 
     return ObjectHistory({
-      objectCode: objectCode || '',
+      objectPermId: objectPermId || '',
     });
   },
 })

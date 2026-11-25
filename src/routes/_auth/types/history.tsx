@@ -6,11 +6,11 @@ export const Route = createFileRoute('/_auth/types/history')({
   component: () => {
     const location = useLocation()
     const searchParams = new URLSearchParams(location.search)
-    const objectCode = searchParams.get('objectcode')
+    const objectPermId = searchParams.get('permid')
 
     return (
       <AdminOnly>
-        <ObjectHistory objectCode={objectCode || ''} />
+        <ObjectHistory objectPermId={objectPermId || ''} />
       </AdminOnly>
     )
   },

@@ -20,7 +20,7 @@ import {
 } from "../../apis/type/commonType";
 
 interface ObjectHistoryProps {
-  objectCode: string;
+  objectPermId: string;
 }
 
 interface DiffEntry {
@@ -96,7 +96,7 @@ const DiffHeader: React.FC<{ changes: DiffEntry[]; timestamp: number }> = ({ cha
   );
 };
 
-export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
+export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectPermId }) => {
   const allObjectsResult = useGetIlogObjects();
   const { apiFacade } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -106,11 +106,12 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
   const [category, setCategory] = useState<string | null>(null);
   const [objectName, setObjectName] = useState<string | null>(null);
 
-  // Derive permId directly from query data so usePreviewImages hits the cache immediately
+  // Find the object by permId: codes are only unique within a space or collection
   const resolvedSample = allObjectsResult.data?.find(
-    (it) => it.getCode().toUpperCase() === objectCode.toUpperCase()
+    (it) => it.getPermId().getPermId() === objectPermId
   );
-  const derivedPermId = resolvedSample?.getPermId().getPermId() ?? null;
+  const objectCode = resolvedSample?.getCode() ?? "";
+  const derivedPermId = resolvedSample ? objectPermId : null;
 
   const sessionToken = (apiFacade as any)?._private?.sessionToken as string | undefined;
   const { data: previewImages } = usePreviewImages(
@@ -121,9 +122,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
 
   useMemo(() => {
     if (allObjectsResult.status === "success") {
-      const openbisSample = allObjectsResult.data?.find(
-        (it) => it.getCode().toUpperCase() === objectCode.toUpperCase()
-      ) as openbis.Sample;
+      const openbisSample = resolvedSample as openbis.Sample;
 
       if (openbisSample) {
         setCategory(getSampleCategory(openbisSample) || null);
@@ -164,7 +163,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
         setDiffsByTimestamp(diffs);
       }
     }
-  }, [objectCode, allObjectsResult.status, allObjectsResult.data]);
+  }, [objectPermId, allObjectsResult.status, allObjectsResult.data]);
 
   const baseTypeName = category === instrumentCategory ? "Instrument" : "Component";
 
@@ -189,7 +188,7 @@ export const ObjectHistory: React.FC<ObjectHistoryProps> = ({ objectCode }) => {
           <div className="flex-1 min-w-[260px] max-w-xl flex flex-col gap-2 justify-center">
             <p className="text-base text-left">
               <span className="font-semibold">Code: </span>
-              <Link to="/objects/creator" search={{ mode: "view", objectcode: objectCode }}>
+              <Link to="/objects/creator" search={{ mode: "view", permid: objectPermId } as any}>
                 {objectCode}
               </Link>
             </p>
